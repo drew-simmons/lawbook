@@ -1,6 +1,7 @@
 import path from "node:path";
 import { Command, CommanderError, Option } from "commander";
 import pkg from "../package.json" with { type: "json" };
+import { applyBaseline, buildBaseline, readBaseline, writeBaseline } from "./baseline.ts";
 import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
 import { CliError, errorMessage } from "./errors.ts";
@@ -11,7 +12,7 @@ import { plan, type PlanOptions } from "./plan.ts";
 import type { Judges } from "./judge/judge.ts";
 import { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
 import type { ReportMeta } from "./report.ts";
-import { exitCodeFor } from "./result.ts";
+import { exitCodeFor, type Report } from "./result.ts";
 
 /** Where the CLI writes. Tests pass their own to capture output. */
 export interface Output {
@@ -43,6 +44,8 @@ interface CheckFlags {
   cacheDir?: string;
   dryRun?: boolean;
   explain?: boolean;
+  baseline?: string;
+  updateBaseline?: boolean;
 }
 
 /** Commander actions return nothing, so the exit code travels in here. */
@@ -87,8 +90,30 @@ async function runCheck(
     judges: deps.judges,
     explain: flags.explain,
   });
-  output.stdout(FORMATTERS[flags.format](report, reportMeta(root, file)));
-  return exitCodeFor(report);
+  const shown = await withBaseline(report, flags);
+  output.stdout(FORMATTERS[flags.format](shown, reportMeta(root, file)));
+  return exitCodeFor(shown);
+}
+
+/** `--update-baseline` needs a file to write; a baseline read before the run exists is an error too. */
+function baselineFile(flags: CheckFlags): string | undefined {
+  if (flags.updateBaseline === true && flags.baseline === undefined) {
+    throw new CliError("--update-baseline needs --baseline <file> to write to");
+  }
+  return flags.baseline;
+}
+
+/** The report minus the findings the baseline knows; `--update-baseline` records this run first. */
+async function withBaseline(report: Report, flags: CheckFlags): Promise<Report> {
+  const file = baselineFile(flags);
+  if (file === undefined) {
+    return report;
+  }
+  const baseline = flags.updateBaseline === true ? buildBaseline(report) : await readBaseline(file);
+  if (flags.updateBaseline === true) {
+    await writeBaseline(file, baseline);
+  }
+  return applyBaseline(report, baseline);
 }
 
 /** The config file relative to the root, or just its name when it lies outside. */
@@ -121,6 +146,11 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
     .option("--since <ref>", "check only files committed since the merge base with ref")
     .option("--dry-run", "list the files each rule would check and exit without reading them")
     .option("--explain", "print the model's reason for files that pass, not only for findings")
+    .option(
+      "--baseline <file>",
+      "hide the findings this file records, relative to the current directory",
+    )
+    .option("--update-baseline", "write this run's findings to the --baseline file and hide them")
     .option("--no-cache", "ask the model even when a cached verdict exists")
     .option(
       "--cache-dir <dir>",

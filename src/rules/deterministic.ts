@@ -1,10 +1,9 @@
-import path from "node:path";
 import type { RuleOf } from "../config.ts";
 import { CliError, errorMessage } from "../errors.ts";
 import {
   type FileSelection,
+  matchPaths,
   splitLines,
-  pathExists,
   readSourceFile,
   selectFiles,
   type SourceFile,
@@ -81,12 +80,25 @@ export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): P
   return ruleResult(rule, findings);
 }
 
-export async function checkExists(rule: RuleOf<"exists">, ctx: RuleContext): Promise<RuleResult> {
-  const exists = await pathExists(path.join(ctx.root, rule.exists));
-  return ruleResult(rule, exists ? [] : [{ path: rule.exists, message: "missing" }]);
+/** One pattern missing names it; several name them all, since no single path is the one that is missing. */
+function missingFindings(patterns: string[]): Finding[] {
+  const [only] = patterns;
+  return patterns.length === 1 && only !== undefined
+    ? [{ path: only, message: "missing" }]
+    : [{ message: `none of ${patterns.join(", ")} exists` }];
 }
 
+/** Passes when any of the paths or globs matches something. */
+export async function checkExists(rule: RuleOf<"exists">, ctx: RuleContext): Promise<RuleResult> {
+  const found = await matchPaths(ctx.root, rule.exists, ctx.ignore);
+  return ruleResult(rule, found.length === 0 ? missingFindings(rule.exists) : []);
+}
+
+/** Fails for every path or glob match that is present. */
 export async function checkAbsent(rule: RuleOf<"absent">, ctx: RuleContext): Promise<RuleResult> {
-  const exists = await pathExists(path.join(ctx.root, rule.absent));
-  return ruleResult(rule, exists ? [{ path: rule.absent, message: "exists" }] : []);
+  const found = await matchPaths(ctx.root, rule.absent, ctx.ignore);
+  return ruleResult(
+    rule,
+    found.map((file) => ({ path: file, message: "exists" })),
+  );
 }

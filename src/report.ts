@@ -65,7 +65,20 @@ function resultLines(result: RuleResult): string[] {
     (finding) => `  ${location(finding)}${finding.message}${probability(finding)}`,
   );
   const skipped = (result.skipped ?? []).map((entry) => `  ${entry.path}: ${entry.message}`);
-  return [`${LABELS[result.status]} ${result.id}`, ...findings, ...reasonLines(result), ...skipped];
+  return [
+    `${LABELS[result.status]} ${result.id}`,
+    ...findings,
+    ...reasonLines(result),
+    ...baselinedLine(result),
+    ...skipped,
+  ];
+}
+
+/** `  2 findings in baseline` when the baseline hid any. */
+function baselinedLine(result: RuleResult): string[] {
+  return result.baselined === undefined
+    ? []
+    : [`  ${count(result.baselined, "finding")} in baseline`];
 }
 
 export function summaryLine(summary: Summary): string {
