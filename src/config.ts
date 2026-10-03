@@ -48,24 +48,6 @@ export const SCOPES = ["file", "set"] as const;
 
 export type Scope = (typeof SCOPES)[number];
 
-// A `standard` rule is a yes/no question; a file, or the set, fails below `threshold`.
-const standardRule = z
-  .object({
-    ...base,
-    ...selection,
-    standard: text,
-    threshold: probability.default(0.5),
-    scope: z.enum(SCOPES).default("file"),
-  })
-  .strict()
-  .transform((rule) => ({ kind: "standard" as const, ...rule }));
-
-export const ruleSchema = z.union([forbidRule, requireRule, existsRule, absentRule, standardRule]);
-
-export type Rule = z.infer<typeof ruleSchema>;
-export type RuleKind = Rule["kind"];
-export type RuleOf<K extends RuleKind> = Extract<Rule, { kind: K }>;
-
 export const PROVIDERS = ["bedrock", "anthropic", "openai"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
@@ -128,6 +110,71 @@ const llmSchema = z
   });
 
 export type LlmConfig = z.infer<typeof llmSchema>;
+
+/** What a `standard` rule may override in `llm`: which model answers it, and where. */
+const ruleLlmSchema = z
+  .object({
+    provider: z.enum(PROVIDERS).optional(),
+    model: text.optional(),
+    region: text.optional(),
+    baseUrl: z.url().optional(),
+  })
+  .strict();
+
+// A `standard` rule is a yes/no question; a file, or the set, fails below `threshold`.
+const standardRule = z
+  .object({
+    ...base,
+    ...selection,
+    standard: text,
+    threshold: probability.default(0.5),
+    scope: z.enum(SCOPES).default("file"),
+    llm: ruleLlmSchema.optional(),
+  })
+  .strict()
+  .transform((rule) => ({ kind: "standard" as const, ...rule }));
+
+export const ruleSchema = z.union([forbidRule, requireRule, existsRule, absentRule, standardRule]);
+
+export type Rule = z.infer<typeof ruleSchema>;
+export type RuleKind = Rule["kind"];
+export type RuleOf<K extends RuleKind> = Extract<Rule, { kind: K }>;
+
+/**
+ * The run's `llm` with a rule's overrides on top. A rule that names another
+ * provider starts from that provider's defaults, not the top-level model,
+ * region, or URL, which belong to the top-level provider.
+ */
+function mergeLlm(top: LlmConfig, rule: RuleOf<"standard">): z.input<typeof llmSchema> {
+  const override = rule.llm ?? {};
+  const provider = override.provider ?? top.provider;
+  const same = provider === top.provider;
+  return {
+    provider,
+    model: override.model ?? (same ? top.model : undefined),
+    region: override.region ?? (same ? top.region : undefined),
+    baseUrl: override.baseUrl ?? (same ? top.baseUrl : undefined),
+    concurrency: top.concurrency,
+    maxBytes: top.maxBytes,
+    cache: top.cache,
+  };
+}
+
+/** The `llm` a `standard` rule is judged with. `loadConfig` has already validated it. */
+export function ruleLlm(top: LlmConfig, rule: RuleOf<"standard">): LlmConfig {
+  return llmSchema.parse(mergeLlm(top, rule));
+}
+
+/** A rule's `llm` is checked merged, so a `region` under an `anthropic` override is caught at load time. */
+function assertRuleLlm(file: string, top: LlmConfig, rule: Rule): void {
+  if (rule.kind !== "standard" || rule.llm === undefined) {
+    return;
+  }
+  const parsed = llmSchema.safeParse(mergeLlm(top, rule));
+  if (!parsed.success) {
+    throw new CliError(`${file}: rule "${rule.id}": llm: ${z.prettifyError(parsed.error)}`);
+  }
+}
 
 /** One config file's `extends`: a path or package, or a list of them, always as a list. */
 const extendsSchema = z
@@ -265,6 +312,9 @@ export async function resolveConfig(file: string, top: ConfigFile): Promise<Conf
   const inherited = await extendedRules(file, top.extends, [await realpath(file)]);
   const owned = [...inherited, ...top.rules.map((rule) => ({ rule, file }))];
   assertUniqueIds(owned);
+  for (const entry of owned) {
+    assertRuleLlm(entry.file, top.llm, entry.rule);
+  }
   return {
     version: top.version,
     ignore: top.ignore,

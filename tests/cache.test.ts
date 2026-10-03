@@ -133,3 +133,14 @@ test("cacheKey is stable and changes with every field", () => {
   expect(cacheKey("m", { standard: "s", files: [a, { ...b, content: "x" }] })).not.toBe(key);
   expect(cacheKey("m", { standard: "s", files: [b, a] })).not.toBe(key);
 });
+
+test("rules that differ only in model cache their verdicts apart", async () => {
+  await config(
+    `rules:\n${STANDARD}  - id: again\n    files: ['**/*.ts']\n    standard: Errors say what to do next\n    llm: { model: other }\n`,
+  );
+  await write(dir(), "a.ts", "throw new Error('bad');\n");
+  const first = await run();
+  expect(first.requests).toEqual(["a.ts", "a.ts"]);
+  expect((await readdir(cacheDir())).length).toBe(2);
+  expect((await run()).requests).toEqual([]);
+});

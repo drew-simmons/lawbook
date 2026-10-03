@@ -59,7 +59,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   `rules`, and rejects cycles and duplicate ids across files. Each rule
   schema adds a `kind` so `src/check.ts` can dispatch through a lookup
   table instead of a chain of `if`s. New rule kinds add a schema, a runner
-  in `src/rules/`, and a table entry.
+  in `src/rules/`, and a table entry. A `standard` rule may carry its own
+  `llm`; `ruleLlm` merges it over the top-level `llm` and `check` builds one
+  judge per distinct provider, model, and endpoint, handed to rules by id
+  through `JudgeContext.judges`.
 - `src/candidates.ts` turns `--files`, `--changed`, `--since`, and the
   `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
   which selects files the way `check` does but reads nothing and builds no
