@@ -79,7 +79,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 - `src/result.ts` turns findings into a `RuleResult`: a rule's `level`
   decides whether findings make it `fail` or `warn`, and only `fail` counts
   toward the exit code.
-- `src/report.ts` formats a `Report` as text or JSON.
+- `src/report.ts` formats a `Report` as text or JSON; `src/github.ts` and
+  `src/sarif.ts` add GitHub workflow commands and SARIF. `src/formats.ts`
+  is the `--format` table, and every formatter takes the report plus a
+  `ReportMeta` (version and root) even if it ignores it.
 - `src/errors.ts` has `CliError` for problems the user can act on; the CLI
   prints its message without a stack and exits 2.
 

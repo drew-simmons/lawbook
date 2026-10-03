@@ -30,12 +30,16 @@ export {
   type Verdict,
 } from "./judge/judge.ts";
 export { messagesJudge, type ParseFn } from "./judge/messages.ts";
-export { type Format, formatJson, formatText } from "./report.ts";
+export { type Format, FORMATS, FORMATTERS } from "./formats.ts";
+export { formatGithub } from "./github.ts";
+export { type Formatter, formatJson, formatText, type ReportMeta } from "./report.ts";
 export {
   exitCodeFor,
   type Finding,
   type Report,
   type RuleResult,
   type RuleStatus,
+  skipResult,
   type Summary,
 } from "./result.ts";
+export { formatSarif } from "./sarif.ts";

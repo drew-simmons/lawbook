@@ -27,3 +27,11 @@ test("unknown flag exits two", async () => {
   expect(result.code).toBe(2);
   expect(result.stderr).toContain("--no-such-flag");
 });
+
+test("check help lists every output format", async () => {
+  const result = await lawbook("check", "--help");
+  expect(result.code).toBe(0);
+  for (const format of ["text", "json", "github", "sarif"]) {
+    expect(result.stdout).toContain(`"${format}"`);
+  }
+});

@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { expect, test } from "vitest";
 import { lawbook, useTempDir, write } from "./helpers.ts";
 
@@ -175,6 +176,46 @@ test("check --format json carries each rule's level", async () => {
     ],
     summary: { passed: 0, failed: 1, warned: 1, errored: 0, skipped: 0 },
   });
+});
+
+test("check --format github prints a workflow command per finding", async () => {
+  await config(
+    "  - id: no-todo\n    files: ['**/*.ts']\n    forbid: 'TODO'\n  - id: readme\n    exists: README.md\n",
+  );
+  await write(dir(), "src/a.ts", "const a = 1;\n// TODO later\n");
+  const result = await lawbook("check", dir(), "--format", "github");
+  expect(result.code).toBe(1);
+  expect(result.stdout).toBe(
+    "::error file=src/a.ts,line=2,title=no-todo::// TODO later\n::error file=README.md,title=readme::missing\n::notice title=lawbook::0 passed, 2 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("check --format sarif carries the rule description and the root", async () => {
+  await config(
+    "  - id: no-todo\n    description: No TODO comments\n    files: ['**/*.ts']\n    forbid: 'TODO'\n",
+  );
+  await write(dir(), "src/a.ts", "// TODO\n");
+  const result = await lawbook("check", dir(), "--format", "sarif");
+  expect(result.code).toBe(1);
+  const [run] = JSON.parse(result.stdout).runs;
+  expect(run.tool.driver.rules).toEqual([
+    { id: "no-todo", shortDescription: { text: "No TODO comments" } },
+  ]);
+  expect(run.originalUriBaseIds.ROOT.uri).toBe(`${pathToFileURL(dir()).href}/`);
+  expect(run.results[0].locations[0].physicalLocation).toEqual({
+    artifactLocation: { uri: "src/a.ts", uriBaseId: "ROOT" },
+    region: { startLine: 1 },
+  });
+});
+
+test("check --format json includes the rule description when present", async () => {
+  await config(
+    "  - id: readme\n    description: Has a readme\n    exists: README.md\n  - id: no-env\n    absent: .env\n",
+  );
+  const result = await lawbook("check", dir(), "--format", "json");
+  const [readme, noEnv] = JSON.parse(result.stdout).results;
+  expect(readme.description).toBe("Has a readme");
+  expect(noEnv).not.toHaveProperty("description");
 });
 
 test("check --format with an unknown format exits two", async () => {

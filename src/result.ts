@@ -17,6 +17,8 @@ export interface RuleResult {
   id: string;
   kind: RuleKind;
   level: Level;
+  /** The rule's `description`, when it has one. */
+  description?: string;
   status: RuleStatus;
   findings: Finding[];
   /** Every judged file's decision, keyed by path. Only judged `standard` rules set it. */
@@ -39,10 +41,20 @@ export interface Report {
 /** What a rule with findings reports: its level decides. */
 const FINDINGS_STATUS: Record<Level, RuleStatus> = { error: "fail", warn: "warn" };
 
+/** What every result carries over from its rule. */
+function base(rule: Rule): Pick<RuleResult, "id" | "kind" | "level" | "description"> {
+  return { id: rule.id, kind: rule.kind, level: rule.level, description: rule.description };
+}
+
 /** A rule passes when it has no findings. */
 export function ruleResult(rule: Rule, findings: Finding[]): RuleResult {
   const status = findings.length === 0 ? "pass" : FINDINGS_STATUS[rule.level];
-  return { id: rule.id, kind: rule.kind, level: rule.level, status, findings };
+  return { ...base(rule), status, findings };
+}
+
+/** A rule the run did not evaluate, such as a `standard` rule under `--no-llm`. */
+export function skipResult(rule: Rule): RuleResult {
+  return { ...base(rule), status: "skip", findings: [] };
 }
 
 const COUNTERS: Record<RuleStatus, keyof Summary> = {
