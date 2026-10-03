@@ -2,14 +2,14 @@
 title: Exit codes
 description: What lawbook's exit codes 0, 1, and 2 mean.
 sidebar:
-  order: 7
+  order: 8
 ---
 
 | Code | Meaning                                                                                                   |
 | ---- | --------------------------------------------------------------------------------------------------------- |
 | `0`  | Success. For `check`, every rule passed or was skipped.                                                   |
 | `1`  | A requested check failed. Only `check` returns it, and only when a rule with `level: error` (the default) has a finding. Findings under a `level: warn` rule leave the code at `0`. |
-| `2`  | Lawbook could not do what was asked: bad usage, a missing or invalid config, an unreadable file, an invalid pattern, an unknown `--only` id, `--changed` or `--since` outside a git repository or with a ref git cannot resolve, a directory that cannot be written, or a provider that could not be reached, refused the credentials, or gave no verdict. |
+| `2`  | Lawbook could not do what was asked: bad usage, a missing or invalid config, an unreadable file, an invalid pattern, an unknown `--only` id, a missing or invalid `--baseline` file, `--changed` or `--since` outside a git repository or with a ref git cannot resolve, a directory that cannot be written, or a provider that could not be reached, refused the credentials, or gave no verdict. |
 
 Code `1` prints the findings on stdout and nothing on stderr, so a CI log
 shows the report once. Code `2` for usage, config, or client setup problems

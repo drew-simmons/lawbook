@@ -1,0 +1,76 @@
+---
+title: Baseline
+description: Adopt lawbook on an existing codebase by recording today's findings and failing only on new ones.
+sidebar:
+  order: 6
+---
+
+A new rule on an old codebase usually finds a lot. A baseline records those
+findings so `check` hides them and fails only on what appears afterwards,
+which lets a team turn a rule on today and pay the debt down over time.
+
+```sh
+lawbook check --baseline lawbook-baseline.json --update-baseline
+```
+
+`--update-baseline` runs the check, writes every finding to the file, then
+reports the run with those findings hidden, so it exits `0`. Commit the file.
+From then on, run with `--baseline` alone:
+
+```sh
+lawbook check --baseline lawbook-baseline.json
+```
+
+Findings the file records are dropped before the status, the summary, and the
+exit code are computed. The text output counts them under the rule, and the
+JSON output carries the count as `baselined`:
+
+```txt
+FAIL no-console
+  src/new.ts:4: console.log("debug");
+  12 findings in baseline
+PASS has-readme
+
+1 passed, 1 failed, 0 warned, 0 errored, 0 skipped
+```
+
+The GitHub, SARIF, and GitLab formats simply leave hidden findings out.
+
+## What identifies a finding
+
+The file keys findings so that edits elsewhere in a file do not resurface
+them, so no entry carries a line number:
+
+| Kind | Key | Note |
+| --- | --- | --- |
+| `forbid` | rule, path, and message | The message is the matched line, or the rule's `message` if it sets one, in which case the entry counts all of a file's matches together. |
+| `require`, `exists`, `absent` | rule and path | The message is fixed by the rule. |
+| `standard` | rule and path | The model's reason varies between runs. A `scope: set` finding has no path and is keyed by the rule alone. A provider error is never baselined, so an `ERROR` rule stays visible. |
+
+Each entry has a `count`. A run hides that many identical findings and shows
+the rest, so a second `console.log` in a file that had one still fails.
+
+```json
+{
+  "version": 1,
+  "findings": [
+    { "rule": "no-console", "path": "src/old.ts", "message": "console.log(\"x\");", "count": 1 },
+    { "rule": "errors-are-actionable", "path": "src/cli.ts", "count": 1 }
+  ]
+}
+```
+
+Entries are sorted, so regenerating the file produces a readable diff.
+
+## Updating the baseline
+
+`--update-baseline` replaces the file with this run's findings; it does not
+merge. Run it with the same `--config`, `--only`, and `--no-llm` flags as the
+checks that read it, and without `--files`, `--changed`, or `--since`, else
+the file records only part of the codebase. Shrink it by fixing findings and
+regenerating; review the diff before committing to make sure nothing new
+slipped in.
+
+The path given to `--baseline` is relative to the current directory, like
+`--config`. A missing or invalid file is an error with exit code `2`, as is
+`--update-baseline` without `--baseline`.

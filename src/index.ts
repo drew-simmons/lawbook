@@ -2,6 +2,16 @@
  * Library behind the `lawbook` binary. `src/bin.ts` starts the CLI; the
  * logic lives in modules here.
  */
+export {
+  applyBaseline,
+  type Baseline,
+  type BaselineEntry,
+  baselineSchema,
+  buildBaseline,
+  parseBaseline,
+  readBaseline,
+  writeBaseline,
+} from "./baseline.ts";
 export { type CandidateSource, candidatesFor } from "./candidates.ts";
 export { check, type CheckOptions } from "./check.ts";
 export {
