@@ -61,6 +61,7 @@ can turn a rule off for one line or the whole file; see
 | `id`          | yes      | Names the rule in the output and in `--only`.                           |
 | `description` | no       | A note for readers of the config. JSON output carries it, and SARIF output uses it as the rule's short description. |
 | `level`       | no       | `error` (default) fails the run when the rule has findings. `warn` prints them as `WARN` and leaves the exit code alone, so a new rule can run in CI while its wording settles. |
+| `message`     | no       | `forbid` and `require` only. What each finding says instead of the matched line or `does not match /pattern/`, such as what to do instead. |
 
 | Kind      | Needs `files` | Fails when                                                        |
 | --------- | ------------- | ----------------------------------------------------------------- |
@@ -86,6 +87,17 @@ can turn a rule off for one line or the whole file; see
 `m` and `u` flags, so `^` and `$` match at line boundaries and the pattern must
 be valid Unicode-mode syntax. Quote patterns with single quotes in YAML so
 backslashes survive. An invalid pattern stops the run with exit code `2`.
+
+By default a `forbid` finding quotes the matching line and a `require`
+finding names the pattern. Set `message` to say what the contributor should
+do instead; the line number still locates a `forbid` finding:
+
+```yaml
+  - id: no-console
+    files: ["src/**/*.ts"]
+    forbid: 'console\.(log|debug)\('
+    message: log through the logger in src/log.ts
+```
 
 ### Selecting files
 
