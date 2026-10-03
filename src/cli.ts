@@ -1,3 +1,4 @@
+import path from "node:path";
 import { Command, CommanderError, Option } from "commander";
 import pkg from "../package.json" with { type: "json" };
 import { applyBaseline, buildBaseline, readBaseline, writeBaseline } from "./baseline.ts";
@@ -5,6 +6,7 @@ import { assertWithinBudget, parseCount, requestLimit } from "./budget.ts";
 import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
 import { CliError, errorMessage } from "./errors.ts";
+import { underRoot } from "./files.ts";
 import { exitCodeForFixtures, testFixtures } from "./fixtures.ts";
 import { init } from "./init.ts";
 import { defaultJudges } from "./judge/index.ts";
@@ -19,6 +21,7 @@ import {
   FORMATTERS,
   PLAN_FORMATTERS,
 } from "./formats.ts";
+import type { ReportMeta } from "./report.ts";
 import { exitCodeFor, type Report } from "./result.ts";
 import { formatSchema } from "./schema.ts";
 
@@ -101,7 +104,7 @@ async function runCheck(
     explain: flags.explain,
   });
   const shown = await withBaseline(report, flags);
-  output.stdout(FORMATTERS[flags.format](shown, { version: pkg.version, root }));
+  output.stdout(FORMATTERS[flags.format](shown, reportMeta(root, file)));
   return exitCodeFor(shown);
 }
 
@@ -132,6 +135,11 @@ async function checkBudget(options: PlanOptions, flags: CheckFlags): Promise<voi
   if (limit !== undefined && flags.llm) {
     await assertWithinBudget(options, limit);
   }
+}
+
+/** The config file relative to the root, or just its name when it lies outside. */
+function reportMeta(root: string, file: string): ReportMeta {
+  return { version: pkg.version, root, config: underRoot(root, file) ?? path.basename(file) };
 }
 
 interface TestFlags {

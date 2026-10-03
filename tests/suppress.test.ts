@@ -35,6 +35,11 @@ test("parseSuppressions maps each marker kind to the right line or the file", ()
   );
 });
 
+test("parseSuppressions counts CRLF lines", () => {
+  const marks = parseSuppressions("a\r\n// lawbook-disable-next-line x\r\nb\r\n");
+  expect(marks.lines).toEqual(new Map([[3, new Set(["x"])]]));
+});
+
 test("parseSuppressions reads two markers on one line and tolerates one on the last line", () => {
   const marks = parseSuppressions("// lawbook-disable-line a lawbook-disable-next-line b");
   expect(marks.lines).toEqual(

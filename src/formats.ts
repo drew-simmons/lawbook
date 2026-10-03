@@ -1,5 +1,6 @@
 import { formatGithub } from "./github.ts";
 import type { FixtureReport } from "./fixtures.ts";
+import { formatGitlab } from "./gitlab.ts";
 import type { Plan } from "./plan.ts";
 import {
   type Formatter,
@@ -18,6 +19,7 @@ export const FORMATTERS = {
   json: formatJson,
   github: formatGithub,
   sarif: formatSarif,
+  gitlab: formatGitlab,
 } satisfies Record<string, Formatter>;
 
 export type Format = keyof typeof FORMATTERS;
