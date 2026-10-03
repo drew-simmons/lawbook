@@ -1,7 +1,7 @@
 import type { RuleOf, Scope } from "../config.ts";
-import { cliErrorMessage } from "../errors.ts";
-import type { SourceFile } from "../files.ts";
-import type { Judge, Verdict } from "../judge/judge.ts";
+import { CliError, cliErrorMessage } from "../errors.ts";
+import { readSourceFile, type SourceFile } from "../files.ts";
+import type { Judge, JudgeRequest, Verdict } from "../judge/judge.ts";
 import { mapLimit } from "../pool.ts";
 import {
   addTotals,
@@ -43,6 +43,32 @@ export const NOT_JUDGED = "not judged after an earlier error";
 /** Set once a request fails, so the rest of the rule stops asking the provider. */
 interface Halt {
   stopped: boolean;
+}
+
+/** What every request of a rule carries besides the files: the standard and its reference material. */
+interface Ask {
+  standard: string;
+  context: SourceFile[];
+}
+
+/** The request for these files; `context` is left out when the rule has none, so requests stay small. */
+function requestFor(ask: Ask, files: SourceFile[]): JudgeRequest {
+  return ask.context.length === 0 ? { standard: ask.standard, files } : { ...ask, files };
+}
+
+/** A context file that cannot be read or is binary stops the run; a reference the model never sees is a config error. */
+async function readContextFile(rule: RuleOf<"standard">, ctx: JudgeContext, file: string) {
+  const read = await readSourceFile(ctx.root, file).catch(() => undefined);
+  if (read === undefined) {
+    throw new CliError(`rule "${rule.id}": context file ${file} is missing or binary`);
+  }
+  return read;
+}
+
+/** The rule's reference files, read once per rule and sent with every request. */
+async function askFor(rule: RuleOf<"standard">, ctx: JudgeContext): Promise<Ask> {
+  const context = await Promise.all(rule.context.map((file) => readContextFile(rule, ctx, file)));
+  return { standard: rule.standard, context };
 }
 
 /** The skip entry for a file too large to send, else nothing. */
@@ -89,7 +115,7 @@ function at(path: string | undefined): { path?: string } {
  * flight finish. Any other error is a bug and propagates.
  */
 async function judgeOnce(
-  rule: RuleOf<"standard">,
+  ask: Ask,
   judge: Judge,
   files: SourceFile[],
   path: string | undefined,
@@ -99,7 +125,7 @@ async function judgeOnce(
     return { ...at(path), error: NOT_JUDGED };
   }
   try {
-    return { ...at(path), verdict: await judge.judge({ standard: rule.standard, files }) };
+    return { ...at(path), verdict: await judge.judge(requestFor(ask, files)) };
   } catch (error) {
     halt.stopped = true;
     return { ...at(path), error: cliErrorMessage(error) };
@@ -108,7 +134,7 @@ async function judgeOnce(
 
 /** A set that would not fit in one request errors without one; an empty set never asks. */
 async function setOutcomes(
-  rule: RuleOf<"standard">,
+  ask: Ask,
   judge: Judge,
   files: SourceFile[],
   ctx: JudgeContext,
@@ -119,11 +145,11 @@ async function setOutcomes(
     const error = `set of ${files.length} files is ${bytes} bytes, over llm.maxBytes ${ctx.maxBytes}`;
     return [{ error }];
   }
-  return files.length === 0 ? [] : [await judgeOnce(rule, judge, files, undefined, halt)];
+  return files.length === 0 ? [] : [await judgeOnce(ask, judge, files, undefined, halt)];
 }
 
 type Runner = (
-  rule: RuleOf<"standard">,
+  ask: Ask,
   judge: Judge,
   files: SourceFile[],
   ctx: JudgeContext,
@@ -132,8 +158,8 @@ type Runner = (
 
 /** Per file, up to `concurrency` requests at once in path order; per set, one request. */
 const RUN: Record<Scope, Runner> = {
-  file: (rule, judge, files, ctx, halt) =>
-    mapLimit(files, ctx.concurrency, (file) => judgeOnce(rule, judge, [file], file.path, halt)),
+  file: (ask, judge, files, ctx, halt) =>
+    mapLimit(files, ctx.concurrency, (file) => judgeOnce(ask, judge, [file], file.path, halt)),
   set: setOutcomes,
 };
 
@@ -185,9 +211,10 @@ async function judgeFiles(
   judge: Judge,
   ctx: JudgeContext,
 ): Promise<RuleResult> {
+  const ask = await askFor(rule, ctx);
   const { judged, skipped } = partition(await readSelected(rule, ctx), rule, ctx);
   const halt: Halt = { stopped: false };
-  const outcomes = await RUN[rule.scope](rule, judge, judged, ctx, halt);
+  const outcomes = await RUN[rule.scope](ask, judge, judged, ctx, halt);
   return judgedResult(rule, outcomes, skipped);
 }
 

@@ -134,6 +134,31 @@ whole against `llm.maxBytes`; a set that does not fit is reported as an
 `ERROR` without a request, since nothing was judged. A set with no files
 passes without a request. `--dry-run` counts one request for the rule.
 
+## Reference files
+
+A standard often leans on a document the model has not seen: the team's
+style guide, an architecture note, the list of approved loggers. `context`
+names files, relative to the checked directory, that every request of the
+rule carries as reference material:
+
+```yaml
+rules:
+  - id: follows-style-guide
+    files: ["src/**/*.ts"]
+    context: ["docs/style.md"]
+    standard: The file follows the conventions in the style guide.
+```
+
+The model is told to read the reference files to understand the standard and
+to judge only the files in the message, never the references themselves. The
+context sits with the standard in the cached part of the prompt, so after the
+first file in a rule the provider reads it from its cache. Context files are
+read once per rule; a path that is missing, or a binary file, is a config
+error with exit code `2` before any request is made. They are not counted
+against `llm.maxBytes`, since the author chose them, and `--dry-run` does not
+list them. A changed reference file changes every verdict's
+[cache key](#verdict-cache), so the rule is judged again.
+
 ## Per-rule model
 
 The run's `llm` section picks the model for every `standard` rule. A rule can

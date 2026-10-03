@@ -57,6 +57,8 @@ export interface JudgeRequest {
   standard: string;
   /** The files judged together: one for a `scope: file` rule, all of them for `scope: set`. */
   files: SourceFile[];
+  /** Reference material the model reads but does not judge, such as a style guide. */
+  context?: SourceFile[];
 }
 
 /** Applies a standard to one or more files. Providers implement it; tests fake it. */

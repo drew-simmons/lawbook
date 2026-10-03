@@ -562,3 +562,48 @@ test("a rule's llm with --no-llm still skips without building a judge", async ()
   expect(result.stdout).toContain("SKIP actionable-errors\n");
   expect(fake.built).toEqual([]);
 });
+
+test("context files are read once and sent with every request", async () => {
+  await config(`rules:\n${STANDARD}    context: [docs/style.md, docs/errors.md]\n`);
+  await write(dir(), "docs/style.md", "# Style\n");
+  await write(dir(), "docs/errors.md", "# Errors\n");
+  await write(dir(), "a.ts", "const a = 1;\n");
+  await write(dir(), "b.ts", "const b = 1;\n");
+  const fake = fakeJudge();
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(0);
+  const context = [
+    { path: "docs/style.md", content: "# Style\n" },
+    { path: "docs/errors.md", content: "# Errors\n" },
+  ];
+  expect(fake.requests.map((request) => request.context)).toEqual([context, context]);
+});
+
+test("a rule without context sends requests without a context field", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const fake = fakeJudge();
+  await lawbookWith(fake.deps, "check", dir());
+  expect(fake.requests[0]).not.toHaveProperty("context");
+});
+
+test("a missing context file exits two naming the rule before any request", async () => {
+  await config(`rules:\n${STANDARD}    context: [docs/style.md]\n`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const fake = fakeJudge();
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toBe(
+    'error: rule "actionable-errors": context file docs/style.md is missing or binary\n',
+  );
+  expect(fake.requests).toEqual([]);
+});
+
+test("a binary context file is an error too", async () => {
+  await config(`rules:\n${STANDARD}    context: [logo.png]\n`);
+  await write(dir(), "logo.png", "PNG\0\0");
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const result = await lawbookWith(fakeJudge().deps, "check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("context file logo.png is missing or binary");
+});

@@ -87,7 +87,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   under `RuleResult.skipped` instead of sending them. A `scope: set` rule
   sends every file in one request and gets one `decision`; the scope picks
   the runner, the guards, and the result shape through lookup tables. A
-  `JudgeRequest` always carries `files`, one for `scope: file`.
+  `JudgeRequest` always carries `files`, one for `scope: file`, and carries
+  `context` only when the rule names reference files, which both prompt
+  builders append to the cached system prefix.
 - `src/judge/` holds the `Judge` interface, the provider-neutral
   `messagesJudge` core (fully tested with a stub `parse`), its Chat
   Completions twin `chatJudge` in `chat.ts`, the Bedrock, Anthropic, and

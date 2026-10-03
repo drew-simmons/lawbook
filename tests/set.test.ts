@@ -145,3 +145,14 @@ test("--dry-run counts one request for a set rule with files and none without", 
   expect(result.stdout).toContain("PLAN consistent-naming (standard, 2 files)");
   expect(result.stdout).toContain("\n2 files, 3 model requests\n");
 });
+
+test("a set request carries the rule's context", async () => {
+  await config(`rules:\n${SET}    context: [docs/style.md]\n`);
+  await write(dir(), "docs/style.md", "# Style\n");
+  await twoFiles();
+  const fake = fakeJudge();
+  await lawbookWith(fake.deps, "check", dir(), "--no-cache");
+  expect(fake.requests).toHaveLength(1);
+  expect(fake.requests[0]?.context).toEqual([{ path: "docs/style.md", content: "# Style\n" }]);
+  expect(fake.requests[0]?.files.map((file) => file.path)).toEqual(["a.ts", "b.ts"]);
+});

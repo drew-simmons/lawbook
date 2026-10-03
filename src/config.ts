@@ -130,6 +130,8 @@ const standardRule = z
     threshold: probability.default(0.5),
     scope: z.enum(SCOPES).default("file"),
     llm: ruleLlmSchema.optional(),
+    /** Root-relative files sent with every request as reference material, never judged. */
+    context: z.array(text).default([]),
   })
   .strict()
   .transform((rule) => ({ kind: "standard" as const, ...rule }));

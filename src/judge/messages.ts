@@ -1,4 +1,5 @@
 import type { AutoParseableOutputFormat, ParsedMessage } from "@anthropic-ai/sdk";
+import type { TextBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import { AnthropicError } from "@anthropic-ai/sdk/error";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages";
@@ -50,19 +51,34 @@ export function requestLabel(request: JudgeRequest): string {
   return paths.length === 1 ? paths.join("") : `${paths.length} files`;
 }
 
+/** The reference files as one block the model reads but does not judge, or nothing. */
+export function contextBlock(context: SourceFile[] | undefined): string[] {
+  return context === undefined || context.length === 0
+    ? []
+    : [
+        `Reference material. Use it to understand the standard; judge only the files in the message, not these.\n\n${fileBlocks(context)}`,
+      ];
+}
+
+/** The system prompt, the standard, and any reference material: the same for every file in a rule. */
+export function systemTexts(request: JudgeRequest): string[] {
+  return [SYSTEM_PROMPT, `Standard:\n${request.standard}`, ...contextBlock(request.context)];
+}
+
+/** The texts as blocks, the last one marked so the provider caches the whole prefix. */
+function withCacheControl(texts: string[]): TextBlockParam[] {
+  return texts.map((text, index) =>
+    index === texts.length - 1
+      ? { type: "text", text, cache_control: { type: "ephemeral" } }
+      : { type: "text", text },
+  );
+}
+
 export function buildRequest(request: JudgeRequest, model: string): AnswerParams {
   return {
     model,
     max_tokens: 1024,
-    // The standard is the same for every file in a rule, so the provider caches it.
-    system: [
-      { type: "text", text: SYSTEM_PROMPT },
-      {
-        type: "text",
-        text: `Standard:\n${request.standard}`,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
+    system: withCacheControl(systemTexts(request)),
     messages: [{ role: "user", content: fileBlocks(request.files) }],
     output_config: { format: zodOutputFormat(answerSchema) },
   };

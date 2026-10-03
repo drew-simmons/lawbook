@@ -80,6 +80,7 @@ can turn a rule off for one line or the whole file; see
 | `threshold` | no       | The probability, `0` to `1`, a file must reach to pass. Defaults to `0.5`. |
 | `scope`     | no       | `file` (default) judges each selected file in its own request. `set` sends every selected file in one request and gets one verdict for the set. See [LLM rules](/llm-rules#judging-files-together). |
 | `llm`       | no       | Overrides for this rule: `provider`, `model`, `region`, `baseUrl`. See [LLM rules](/llm-rules#per-rule-model). |
+| `context`   | no       | Files, relative to the checked directory, sent with every request as reference material and never judged. See [LLM rules](/llm-rules#reference-files). |
 
 ### Patterns
 
