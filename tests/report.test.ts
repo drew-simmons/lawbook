@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { formatGithub } from "../src/github.ts";
+import { fingerprint, formatGitlab } from "../src/gitlab.ts";
 import { formatJson, formatText } from "../src/report.ts";
 import { formatSarif } from "../src/sarif.ts";
 import { type RuleResult, summarize } from "../src/result.ts";
@@ -59,7 +60,7 @@ test("json output ends with a newline", () => {
   expect(formatJson(report)).toBe(`${JSON.stringify(report, null, 2)}\n`);
 });
 
-const META = { version: "1.2.3", root: "/r" };
+const META = { version: "1.2.3", root: "/r", config: "lawbook.yaml" };
 const SUMMARY = "0 passed, 1 failed, 0 warned, 0 errored, 0 skipped";
 
 function failing(id: string, findings: RuleResult["findings"], extra: Partial<RuleResult> = {}) {
@@ -168,4 +169,72 @@ test("sarif output roots ROOT at the checked directory with a trailing slash", (
     ROOT: { uri: `${pathToFileURL(path.resolve("some/dir")).href}/` },
   });
   expect(formatSarif(summarize([]), META)).toMatch(/\n$/u);
+});
+
+test("gitlab output has one issue per finding with severity by status", () => {
+  const report = summarize([
+    {
+      id: "a",
+      kind: "forbid",
+      level: "error",
+      status: "fail",
+      findings: [{ path: "x.ts", line: 2, message: "m1" }],
+    },
+    {
+      id: "b",
+      kind: "require",
+      level: "warn",
+      status: "warn",
+      findings: [{ path: "y.ts", message: "m2" }],
+    },
+    {
+      id: "c",
+      kind: "standard",
+      level: "error",
+      status: "error",
+      findings: [{ path: "z.ts", message: "boom" }],
+    },
+    { id: "d", kind: "exists", level: "error", status: "pass", findings: [] },
+  ]);
+  const issues = JSON.parse(formatGitlab(report, META));
+  expect(issues.map((issue: { severity: string }) => issue.severity)).toEqual([
+    "major",
+    "minor",
+    "critical",
+  ]);
+  expect(issues[0]).toEqual({
+    description: "m1",
+    check_name: "a",
+    fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/u),
+    severity: "major",
+    location: { path: "x.ts", lines: { begin: 2 } },
+  });
+  expect(issues[1].location).toEqual({ path: "y.ts", lines: { begin: 1 } });
+});
+
+test("gitlab fingerprint ignores the line and changes with the message", () => {
+  const result: RuleResult = {
+    id: "a",
+    kind: "forbid",
+    level: "error",
+    status: "fail",
+    findings: [],
+  };
+  const moved = fingerprint(result, { path: "x.ts", line: 9, message: "m" });
+  expect(moved).toBe(fingerprint(result, { path: "x.ts", line: 2, message: "m" }));
+  expect(moved).not.toBe(fingerprint(result, { path: "x.ts", line: 9, message: "n" }));
+  expect(moved).not.toBe(
+    fingerprint({ ...result, id: "b" }, { path: "x.ts", line: 9, message: "m" }),
+  );
+});
+
+test("gitlab locates a pathless finding at the config file and carries the probability", () => {
+  const report = failing("set", [{ message: "too loose", decision: { type: "noul", noul: 0.2 } }]);
+  const [issue] = JSON.parse(formatGitlab(report, META));
+  expect(issue.description).toBe("too loose (noul 0.20)");
+  expect(issue.location).toEqual({ path: "lawbook.yaml", lines: { begin: 1 } });
+});
+
+test("gitlab output with no findings is an empty array", () => {
+  expect(formatGitlab(summarize([]), META)).toBe("[]\n");
 });
