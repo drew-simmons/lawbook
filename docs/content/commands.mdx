@@ -29,6 +29,8 @@ line per rule followed by a summary.
 | `--files <paths...>`    | Check only these files. Paths are relative to the current directory, or absolute, like `root` itself. |
 | `--changed`             | Check only files changed in the working tree against `HEAD`: staged, unstaged, and untracked. |
 | `--since <ref>`         | Check only files committed since the merge base with `ref`, as `git diff <ref>...HEAD` lists them. |
+| `--no-cache`            | Ask the model for every file even when a cached verdict exists. See [LLM rules](/llm-rules#verdict-cache). |
+| `--cache-dir <dir>`     | Where verdicts are cached. Relative to the current directory; default `node_modules/.cache/lawbook` under `root`. |
 
 ### Checking a subset of files
 
@@ -87,7 +89,11 @@ exits `2` after the report. A `standard` rule lists files it left out, such
 as one over `llm.maxBytes`, as `path: skipped, <why>` after its findings;
 those lines do not change the rule's status. A skipped rule prints
 `SKIP <id>` with no findings. The summary line always lists all five counts
-in this order.
+in this order. When a `standard` rule ran, one more line says what the run
+cost: `3 requests (1 cached), 4210 input tokens, 180 output tokens`, where
+requests went to the provider, cached verdicts came from the
+[verdict cache](/llm-rules#verdict-cache), and input tokens count everything
+the model read, including what the provider served from its own cache.
 
 ### JSON output
 
@@ -119,7 +125,21 @@ in this order.
       }
     }
   ],
-  "summary": { "passed": 0, "failed": 1, "warned": 1, "errored": 0, "skipped": 0 }
+  "summary": {
+    "passed": 0,
+    "failed": 1,
+    "warned": 1,
+    "errored": 0,
+    "skipped": 0,
+    "usage": {
+      "inputTokens": 310,
+      "outputTokens": 48,
+      "cacheReadInputTokens": 1200,
+      "cacheCreationInputTokens": 400,
+      "requests": 2,
+      "cached": 0
+    }
+  }
 }
 ```
 
@@ -131,7 +151,10 @@ carry `path` and, for `forbid`, a 1-based `line`.
 
 A judged `standard` rule adds `decisions`, every judged file's decision keyed
 by path, and each of its findings carries its own `decision`. When it left
-files out, `skipped` lists each as `{ "path", "message" }`. A decision
+files out, `skipped` lists each as `{ "path", "message" }`. Its `usage`, and
+the summary's, count `requests` sent to the provider, verdicts served
+`cached` from lawbook's cache, and the provider's token counts, with
+`cacheReadInputTokens` and `cacheCreationInputTokens` for its prompt cache. A decision
 follows the Jev decision schema: `{ "type": "noul", "noul": <0..1> }`, the
 probability that the file meets the standard. See
 [LLM rules](/llm-rules#decisions).

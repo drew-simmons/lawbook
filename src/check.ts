@@ -1,7 +1,9 @@
+import path from "node:path";
 import type { Config, Rule, RuleKind, RuleOf } from "./config.ts";
 import { CliError } from "./errors.ts";
 import { underRoot } from "./files.ts";
 import { changedFiles, listedFiles } from "./git.ts";
+import { cachedJudge, DEFAULT_CACHE_DIR } from "./judge/cache.ts";
 import type { Judge, Judges } from "./judge/judge.ts";
 import { type Report, type RuleResult, summarize } from "./result.ts";
 import { checkAbsent, checkExists, checkForbid, checkRequire } from "./rules/deterministic.ts";
@@ -21,6 +23,10 @@ export interface CheckOptions {
   changed?: boolean;
   /** Check only files committed since the merge base with this ref. */
   since?: string;
+  /** `false` asks the model even when a cached verdict exists. */
+  cache?: boolean;
+  /** Where verdicts are cached; default `node_modules/.cache/lawbook` under the root. */
+  cacheDir?: string;
   /** The provider factories; the config's `llm.provider` picks one. */
   judges: Judges;
 }
@@ -52,11 +58,21 @@ export function filterOnly(rules: Rule[], only: string[] | undefined): Rule[] {
   return rules.filter((rule) => only.includes(rule.id));
 }
 
+function cacheDirFor(options: CheckOptions): string {
+  return options.cacheDir ?? path.join(options.root, DEFAULT_CACHE_DIR);
+}
+
+/** The judge behind the verdict cache, unless the flag or the config turns it off. */
+function withCache(judge: Judge, options: CheckOptions): Judge {
+  const on = options.cache !== false && options.config.llm.cache;
+  return on ? cachedJudge(judge, cacheDirFor(options), options.config.llm.model) : judge;
+}
+
 /** A judge only when a selected rule needs one, so other runs never touch a provider. */
 async function judgeFor(rules: Rule[], options: CheckOptions): Promise<Judge | undefined> {
   const wanted = options.llm !== false && rules.some((rule) => rule.kind === "standard");
   const { llm } = options.config;
-  return wanted ? options.judges[llm.provider](llm) : undefined;
+  return wanted ? withCache(await options.judges[llm.provider](llm), options) : undefined;
 }
 
 /** The root-relative paths `files` names; those outside the root are dropped. */

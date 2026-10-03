@@ -105,6 +105,34 @@ regular expression can express the standard, prefer `forbid` or `require`.
 Reserve `standard` for judgment calls, and treat a failure as a prompt for a
 human to look at the file.
 
+## Prompt caching
+
+The request marks the standard for the provider's prompt cache, so after the
+first file in a rule the provider reads the standard from its cache instead
+of processing it again. Short standards fall under the provider's minimum
+cacheable size and simply cost nothing extra. The JSON output reports what
+the provider read from and wrote to its cache under `usage`.
+
+## Verdict cache
+
+Lawbook also caches verdicts itself. Every verdict is stored under
+`node_modules/.cache/lawbook/` in the checked directory, keyed by a hash of
+the model, the system prompt, the standard, the file's path, and its
+content. A later run answers from the cache for any file whose key is
+unchanged, without a request, and prints it as cached in the usage line.
+So a rerun on an unchanged tree is free and gives the same verdicts.
+
+- `--no-cache` asks the model again for every file. The answers are still
+  stored.
+- `--cache-dir <dir>` keeps the cache elsewhere; the path is relative to the
+  current directory, like `--config`.
+- `llm.cache: false` in the config turns the cache off for every run.
+
+In CI, persist the cache directory between jobs with a cache action keyed on
+the lockfile or the branch; a stale entry only costs one request. A cache
+file lawbook cannot write is reported as that file's error, like a provider
+error, with the two flags to try.
+
 ## Large files
 
 A `standard` rule never sends a file larger than `llm.maxBytes` (default

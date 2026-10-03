@@ -14,6 +14,7 @@ llm:
   model: anthropic.claude-opus-5-5
   concurrency: 4
   maxBytes: 131072
+  cache: true
 ```
 
 | Key           | Meaning                                                                                        |
@@ -22,6 +23,7 @@ llm:
 | `model`       | The model id in the provider's own naming. Defaults per provider, see below.                   |
 | `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. Setting it under `provider: anthropic` is a config error. |
 | `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
+| `cache`       | Whether verdicts are cached on disk and reused for unchanged files. Defaults to `true`; `--no-cache` overrides one run. See [LLM rules](/llm-rules#verdict-cache). |
 | `maxBytes`    | The largest file, in bytes, a `standard` rule sends. A whole number, at least `1`; defaults to `131072` (128 KiB). Larger files are listed as skipped and never judged. See [LLM rules](/llm-rules#large-files). |
 
 Unknown keys are errors. A problem building the client, such as a missing

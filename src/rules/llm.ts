@@ -4,11 +4,14 @@ import type { SourceFile } from "../files.ts";
 import type { Judge, Verdict } from "../judge/judge.ts";
 import { mapLimit } from "../pool.ts";
 import {
+  addTotals,
   type Finding,
+  NO_TOTALS,
   type RuleResult,
   ruleResult,
   type Skipped,
   skipResult,
+  type UsageTotals,
   withSkipped,
 } from "../result.ts";
 import { readSelected, type RuleContext } from "./deterministic.ts";
@@ -90,6 +93,12 @@ function outcomeFindings(outcome: Outcome, threshold: number): Finding[] {
     : [{ path: outcome.file.path, message: outcome.error }];
 }
 
+/** One verdict's share of the totals: a provider call, or a cache hit that cost nothing. */
+function usageOf(verdict: Verdict): UsageTotals {
+  const hit = verdict.cached === true ? 1 : 0;
+  return { ...verdict.usage, requests: 1 - hit, cached: hit };
+}
+
 /** `error` when any file has no verdict; else the findings decide, as for any rule. */
 function judgedResult(
   rule: RuleOf<"standard">,
@@ -101,7 +110,11 @@ function judgedResult(
   const decisions = Object.fromEntries(
     judged.map(({ file, verdict }) => [file.path, verdict.decision]),
   );
-  const result = withSkipped({ ...ruleResult(rule, findings), decisions }, skipped);
+  const usage = judged.reduce(
+    (total, outcome) => addTotals(total, usageOf(outcome.verdict)),
+    NO_TOTALS,
+  );
+  const result = withSkipped({ ...ruleResult(rule, findings), decisions, usage }, skipped);
   return judged.length === outcomes.length ? result : { ...result, status: "error" };
 }
 

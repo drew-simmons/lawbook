@@ -65,13 +65,15 @@ test("messagesJudge sends the standard and file with the answer format", async (
   const [params] = stub.calls;
   expect(params?.model).toBe("anthropic.claude-opus-5-5");
   expect(params?.max_tokens).toBe(1024);
-  expect(params?.system).toBe(SYSTEM_PROMPT);
-  expect(params?.messages).toEqual([
+  expect(params?.system).toEqual([
+    { type: "text", text: SYSTEM_PROMPT },
     {
-      role: "user",
-      content: "Standard:\nErrors are actionable\n\nFile: src/a.ts\n\nthrow 1;\n",
+      type: "text",
+      text: "Standard:\nErrors are actionable",
+      cache_control: { type: "ephemeral" },
     },
   ]);
+  expect(params?.messages).toEqual([{ role: "user", content: "File: src/a.ts\n\nthrow 1;\n" }]);
   expect(params?.output_config.format.type).toBe("json_schema");
   expect(params?.output_config.format.schema).toMatchObject({
     type: "object",
@@ -83,7 +85,7 @@ test("messagesJudge sends the standard and file with the answer format", async (
 test("messagesJudge returns the answer as a noul decision with its reason", async () => {
   const stub = stubParse(message({ noul: 0.2, reason: "no next step" }));
   const verdict = await messagesJudge(stub.parse, "m", "bedrock").judge(REQUEST);
-  expect(verdict).toEqual({ decision: { type: "noul", noul: 0.2 }, reason: "no next step" });
+  expect(verdict).toMatchObject({ decision: { type: "noul", noul: 0.2 }, reason: "no next step" });
 });
 
 test("decisionSchema is a Jev noul with a probability within 0 and 1", () => {
@@ -127,12 +129,19 @@ test("bedrockRegion prefers the config", () => {
     region: "eu-central-1",
     concurrency: 4,
     maxBytes: 131072,
+    cache: true,
   };
   expect(bedrockRegion(llm, { AWS_REGION: "us-east-1" })).toBe("eu-central-1");
 });
 
 test("bedrockRegion falls back to AWS_REGION then AWS_DEFAULT_REGION", () => {
-  const llm = { provider: "bedrock" as const, model: "m", concurrency: 4, maxBytes: 131072 };
+  const llm = {
+    provider: "bedrock" as const,
+    model: "m",
+    concurrency: 4,
+    maxBytes: 131072,
+    cache: true,
+  };
   expect(bedrockRegion(llm, { AWS_REGION: "us-east-1", AWS_DEFAULT_REGION: "us-west-2" })).toBe(
     "us-east-1",
   );
@@ -140,7 +149,13 @@ test("bedrockRegion falls back to AWS_REGION then AWS_DEFAULT_REGION", () => {
 });
 
 test("bedrockRegion without any region is a CliError", () => {
-  const llm = { provider: "bedrock" as const, model: "m", concurrency: 4, maxBytes: 131072 };
+  const llm = {
+    provider: "bedrock" as const,
+    model: "m",
+    concurrency: 4,
+    maxBytes: 131072,
+    cache: true,
+  };
   expect(() => bedrockRegion(llm, {})).toThrow(CliError);
   expect(() => bedrockRegion(llm, {})).toThrow("set llm.region");
 });
@@ -152,4 +167,24 @@ test.each([1.5, -0.1])("a probability of %s is a CliError naming the file", asyn
   await expect(failure).rejects.toThrow(
     `the judge gave an out-of-range probability ${noul} for src/a.ts`,
   );
+});
+
+test("messagesJudge reports usage with the provider's nulls as zero", async () => {
+  const stub = stubParse(message({ noul: 0.9, reason: "ok" }));
+  const verdict = await messagesJudge(stub.parse, "m", "bedrock").judge(REQUEST);
+  expect(verdict.usage).toEqual({
+    inputTokens: 1,
+    outputTokens: 1,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0,
+  });
+  expect(verdict.cached).toBeUndefined();
+});
+
+test("messagesJudge carries the provider's cache token counts", async () => {
+  const full = message({ noul: 0.9, reason: "ok" });
+  full.usage = { ...full.usage, cache_read_input_tokens: 900, cache_creation_input_tokens: 30 };
+  const stub = stubParse(full);
+  const verdict = await messagesJudge(stub.parse, "m", "bedrock").judge(REQUEST);
+  expect(verdict.usage).toMatchObject({ cacheReadInputTokens: 900, cacheCreationInputTokens: 30 });
 });

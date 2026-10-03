@@ -23,6 +23,7 @@ version: 1
 #   region: us-west-2           # bedrock only; else AWS_REGION
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
+#   cache: true                 # reuse verdicts for unchanged files
 
 rules:
   # \`absent\` fails when the path exists.

@@ -6,7 +6,8 @@ import { promisify } from "node:util";
 import { afterEach, beforeEach, vi } from "vitest";
 import { type Deps, run } from "../src/cli.ts";
 import type { LlmConfig } from "../src/config.ts";
-import type { Judge, JudgeRequest, Judges, Verdict } from "../src/judge/judge.ts";
+import type { UsageTotals } from "../src/result.ts";
+import type { Judge, JudgeRequest, Judges, Usage, Verdict } from "../src/judge/judge.ts";
 
 /** No test may reach a provider, so the default factories refuse to build one. */
 export const noJudges: Judges = {
@@ -109,9 +110,36 @@ export interface FakeJudge {
   deps: Deps;
 }
 
+/** What every fake verdict costs, so usage sums are easy to predict. */
+export const FAKE_USAGE: Usage = {
+  inputTokens: 10,
+  outputTokens: 2,
+  cacheReadInputTokens: 0,
+  cacheCreationInputTokens: 0,
+};
+
 /** A yes/no verdict, for tests that script the judge. */
 export function noul(probability: number, reason: string): Verdict {
-  return { decision: { type: "noul", noul: probability }, reason };
+  return { decision: { type: "noul", noul: probability }, reason, usage: FAKE_USAGE };
+}
+
+const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+
+/** The text line for `requests` fake verdicts from the provider and `cached` from the cache. */
+export function usageLine(requests: number, cached = 0): string {
+  return `${plural(requests, "request")} (${cached} cached), ${plural(requests * 10, "input token")}, ${plural(requests * 2, "output token")}\n`;
+}
+
+/** The totals `requests` fake verdicts add up to. */
+export function usageTotals(requests: number): UsageTotals {
+  return {
+    inputTokens: requests * 10,
+    outputTokens: requests * 2,
+    cacheReadInputTokens: 0,
+    cacheCreationInputTokens: 0,
+    requests,
+    cached: 0,
+  };
 }
 
 /** A judge that answers from `verdicts` by path and passes anything else. */

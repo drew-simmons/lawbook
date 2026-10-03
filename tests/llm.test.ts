@@ -3,6 +3,7 @@ import { DEFAULT_MODELS } from "../src/config.ts";
 import { CliError } from "../src/errors.ts";
 import { defaultJudges } from "../src/judge/index.ts";
 import type { Verdict } from "../src/judge/judge.ts";
+import { NO_TOTALS } from "../src/result.ts";
 import { NOT_JUDGED } from "../src/rules/llm.ts";
 import {
   type FakeJudge,
@@ -10,6 +11,8 @@ import {
   lawbook,
   lawbookWith,
   noul,
+  usageLine,
+  usageTotals,
   useTempDir,
   write,
 } from "./helpers.ts";
@@ -30,7 +33,7 @@ test("standard rule passes when the judge passes every file", async () => {
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(0);
   expect(result.stdout).toBe(
-    "PASS actionable-errors\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+    `PASS actionable-errors\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(1)}`,
   );
 });
 
@@ -46,7 +49,7 @@ test("standard rule fails listing each failing file with its reason and probabil
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  c.ts: 'oops' names no next step (noul 0.20)\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
+    `FAIL actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  c.ts: 'oops' names no next step (noul 0.20)\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(3)}`,
   );
 });
 
@@ -58,7 +61,7 @@ test("a file at the default threshold passes and one just under it fails", async
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL actionable-errors\n  b.ts: under (noul 0.49)\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
+    `FAIL actionable-errors\n  b.ts: under (noul 0.49)\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(2)}`,
   );
 });
 
@@ -69,7 +72,7 @@ test("threshold raises the bar for a standard rule", async () => {
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL actionable-errors\n  a.ts: close (noul 0.80)\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
+    `FAIL actionable-errors\n  a.ts: close (noul 0.80)\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(1)}`,
   );
 });
 
@@ -94,9 +97,10 @@ test("--format json carries every decision and the failing finding's decision", 
           "a.ts": { type: "noul", noul: 0.1 },
           "b.ts": { type: "noul", noul: 1 },
         },
+        usage: usageTotals(2),
       },
     ],
-    summary: { passed: 0, failed: 1, warned: 0, errored: 0, skipped: 0 },
+    summary: { passed: 0, failed: 1, warned: 0, errored: 0, skipped: 0, usage: usageTotals(2) },
   });
 });
 
@@ -141,7 +145,7 @@ test("standard rules judge up to llm.concurrency files at once", async () => {
   await writeFiles(5);
   const fake = fakeJudge();
   const peak = gate(fake);
-  const result = await lawbookWith(fake.deps, "check", dir());
+  const result = await lawbookWith(fake.deps, "check", dir(), "--no-cache");
   expect(result.code).toBe(0);
   expect(peak()).toBe(2);
   expect(fake.requests.map((request) => request.path)).toEqual([
@@ -158,7 +162,7 @@ test("concurrency defaults to four", async () => {
   await writeFiles(5);
   const fake = fakeJudge();
   const peak = gate(fake);
-  await lawbookWith(fake.deps, "check", dir());
+  await lawbookWith(fake.deps, "check", dir(), "--no-cache");
   expect(peak()).toBe(4);
 });
 
@@ -194,6 +198,7 @@ test("standard rule with no selected files passes without asking the judge", asy
       status: "pass",
       findings: [],
       decisions: {},
+      usage: NO_TOTALS,
     },
   ]);
 });
@@ -222,7 +227,7 @@ test("--format json reports skipped rules", async () => {
     results: [
       { id: "actionable-errors", kind: "standard", level: "error", status: "skip", findings: [] },
     ],
-    summary: { passed: 0, failed: 0, warned: 0, errored: 0, skipped: 1 },
+    summary: { passed: 0, failed: 0, warned: 0, errored: 0, skipped: 1, usage: NO_TOTALS },
   });
 });
 
@@ -233,7 +238,7 @@ test("a warn standard rule below the threshold prints WARN and exits zero", asyn
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(0);
   expect(result.stdout).toBe(
-    "WARN actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n\n0 passed, 0 failed, 1 warned, 0 errored, 0 skipped\n",
+    `WARN actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n\n0 passed, 0 failed, 1 warned, 0 errored, 0 skipped\n${usageLine(1)}`,
   );
 });
 
@@ -308,7 +313,7 @@ test("a file over llm.maxBytes is skipped without a request", async () => {
   expect(result.code).toBe(0);
   expect(fake.requests.map((request) => request.path)).toEqual(["a.ts"]);
   expect(result.stdout).toBe(
-    "PASS actionable-errors\n  big.ts: skipped, 21 bytes over llm.maxBytes 16\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+    `PASS actionable-errors\n  big.ts: skipped, 21 bytes over llm.maxBytes 16\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(1)}`,
   );
   const json = await lawbookWith(fakeJudge().deps, "check", dir(), "--format", "json");
   expect(JSON.parse(json.stdout).results[0]).toMatchObject({
@@ -380,7 +385,7 @@ test("a provider error on one file reports ERROR with the other verdicts and exi
   expect(result.code).toBe(2);
   expect(result.stderr).toBe("");
   expect(result.stdout).toBe(
-    "ERROR actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  b.ts: bedrock: 401 invalid x-api-key\n  c.ts: not judged after an earlier error\n\n0 passed, 0 failed, 0 warned, 1 errored, 0 skipped\n",
+    `ERROR actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  b.ts: bedrock: 401 invalid x-api-key\n  c.ts: not judged after an earlier error\n\n0 passed, 0 failed, 0 warned, 1 errored, 0 skipped\n${usageLine(1)}`,
   );
 });
 
@@ -412,6 +417,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
       { path: "d.ts", message: NOT_JUDGED },
     ],
     decisions: { "a.ts": { type: "noul", noul: 0.3 } },
+    usage: usageTotals(1),
   });
 });
 

@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { expect, test } from "vitest";
+import { NO_TOTALS } from "../src/result.ts";
 import { lawbook, useTempDir, write } from "./helpers.ts";
 
 const dir = useTempDir();
@@ -115,7 +116,7 @@ test("check --format json emits results and summary", async () => {
         findings: [{ path: "README.md", message: "missing" }],
       },
     ],
-    summary: { passed: 0, failed: 1, warned: 0, errored: 0, skipped: 0 },
+    summary: { passed: 0, failed: 1, warned: 0, errored: 0, skipped: 0, usage: NO_TOTALS },
   });
 });
 
@@ -174,7 +175,7 @@ test("check --format json carries each rule's level", async () => {
         findings: [{ path: "README.md", message: "missing" }],
       },
     ],
-    summary: { passed: 0, failed: 1, warned: 1, errored: 0, skipped: 0 },
+    summary: { passed: 0, failed: 1, warned: 1, errored: 0, skipped: 0, usage: NO_TOTALS },
   });
 });
 
