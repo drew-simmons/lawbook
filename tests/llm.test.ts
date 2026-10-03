@@ -1,7 +1,16 @@
 import { expect, test } from "vitest";
 import { DEFAULT_MODELS } from "../src/config.ts";
 import { defaultJudges } from "../src/judge/index.ts";
-import { fakeJudge, lawbook, lawbookWith, noul, useTempDir, write } from "./helpers.ts";
+import type { Verdict } from "../src/judge/judge.ts";
+import {
+  type FakeJudge,
+  fakeJudge,
+  lawbook,
+  lawbookWith,
+  noul,
+  useTempDir,
+  write,
+} from "./helpers.ts";
 
 const dir = useTempDir();
 
@@ -99,6 +108,74 @@ test("standard rule sends the standard, path, and content for each file in order
   ]);
 });
 
+/**
+ * Makes the fake judge wait a turn per request and report the most requests
+ * it ever had in flight at once.
+ */
+function gate(fake: FakeJudge, verdicts: Record<string, Verdict> = {}): () => number {
+  let inFlight = 0;
+  let peak = 0;
+  fake.judge.judge = async (request) => {
+    fake.requests.push(request);
+    inFlight += 1;
+    peak = Math.max(peak, inFlight);
+    await new Promise((resolve) => setImmediate(resolve));
+    inFlight -= 1;
+    return verdicts[request.path] ?? noul(1, "fine");
+  };
+  return () => peak;
+}
+
+async function writeFiles(count: number): Promise<void> {
+  for (let i = 0; i < count; i += 1) {
+    await write(dir(), `${String.fromCharCode(97 + i)}.ts`, `const x = ${i};\n`);
+  }
+}
+
+test("standard rules judge up to llm.concurrency files at once", async () => {
+  await config(`llm:\n  concurrency: 2\nrules:\n${STANDARD}`);
+  await writeFiles(5);
+  const fake = fakeJudge();
+  const peak = gate(fake);
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(0);
+  expect(peak()).toBe(2);
+  expect(fake.requests.map((request) => request.path)).toEqual([
+    "a.ts",
+    "b.ts",
+    "c.ts",
+    "d.ts",
+    "e.ts",
+  ]);
+});
+
+test("concurrency defaults to four", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await writeFiles(5);
+  const fake = fakeJudge();
+  const peak = gate(fake);
+  await lawbookWith(fake.deps, "check", dir());
+  expect(peak()).toBe(4);
+});
+
+test("decisions and findings stay in path order when files finish out of order", async () => {
+  await config(`llm:\n  concurrency: 2\nrules:\n${STANDARD}`);
+  await writeFiles(2);
+  const fake = fakeJudge();
+  fake.judge.judge = async (request) => {
+    if (request.path === "a.ts") {
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      return noul(0.1, "late");
+    }
+    return noul(0.2, "early");
+  };
+  const result = await lawbookWith(fake.deps, "check", dir(), "--format", "json");
+  const [rule] = JSON.parse(result.stdout).results;
+  expect(Object.keys(rule.decisions)).toEqual(["a.ts", "b.ts"]);
+  expect(rule.findings.map((finding: { path: string }) => finding.path)).toEqual(["a.ts", "b.ts"]);
+});
+
 test("standard rule with no selected files passes without asking the judge", async () => {
   await config(`rules:\n${STANDARD}`);
   const fake = fakeJudge();
@@ -186,7 +263,9 @@ test("check builds the judge once with the default provider and model", async ()
   await write(dir(), "b.ts", "const b = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toEqual([{ provider: "bedrock", model: DEFAULT_MODELS.bedrock }]);
+  expect(fake.built).toEqual([
+    { provider: "bedrock", model: DEFAULT_MODELS.bedrock, concurrency: 4 },
+  ]);
 });
 
 test("check passes the configured provider, model, and region to the factory", async () => {
@@ -197,7 +276,7 @@ test("check passes the configured provider, model, and region to the factory", a
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
   expect(fake.built).toEqual([
-    { provider: "anthropic", model: "claude-sonnet-5-5", region: "eu-west-1" },
+    { provider: "anthropic", model: "claude-sonnet-5-5", region: "eu-west-1", concurrency: 4 },
   ]);
 });
 
@@ -206,7 +285,9 @@ test("check fills in the default model for the configured provider", async () =>
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toEqual([{ provider: "anthropic", model: DEFAULT_MODELS.anthropic }]);
+  expect(fake.built).toEqual([
+    { provider: "anthropic", model: DEFAULT_MODELS.anthropic, concurrency: 4 },
+  ]);
 });
 
 test("check rejects an unknown provider", async () => {

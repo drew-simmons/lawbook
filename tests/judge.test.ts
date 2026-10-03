@@ -121,12 +121,12 @@ test("other errors propagate unchanged", async () => {
 });
 
 test("bedrockRegion prefers the config", () => {
-  const llm = { provider: "bedrock" as const, model: "m", region: "eu-central-1" };
+  const llm = { provider: "bedrock" as const, model: "m", region: "eu-central-1", concurrency: 4 };
   expect(bedrockRegion(llm, { AWS_REGION: "us-east-1" })).toBe("eu-central-1");
 });
 
 test("bedrockRegion falls back to AWS_REGION then AWS_DEFAULT_REGION", () => {
-  const llm = { provider: "bedrock" as const, model: "m" };
+  const llm = { provider: "bedrock" as const, model: "m", concurrency: 4 };
   expect(bedrockRegion(llm, { AWS_REGION: "us-east-1", AWS_DEFAULT_REGION: "us-west-2" })).toBe(
     "us-east-1",
   );
@@ -134,7 +134,7 @@ test("bedrockRegion falls back to AWS_REGION then AWS_DEFAULT_REGION", () => {
 });
 
 test("bedrockRegion without any region is a CliError", () => {
-  const llm = { provider: "bedrock" as const, model: "m" };
+  const llm = { provider: "bedrock" as const, model: "m", concurrency: 4 };
   expect(() => bedrockRegion(llm, {})).toThrow(CliError);
   expect(() => bedrockRegion(llm, {})).toThrow("set llm.region");
 });

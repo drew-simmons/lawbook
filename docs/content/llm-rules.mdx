@@ -40,8 +40,10 @@ says, to treat files the standard does not apply to as meeting it, to
 calibrate the number so that `0.5` means the file gives no way to tell, and
 to cite its evidence.
 
-Files are judged one at a time, in path order, with no context from other
-files. Write standards that one file can satisfy on its own.
+Files are judged up to `llm.concurrency` at a time (default `4`, see
+[Providers](/providers)), each with no context from other files, and the
+results are reported in path order whatever order the model answers in.
+Write standards that one file can satisfy on its own.
 
 ## Decisions
 

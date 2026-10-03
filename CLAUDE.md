@@ -60,7 +60,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 - `src/rules/deterministic.ts` implements `forbid`, `require`, `exists`, and
   `absent`. Runners take a rule and a `RuleContext` and return a `RuleResult`
   from `src/result.ts`. `src/rules/llm.ts` implements `standard` through a
-  `Judge`, and skips when the context has none (`--no-llm`).
+  `Judge`, and skips when the context has none (`--no-llm`). It judges up
+  to `llm.concurrency` files at once through `mapLimit` in `src/pool.ts`,
+  which keeps results in input order.
 - `src/judge/` holds the `Judge` interface, the provider-neutral
   `messagesJudge` core (fully tested with a stub `parse`), and the Bedrock
   and Anthropic adapters, which only build a client. The adapters import
