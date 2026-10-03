@@ -1,3 +1,5 @@
+import { splitLines } from "./files.ts";
+
 /** Which rule ids a file's lawbook comments turn off, for the whole file or per line. */
 export interface Suppressions {
   file: Set<string>;
@@ -35,7 +37,7 @@ const APPLY: Record<Target, (marks: Suppressions, line: number, found: string[])
 /** Every marker in `content`, applied to the file or the line it names. */
 export function parseSuppressions(content: string): Suppressions {
   const marks: Suppressions = { file: new Set(), lines: new Map() };
-  content.split("\n").forEach((text, index) => {
+  splitLines(content).forEach((text, index) => {
     for (const match of text.matchAll(MARKER)) {
       APPLY[match[1] as Target](marks, index + 1, ids(match[2] ?? ""));
     }
