@@ -37,6 +37,22 @@ test("forbid with no selected files passes", async () => {
   expect(result.stdout).toContain("PASS no-todo\n");
 });
 
+test("forbid matches CRLF lines and anchors at their ends", async () => {
+  await config("  - id: no-todo\n    files: ['**/*.ts']\n    forbid: '^// TODO$'\n");
+  await write(dir(), "a.ts", "const a = 1;\r\n// TODO\r\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toContain("FAIL no-todo\n  a.ts:2: // TODO\n");
+});
+
+test("require anchors match CRLF line ends", async () => {
+  await config("  - id: header\n    files: ['**/*.ts']\n    require: '^// Copyright$'\n");
+  await write(dir(), "a.ts", "// Copyright\r\nconst a = 1;\r\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("PASS header\n");
+});
+
 test("forbid anchors match line starts", async () => {
   await config("  - id: no-bare-export\n    files: ['**/*.ts']\n    forbid: '^export default'\n");
   await write(dir(), "a.ts", "const x = 1;\nexport default x;\n");
