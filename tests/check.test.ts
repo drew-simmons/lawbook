@@ -21,6 +21,46 @@ test("forbid fails with path and line", async () => {
   );
 });
 
+test("forbid prints the rule's message instead of the line", async () => {
+  await config(
+    "  - id: no-todo\n    files: ['**/*.ts']\n    forbid: 'TODO'\n    message: track work in an issue\n",
+  );
+  await write(dir(), "a.ts", "// TODO later\n// TODO again\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toBe(
+    "FAIL no-todo\n  a.ts:1: track work in an issue\n  a.ts:2: track work in an issue\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("require prints the rule's message instead of the pattern", async () => {
+  await config(
+    "  - id: header\n    files: ['**/*.ts']\n    require: 'Copyright'\n    message: add the license header\n",
+  );
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toContain("FAIL header\n  a.ts: add the license header\n");
+});
+
+test("message on an exists rule is rejected", async () => {
+  await config("  - id: readme\n    exists: README.md\n    message: add one\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0]");
+});
+
+test("github output carries a forbid message", async () => {
+  await config(
+    "  - id: no-todo\n    files: ['**/*.ts']\n    forbid: 'TODO'\n    message: track work in an issue\n",
+  );
+  await write(dir(), "a.ts", "// TODO later\n");
+  const result = await lawbook("check", dir(), "--format", "github");
+  expect(result.stdout).toContain(
+    "::error file=a.ts,line=1,title=no-todo::track work in an issue\n",
+  );
+});
+
 test("forbid passes when no line matches", async () => {
   await config("  - id: no-todo\n    files: ['**/*.ts']\n    forbid: 'TODO'\n");
   await write(dir(), "src/a.ts", "const a = 1;\n");
