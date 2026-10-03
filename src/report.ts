@@ -1,5 +1,15 @@
 import type { Finding, Report, RuleResult, RuleStatus, Summary } from "./result.ts";
 
+/** What a formatter may need beyond the report itself. */
+export interface ReportMeta {
+  /** The lawbook version, for formats that name the tool. */
+  version: string;
+  /** The checked directory, for formats that need absolute locations. */
+  root: string;
+}
+
+export type Formatter = (report: Report, meta: ReportMeta) => string;
+
 const LABELS: Record<RuleStatus, string> = {
   pass: "PASS",
   fail: "FAIL",
@@ -18,7 +28,7 @@ function location(finding: Finding): string {
 }
 
 /** ` (noul 0.12)` when the finding carries a decision, else nothing. */
-function probability(finding: Finding): string {
+export function probability(finding: Finding): string {
   const { decision } = finding;
   return decision === undefined ? "" : ` (noul ${decision.noul.toFixed(2)})`;
 }
@@ -30,7 +40,7 @@ function resultLines(result: RuleResult): string[] {
   return [`${LABELS[result.status]} ${result.id}`, ...findings];
 }
 
-function summaryLine(summary: Summary): string {
+export function summaryLine(summary: Summary): string {
   return SUMMARY_ORDER.map((key) => `${summary[key]} ${key}`).join(", ");
 }
 
@@ -42,7 +52,3 @@ export function formatText(report: Report): string {
 export function formatJson(report: Report): string {
   return `${JSON.stringify(report, null, 2)}\n`;
 }
-
-export const FORMATTERS = { text: formatText, json: formatJson };
-
-export type Format = keyof typeof FORMATTERS;

@@ -1,9 +1,9 @@
-import type { Rule, RuleOf } from "../config.ts";
+import type { RuleOf } from "../config.ts";
 import { cliErrorMessage } from "../errors.ts";
 import type { SourceFile } from "../files.ts";
 import type { Judge, Verdict } from "../judge/judge.ts";
 import { mapLimit } from "../pool.ts";
-import { type Finding, type RuleResult, ruleResult } from "../result.ts";
+import { type Finding, type RuleResult, ruleResult, skipResult } from "../result.ts";
 import { readSelected, type RuleContext } from "./deterministic.ts";
 
 /** `judge` is absent when the run skips LLM rules. */
@@ -22,10 +22,6 @@ export const NOT_JUDGED = "not judged after an earlier error";
 /** Set once a file fails, so the rest of the rule stops asking the provider. */
 interface Halt {
   stopped: boolean;
-}
-
-export function skipResult(rule: Rule): RuleResult {
-  return { id: rule.id, kind: rule.kind, level: rule.level, status: "skip", findings: [] };
 }
 
 /** A finding when the probability falls below the rule's threshold, else nothing. */

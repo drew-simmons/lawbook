@@ -6,7 +6,7 @@ import { errorMessage } from "./errors.ts";
 import { init } from "./init.ts";
 import { defaultJudges } from "./judge/index.ts";
 import type { Judges } from "./judge/judge.ts";
-import { type Format, FORMATTERS } from "./report.ts";
+import { type Format, FORMATS, FORMATTERS } from "./formats.ts";
 import { exitCodeFor } from "./result.ts";
 
 /** Where the CLI writes. Tests pass their own to capture output. */
@@ -60,7 +60,7 @@ async function runCheck(
     since: flags.since,
     judges: deps.judges,
   });
-  output.stdout(FORMATTERS[flags.format](report));
+  output.stdout(FORMATTERS[flags.format](report, { version: pkg.version, root }));
   return exitCodeFor(report);
 }
 
@@ -78,9 +78,7 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
     .description("run the rules in lawbook.yaml against a directory")
     .argument("[root]", "directory to check", ".")
     .option("-c, --config <file>", "config file (default: lawbook.yaml in root)")
-    .addOption(
-      new Option("--format <format>", "output format").choices(["text", "json"]).default("text"),
-    )
+    .addOption(new Option("--format <format>", "output format").choices(FORMATS).default("text"))
     .option("--only <ids...>", "run only the rules with these ids")
     .option("--no-llm", "skip rules judged by a model and report them as skipped")
     .option("--files <paths...>", "check only these files, relative to the current directory")

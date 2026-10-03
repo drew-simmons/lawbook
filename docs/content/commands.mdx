@@ -23,7 +23,7 @@ line per rule followed by a summary.
 | Flag                    | Meaning                                                                                      |
 | ----------------------- | -------------------------------------------------------------------------------------------- |
 | `-c, --config <file>`   | Read this config instead of looking for `lawbook.yaml`, `lawbook.yml`, or `lawbook.json` in `root`. Paths in the config stay relative to `root`. |
-| `--format <format>`     | `text` (default) or `json`.                                                                  |
+| `--format <format>`     | `text` (default), `json`, `github` (workflow commands for GitHub Actions), or `sarif` (SARIF 2.1.0 for code scanning). |
 | `--only <ids...>`       | Run only the rules with these ids, in config order. An unknown id is an error.                |
 | `--no-llm`              | Report `standard` rules as skipped instead of asking a model. No provider client is built.    |
 | `--files <paths...>`    | Check only these files. Paths are relative to the current directory, or absolute, like `root` itself. |
@@ -131,3 +131,79 @@ by path, and each of its findings carries its own `decision`. A decision
 follows the Jev decision schema: `{ "type": "noul", "noul": <0..1> }`, the
 probability that the file meets the standard. See
 [LLM rules](/llm-rules#decisions).
+
+### GitHub output
+
+`--format github` prints one
+[workflow command](https://docs.github.com/actions/reference/workflow-commands-for-github-actions)
+per finding, so a GitHub Actions job annotates the pull request inline, then
+the summary line as a notice. Findings under a `warn` rule annotate as
+warnings; every other finding, including a provider error, annotates as an
+error. `file=` and `line=` appear when the finding has them, and `title=`
+carries the rule id.
+
+```txt
+::error file=src/cli.ts,line=12,title=no-console::console.log("starting");
+::warning file=src/cli.ts,title=spdx-header::does not match /^// SPDX-License-Identifier: /
+::error title=has-readme::missing
+::notice title=lawbook::0 passed, 2 failed, 1 warned, 0 errored, 0 skipped
+```
+
+```yaml
+- run: npx lawbook check --format github
+```
+
+### SARIF output
+
+`--format sarif` prints a [SARIF 2.1.0](https://sarifweb.azurewebsites.net/)
+log with one run: the tool, one rule per lawbook rule (its `description`
+as the short description, or the id when it has none), and one result per
+finding. Paths are relative to the `ROOT` base, which is the checked
+directory as a file URL. Upload it to GitHub code scanning:
+
+```yaml
+- run: npx lawbook check --format sarif > lawbook.sarif
+  continue-on-error: true
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: lawbook.sarif
+```
+
+```json
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "lawbook",
+          "version": "0.1.0",
+          "informationUri": "https://drew-simmons.github.io/lawbook/",
+          "rules": [{ "id": "no-console", "shortDescription": { "text": "Production code logs through the logger" } }]
+        }
+      },
+      "originalUriBaseIds": { "ROOT": { "uri": "file:///home/me/project/" } },
+      "results": [
+        {
+          "ruleId": "no-console",
+          "level": "error",
+          "message": { "text": "console.log(\"starting\");" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/cli.ts", "uriBaseId": "ROOT" },
+                "region": { "startLine": 12 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+`level` is `warning` for findings under a `warn` rule and `error` otherwise.
+A finding without a path, such as a missing file under `exists`, has no
+`locations`.

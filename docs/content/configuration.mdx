@@ -55,7 +55,7 @@ and a `level`. The rule's kind is the one remaining key.
 | Key           | Required | Meaning                                                                 |
 | ------------- | -------- | ----------------------------------------------------------------------- |
 | `id`          | yes      | Names the rule in the output and in `--only`.                           |
-| `description` | no       | A note for readers of the config. Not printed.                          |
+| `description` | no       | A note for readers of the config. JSON output carries it, and SARIF output uses it as the rule's short description. |
 | `level`       | no       | `error` (default) fails the run when the rule has findings. `warn` prints them as `WARN` and leaves the exit code alone, so a new rule can run in CI while its wording settles. |
 
 | Kind      | Needs `files` | Fails when                                                        |
