@@ -109,7 +109,7 @@ test("standard rule sends the standard, path, and content for each file in order
   await write(dir(), "b.ts", "const b = 2;\n");
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
-  await lawbookWith(fake.deps, "check", dir());
+  await lawbookWith(fake.deps, "check", dir(), "--no-cache");
   expect(fake.requests).toEqual([
     { standard: "Errors say what to do next", path: "a.ts", content: "const a = 1;\n" },
     { standard: "Errors say what to do next", path: "b.ts", content: "const b = 2;\n" },
