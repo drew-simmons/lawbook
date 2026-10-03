@@ -1,3 +1,4 @@
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect, test } from "vitest";
 import { NO_TOTALS } from "../src/result.ts";
@@ -75,6 +76,22 @@ test("forbid with no selected files passes", async () => {
   const result = await lawbook("check", dir());
   expect(result.code).toBe(0);
   expect(result.stdout).toContain("PASS no-todo\n");
+});
+
+test("forbid matches CRLF lines and anchors at their ends", async () => {
+  await config("  - id: no-todo\n    files: ['**/*.ts']\n    forbid: '^// TODO$'\n");
+  await write(dir(), "a.ts", "const a = 1;\r\n// TODO\r\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toContain("FAIL no-todo\n  a.ts:2: // TODO\n");
+});
+
+test("require anchors match CRLF line ends", async () => {
+  await config("  - id: header\n    files: ['**/*.ts']\n    require: '^// Copyright$'\n");
+  await write(dir(), "a.ts", "// Copyright\r\nconst a = 1;\r\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("PASS header\n");
 });
 
 test("forbid anchors match line starts", async () => {
@@ -280,6 +297,32 @@ test("check --format sarif carries the rule description and the root", async () 
     artifactLocation: { uri: "src/a.ts", uriBaseId: "ROOT" },
     region: { startLine: 1 },
   });
+});
+
+test("check --format gitlab reports a missing file against the config", async () => {
+  await write(
+    dir(),
+    "cfg/rules.yaml",
+    "version: 1\nrules:\n  - id: readme\n    exists: README.md\n",
+  );
+  const result = await lawbook(
+    "check",
+    dir(),
+    "--format",
+    "gitlab",
+    "--config",
+    path.join(dir(), "cfg/rules.yaml"),
+  );
+  expect(result.code).toBe(1);
+  expect(JSON.parse(result.stdout)).toEqual([
+    {
+      description: "missing",
+      check_name: "readme",
+      fingerprint: expect.any(String),
+      severity: "major",
+      location: { path: "README.md", lines: { begin: 1 } },
+    },
+  ]);
 });
 
 test("check --format json includes the rule description when present", async () => {

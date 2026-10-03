@@ -23,7 +23,7 @@ line per rule followed by a summary.
 | Flag                    | Meaning                                                                                      |
 | ----------------------- | -------------------------------------------------------------------------------------------- |
 | `-c, --config <file>`   | Read this config instead of looking for `lawbook.yaml`, `lawbook.yml`, or `lawbook.json` in `root`. Paths in the config stay relative to `root`. |
-| `--format <format>`     | `text` (default), `json`, `github` (workflow commands for GitHub Actions), or `sarif` (SARIF 2.1.0 for code scanning). |
+| `--format <format>`     | `text` (default), `json`, `github` (workflow commands for GitHub Actions), `sarif` (SARIF 2.1.0 for code scanning), or `gitlab` (a GitLab code quality report). |
 | `--only <ids...>`       | Run only the rules with these ids, in config order. An unknown id is an error.                |
 | `--no-llm`              | Report `standard` rules as skipped instead of asking a model. No provider client is built.    |
 | `--files <paths...>`    | Check only these files. Paths are relative to the current directory, or absolute, like `root` itself. |
@@ -264,3 +264,37 @@ directory as a file URL. Upload it to GitHub code scanning:
 `level` is `warning` for findings under a `warn` rule and `error` otherwise.
 A finding without a path, such as a missing file under `exists`, has no
 `locations`.
+
+### GitLab output
+
+`--format gitlab` prints a
+[code quality report](https://docs.gitlab.com/ci/testing/code_quality/#code-quality-report-format):
+a JSON array with one issue per finding. GitLab shows the issues inline on a
+merge request when the job saves the file as a `codequality` artifact:
+
+```yaml
+lawbook:
+  script: npx lawbook check --format gitlab > gl-code-quality-report.json
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+```
+
+```json
+[
+  {
+    "description": "console.log(\"starting\");",
+    "check_name": "no-console",
+    "fingerprint": "3f786850e387550fdab836ed7e6dc881de23001b",
+    "severity": "major",
+    "location": { "path": "src/cli.ts", "lines": { "begin": 12 } }
+  }
+]
+```
+
+`severity` is `major` for findings under a failing rule, `minor` under a
+`warn` rule, and `critical` for a provider error. The `fingerprint` hashes
+the rule id, the path, and the message but not the line, so a finding keeps
+its identity when the code above it moves. A finding without a path, such as
+a missing file under `exists`, is located at the config file, line 1.

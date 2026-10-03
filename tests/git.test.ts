@@ -58,3 +58,7 @@ test.each([
 ])("underRoot handles %s", (_name, file, expected) => {
   expect(underRoot(root, file)).toBe(expected);
 });
+
+test.runIf(process.platform === "win32")("underRoot treats another drive as outside", () => {
+  expect(underRoot("C:\\work\\root", "D:\\other\\a.ts")).toBeUndefined();
+});

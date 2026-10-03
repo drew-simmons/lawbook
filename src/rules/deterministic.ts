@@ -3,6 +3,7 @@ import type { RuleOf } from "../config.ts";
 import { CliError, errorMessage } from "../errors.ts";
 import {
   type FileSelection,
+  splitLines,
   pathExists,
   readSourceFile,
   selectFiles,
@@ -43,13 +44,16 @@ export async function readSelected(rule: FileSelection, ctx: RuleContext): Promi
 /** One finding per matching line the file's markers do not suppress, carrying the rule's `message` or the trimmed line. */
 function lineFindings(file: SourceFile, pattern: RegExp, rule: RuleOf<"forbid">): Finding[] {
   const marks = parseSuppressions(file.content);
-  return file.content
-    .split("\n")
-    .flatMap((line, index) =>
-      pattern.test(line) && !suppressed(marks, rule.id, index + 1)
-        ? [{ path: file.path, line: index + 1, message: rule.message ?? line.trim() }]
-        : [],
-    );
+  return splitLines(file.content).flatMap((line, index) =>
+    pattern.test(line) && !suppressed(marks, rule.id, index + 1)
+      ? [{ path: file.path, line: index + 1, message: rule.message ?? line.trim() }]
+      : [],
+  );
+}
+
+/** Whether the file matches the pattern, with CRLF line ends read as LF so `$` still anchors. */
+function matches(pattern: RegExp, file: SourceFile): boolean {
+  return pattern.test(splitLines(file.content).join("\n"));
 }
 
 export async function checkForbid(rule: RuleOf<"forbid">, ctx: RuleContext): Promise<RuleResult> {
@@ -71,8 +75,7 @@ export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): P
   const files = await readSelected(rule, ctx);
   const findings = files
     .filter(
-      (file) =>
-        !pattern.test(file.content) && !suppressed(parseSuppressions(file.content), rule.id),
+      (file) => !matches(pattern, file) && !suppressed(parseSuppressions(file.content), rule.id),
     )
     .map((file) => ({ path: file.path, message: requireMessage(rule) }));
   return ruleResult(rule, findings);
