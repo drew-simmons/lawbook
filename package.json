@@ -1,0 +1,54 @@
+{
+  "name": "lawbook",
+  "version": "0.0.0",
+  "description": "Checks code standards with repeatable rules and LLM decisions",
+  "keywords": [
+    "cli"
+  ],
+  "homepage": "https://drew-simmons.github.io/lawbook/",
+  "bugs": "https://github.com/drew-simmons/lawbook/issues",
+  "license": "MIT",
+  "author": "Drew Simmons <dsimmo14@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drew-simmons/lawbook.git"
+  },
+  "bin": {
+    "lawbook": "dist/bin.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings && oxfmt --check",
+    "format": "oxlint --fix && oxfmt",
+    "test": "tsdown && vitest run",
+    "coverage": "tsdown && vitest run --coverage"
+  },
+  "dependencies": {
+    "commander": "15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@vitest/coverage-v8": "5.0.3",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "tsdown": "0.23.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@11.25.0"
+}

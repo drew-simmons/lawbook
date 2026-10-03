@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+/dist/
+/*.tgz
+
+# coverage reports written into the tree
+/coverage/
+
+# Blume docs site
+/docs/dist/
+.blume/
+.blume-verify/
+
+.agents
+.claude
