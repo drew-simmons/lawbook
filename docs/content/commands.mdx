@@ -47,8 +47,23 @@ and `ref` must resolve, else `check` exits `2` with git's message. Paths git
 reports are rebased onto `root`, so a `root` below the repository's top
 level works and changes outside it are dropped.
 
-`--files` and `--only` take lists, so put `root` before them. A pre-commit
-hook appends the staged file names:
+`--files` and `--only` take lists, so put `root` before them. The repository
+defines [pre-commit](https://pre-commit.com) hooks that append the staged
+file names; prek reads the same file. `lawbook` skips `standard` rules, and
+`lawbook-llm` runs them too:
+
+```yaml
+repos:
+  - repo: https://github.com/drew-simmons/lawbook
+    rev: v0.1.0
+    hooks:
+      - id: lawbook
+```
+
+pre-commit installs the hook with the Node.js it finds on the machine, so
+add `default_language_version: { node: system }` or point `language_version`
+at a Node.js 22.12 or newer. With `lawbook` already installed globally, a
+local hook works too:
 
 ```yaml
 - repo: local
@@ -108,7 +123,8 @@ FAIL has-readme
 ```
 
 Findings under a `forbid` rule read `path:line: <the line>`; under `require`,
-`path: does not match /pattern/`; under `exists` and `absent`, `path: missing`
+`path: does not match /pattern/`, or the rule's `message` in place of the
+line or the pattern when it sets one; under `exists` and `absent`, `path: missing`
 or `path: exists`; under `standard`, `path: <the model's reason> (noul
 <probability>)`. A rule with `level: warn` prints `WARN <id>` instead of
 `FAIL` and does not affect the exit code. A `standard` rule the provider
