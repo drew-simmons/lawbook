@@ -63,18 +63,33 @@ async function readFixture(rule: Fixtured, root: string, file: string): Promise<
   return read;
 }
 
+/** A fixture read and ready to judge. */
+interface Loaded {
+  path: string;
+  expected: Expected;
+  file: SourceFile;
+}
+
+/** Every fixture read before any is judged, so a missing one costs no request. */
+async function loadFixtures(rule: Fixtured, root: string): Promise<Loaded[]> {
+  return Promise.all(
+    casesOf(rule).map(async (entry) => ({
+      ...entry,
+      file: await readFixture(rule, root, entry.path),
+    })),
+  );
+}
+
 /** Judges one fixture alone, as a `scope: file` request, and says which side it landed on. */
 async function judgeFixture(
   rule: Fixtured,
   ask: Ask,
   judge: Judge,
-  root: string,
-  entry: { path: string; expected: Expected },
+  loaded: Loaded,
 ): Promise<FixtureCase> {
-  const file = await readFixture(rule, root, entry.path);
-  const { decision, reason } = await judge.judge(requestFor(ask, [file]));
+  const { decision, reason } = await judge.judge(requestFor(ask, [loaded.file]));
   const actual = decision.noul >= rule.threshold ? "pass" : "fail";
-  return { ...entry, actual, decision, reason };
+  return { path: loaded.path, expected: loaded.expected, actual, decision, reason };
 }
 
 async function testRule(
@@ -84,8 +99,9 @@ async function testRule(
   concurrency: number,
 ): Promise<FixtureRule> {
   const ask = await askFor(rule, ctx);
-  const cases = await mapLimit(casesOf(rule), concurrency, (entry) =>
-    judgeFixture(rule, ask, judge, ctx.root, entry),
+  const loaded = await loadFixtures(rule, ctx.root);
+  const cases = await mapLimit(loaded, concurrency, (entry) =>
+    judgeFixture(rule, ask, judge, entry),
   );
   return { id: rule.id, cases };
 }
