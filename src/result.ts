@@ -57,6 +57,8 @@ export interface RuleResult {
   skipped?: Skipped[];
   /** What the rule's requests cost. Only judged `standard` rules set it. */
   usage?: UsageTotals;
+  /** How many findings the baseline hid. Present only when there were any. */
+  baselined?: number;
 }
 
 export interface Summary {
@@ -89,6 +91,17 @@ function base(rule: Rule): Pick<RuleResult, "id" | "kind" | "level" | "descripti
 export function ruleResult(rule: Rule, findings: Finding[]): RuleResult {
   const status = findings.length === 0 ? "pass" : FINDINGS_STATUS[rule.level];
   return { ...base(rule), status, findings };
+}
+
+/** The result with these findings and the status they imply; a rule that errored stays errored. */
+export function restatus(result: RuleResult, findings: Finding[]): RuleResult {
+  const status =
+    result.status === "error"
+      ? "error"
+      : findings.length === 0
+        ? "pass"
+        : FINDINGS_STATUS[result.level];
+  return { ...result, status, findings };
 }
 
 /** `skipped` only when there is something to list, so other results keep their shape. */
