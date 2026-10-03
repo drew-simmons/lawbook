@@ -84,3 +84,8 @@ and `{a,b}` lists alternatives. Dotfiles and dot directories are included, so
 
 A rule whose globs select no files passes. Selected files are read as UTF-8
 text.
+
+`lawbook check --files`, `--changed`, and `--since` narrow every `files`
+rule to the files they name, so a pre-commit hook or a pull request check
+looks only at what changed. See
+[Commands](/commands#checking-a-subset-of-files).

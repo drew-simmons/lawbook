@@ -26,6 +26,43 @@ line per rule followed by a summary.
 | `--format <format>`     | `text` (default) or `json`.                                                                  |
 | `--only <ids...>`       | Run only the rules with these ids, in config order. An unknown id is an error.                |
 | `--no-llm`              | Report `standard` rules as skipped instead of asking a model. No provider client is built.    |
+| `--files <paths...>`    | Check only these files. Paths are relative to the current directory, or absolute, like `root` itself. |
+| `--changed`             | Check only files changed in the working tree against `HEAD`: staged, unstaged, and untracked. |
+| `--since <ref>`         | Check only files committed since the merge base with `ref`, as `git diff <ref>...HEAD` lists them. |
+
+### Checking a subset of files
+
+`--files`, `--changed`, and `--since` each name candidate files; given
+together, their union is used. A `files` rule then selects only the
+candidates its globs match, so a candidate no rule covers, such as a lockfile
+or an image, is simply not checked. `exists` and `absent` rules ignore the
+candidates. A rule whose globs select no candidate passes.
+
+`--changed` and `--since` ask git, so `root` must lie inside a repository
+and `ref` must resolve, else `check` exits `2` with git's message. Paths git
+reports are rebased onto `root`, so a `root` below the repository's top
+level works and changes outside it are dropped.
+
+`--files` and `--only` take lists, so put `root` before them. A pre-commit
+hook appends the staged file names:
+
+```yaml
+- repo: local
+  hooks:
+    - id: lawbook
+      name: lawbook
+      entry: lawbook check . --no-llm --files
+      language: system
+```
+
+A CI job on a pull request checks only what the branch changed:
+
+```yaml
+- uses: actions/checkout@v5
+  with:
+    fetch-depth: 0
+- run: npx lawbook check --since origin/${{ github.base_ref }}
+```
 
 ### Text output
 

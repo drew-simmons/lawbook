@@ -1,6 +1,8 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { afterEach, beforeEach, vi } from "vitest";
 import { type Deps, run } from "../src/cli.ts";
 import type { LlmConfig } from "../src/config.ts";
@@ -13,14 +15,16 @@ export const noJudges: Judges = {
 };
 
 /**
- * Runs the CLI with the given dependencies and the color environment
- * scrubbed, so a developer's `CLICOLOR_FORCE` or `NO_COLOR` cannot change
- * what a test sees.
+ * Runs the CLI with the given dependencies and the environment scrubbed:
+ * a developer's `CLICOLOR_FORCE` or `NO_COLOR` cannot change what a test
+ * sees, and the git the CLI spawns ignores the machine's config.
  */
 export async function lawbookWith(deps: Deps, ...args: string[]) {
   for (const name of ["NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE"]) {
     vi.stubEnv(name, undefined);
   }
+  vi.stubEnv("GIT_CONFIG_GLOBAL", "/dev/null");
+  vi.stubEnv("GIT_CONFIG_SYSTEM", "/dev/null");
   let stdout = "";
   let stderr = "";
   const code = await run(
@@ -64,6 +68,35 @@ export async function write(dir: string, relative: string, text: string): Promis
   const file = path.join(dir, relative);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, text);
+}
+
+const exec = promisify(execFile);
+
+/** An environment for git that ignores the machine's config and identity. */
+function gitEnv(dir: string): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    HOME: dir,
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_SYSTEM: "/dev/null",
+    GIT_AUTHOR_NAME: "Test",
+    GIT_AUTHOR_EMAIL: "test@example.com",
+    GIT_COMMITTER_NAME: "Test",
+    GIT_COMMITTER_EMAIL: "test@example.com",
+  };
+}
+
+/** Runs git in `dir` and returns its stdout. */
+export async function gitIn(dir: string, ...args: string[]): Promise<string> {
+  const { stdout } = await exec("git", ["-C", dir, ...args], { env: gitEnv(dir) });
+  return stdout;
+}
+
+/** Makes `dir` a repository on `main` with everything in it committed. */
+export async function gitRepo(dir: string): Promise<void> {
+  await gitIn(dir, "init", "-q", "-b", "main");
+  await gitIn(dir, "add", "-A");
+  await gitIn(dir, "commit", "-q", "--allow-empty", "-m", "init");
 }
 
 export interface FakeJudge {

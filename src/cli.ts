@@ -32,6 +32,9 @@ interface CheckFlags {
   format: Format;
   only?: string[];
   llm: boolean;
+  files?: string[];
+  changed?: boolean;
+  since?: string;
 }
 
 /** Commander actions return nothing, so the exit code travels in here. */
@@ -52,6 +55,9 @@ async function runCheck(
     config,
     only: flags.only,
     llm: flags.llm,
+    files: flags.files,
+    changed: flags.changed,
+    since: flags.since,
     judges: deps.judges,
   });
   output.stdout(FORMATTERS[flags.format](report));
@@ -77,6 +83,12 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
     )
     .option("--only <ids...>", "run only the rules with these ids")
     .option("--no-llm", "skip rules judged by a model and report them as skipped")
+    .option("--files <paths...>", "check only these files, relative to the current directory")
+    .option(
+      "--changed",
+      "check only files changed in the working tree: staged, unstaged, untracked",
+    )
+    .option("--since <ref>", "check only files committed since the merge base with ref")
     .action(async (root: string, flags: CheckFlags) => {
       exit.code = await runCheck(root, flags, output, deps);
     });

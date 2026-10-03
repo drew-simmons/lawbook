@@ -8,6 +8,8 @@ import { type Finding, type RuleResult, ruleResult } from "../result.ts";
 export interface RuleContext {
   root: string;
   ignore: string[];
+  /** When set, `files` rules select only these root-relative paths. */
+  candidates?: ReadonlySet<string>;
 }
 
 /** Patterns use the `m` and `u` flags, so `^` and `$` match at line ends. */
@@ -20,7 +22,7 @@ export function compilePattern(source: string): RegExp {
 }
 
 export async function readSelected(patterns: string[], ctx: RuleContext): Promise<SourceFile[]> {
-  const files = await selectFiles(ctx.root, patterns, ctx.ignore);
+  const files = await selectFiles(ctx.root, patterns, ctx.ignore, ctx.candidates);
   return Promise.all(files.map((file) => readSourceFile(ctx.root, file)));
 }
 
