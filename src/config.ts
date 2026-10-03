@@ -14,6 +14,7 @@ export const DEFAULT_IGNORE = ["**/node_modules/**", "**/.git/**"];
 const text = z.string().min(1);
 const base = { id: text, description: z.string().optional() };
 const files = z.array(text).min(1);
+const probability = z.number().min(0).max(1);
 
 const forbidRule = z
   .object({ ...base, files, forbid: text })
@@ -31,8 +32,9 @@ const absentRule = z
   .object({ ...base, absent: text })
   .strict()
   .transform((rule) => ({ kind: "absent" as const, ...rule }));
+// A `standard` rule is a yes/no question; a file fails below `threshold`.
 const standardRule = z
-  .object({ ...base, files, standard: text })
+  .object({ ...base, files, standard: text, threshold: probability.default(0.5) })
   .strict()
   .transform((rule) => ({ kind: "standard" as const, ...rule }));
 

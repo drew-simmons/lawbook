@@ -30,6 +30,7 @@ rules:
     absent: .env
   - id: errors-are-actionable
     files: ["src/**/*.ts"]
+    threshold: 0.7
     standard: Every error message says what went wrong and what to do next.
 ```
 
@@ -56,9 +57,16 @@ The rule's kind is the one remaining key.
 | `require` | yes           | A selected file does not match the pattern anywhere. One finding per file. |
 | `exists`  | no            | The path is missing.                                              |
 | `absent`  | no            | The path is present.                                              |
-| `standard` | yes          | A model judges that a selected file does not meet the prose. One finding per file, carrying the model's reason. See [LLM rules](/llm-rules). |
+| `standard` | yes          | A model's probability that a selected file meets the prose is below `threshold`. One finding per file, carrying the model's reason and decision. See [LLM rules](/llm-rules). |
 
 `exists` and `absent` take a single path relative to the checked directory.
+
+### Standard rules
+
+| Key         | Required | Meaning                                                                 |
+| ----------- | -------- | ----------------------------------------------------------------------- |
+| `standard`  | yes      | The standard in prose.                                                  |
+| `threshold` | no       | The probability, `0` to `1`, a file must reach to pass. Defaults to `0.5`. |
 
 ### Patterns
 

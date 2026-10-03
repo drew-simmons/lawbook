@@ -8,8 +8,16 @@ function location(finding: Finding): string {
   return parts.length === 0 ? "" : `${parts.join(":")}: `;
 }
 
+/** ` (noul 0.12)` when the finding carries a yes/no decision, else nothing. */
+function probability(finding: Finding): string {
+  const { decision } = finding;
+  return decision?.type === "noul" ? ` (noul ${decision.noul.toFixed(2)})` : "";
+}
+
 function resultLines(result: RuleResult): string[] {
-  const findings = result.findings.map((finding) => `  ${location(finding)}${finding.message}`);
+  const findings = result.findings.map(
+    (finding) => `  ${location(finding)}${finding.message}${probability(finding)}`,
+  );
   return [`${LABELS[result.status]} ${result.id}`, ...findings];
 }
 
