@@ -61,16 +61,30 @@ can turn a rule off for one line or the whole file; see
 | `id`          | yes      | Names the rule in the output and in `--only`.                           |
 | `description` | no       | A note for readers of the config. JSON output carries it, and SARIF output uses it as the rule's short description. |
 | `level`       | no       | `error` (default) fails the run when the rule has findings. `warn` prints them as `WARN` and leaves the exit code alone, so a new rule can run in CI while its wording settles. |
+| `message`     | no       | `forbid` and `require` only. What each finding says instead of the matched line or `does not match /pattern/`, such as what to do instead. |
 
 | Kind      | Needs `files` | Fails when                                                        |
 | --------- | ------------- | ----------------------------------------------------------------- |
 | `forbid`  | yes           | Any line of a selected file matches the pattern. One finding per line, carrying the line. |
 | `require` | yes           | A selected file does not match the pattern anywhere. One finding per file. |
-| `exists`  | no            | The path is missing.                                              |
-| `absent`  | no            | The path is present.                                              |
+| `exists`  | no            | None of its paths or globs matches anything.                      |
+| `absent`  | no            | Any of its paths or globs matches something. One finding per match. |
 | `standard` | yes          | A model's probability that a selected file meets the prose is below `threshold`. One finding per file, carrying the model's reason and decision. See [LLM rules](/llm-rules). |
 
-`exists` and `absent` take a single path relative to the checked directory.
+`exists` and `absent` take a path or glob relative to the checked directory,
+or a list of them. A plain path matches a file or a directory with that name.
+A glob follows the rules under [Selecting files](#selecting-files) and
+matches files only, leaving out the top-level `ignore` but not candidates
+from `--files`, `--changed`, or `--since`, since these rules are about the
+tree, not the change set. `exists` passes when anything matches; `absent`
+reports every match.
+
+```yaml
+  - id: has-docs
+    exists: ["README.md", "docs/**/*.md"]
+  - id: no-keys
+    absent: ["**/*.pem", ".env"]
+```
 
 ### Standard rules
 
@@ -88,6 +102,17 @@ can turn a rule off for one line or the whole file; see
 `m` and `u` flags, so `^` and `$` match at line boundaries and the pattern must
 be valid Unicode-mode syntax. Quote patterns with single quotes in YAML so
 backslashes survive. An invalid pattern stops the run with exit code `2`.
+
+By default a `forbid` finding quotes the matching line and a `require`
+finding names the pattern. Set `message` to say what the contributor should
+do instead; the line number still locates a `forbid` finding:
+
+```yaml
+  - id: no-console
+    files: ["src/**/*.ts"]
+    forbid: 'console\.(log|debug)\('
+    message: log through the logger in src/log.ts
+```
 
 ### Selecting files
 

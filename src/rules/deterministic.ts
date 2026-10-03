@@ -1,9 +1,8 @@
-import path from "node:path";
 import type { RuleOf } from "../config.ts";
 import { CliError, errorMessage } from "../errors.ts";
 import {
   type FileSelection,
-  pathExists,
+  matchPaths,
   readSourceFile,
   selectFiles,
   type SourceFile,
@@ -40,14 +39,14 @@ export async function readSelected(rule: FileSelection, ctx: RuleContext): Promi
   return read.filter((file) => file !== undefined);
 }
 
-/** One finding per matching line the file's markers do not suppress for `id`, carrying the trimmed line. */
-function lineFindings(file: SourceFile, pattern: RegExp, id: string): Finding[] {
+/** One finding per matching line the file's markers do not suppress, carrying the rule's `message` or the trimmed line. */
+function lineFindings(file: SourceFile, pattern: RegExp, rule: RuleOf<"forbid">): Finding[] {
   const marks = parseSuppressions(file.content);
   return file.content
     .split("\n")
     .flatMap((line, index) =>
-      pattern.test(line) && !suppressed(marks, id, index + 1)
-        ? [{ path: file.path, line: index + 1, message: line.trim() }]
+      pattern.test(line) && !suppressed(marks, rule.id, index + 1)
+        ? [{ path: file.path, line: index + 1, message: rule.message ?? line.trim() }]
         : [],
     );
 }
@@ -57,8 +56,13 @@ export async function checkForbid(rule: RuleOf<"forbid">, ctx: RuleContext): Pro
   const files = await readSelected(rule, ctx);
   return ruleResult(
     rule,
-    files.flatMap((file) => lineFindings(file, pattern, rule.id)),
+    files.flatMap((file) => lineFindings(file, pattern, rule)),
   );
+}
+
+/** The rule's `message`, else what the file failed to match. */
+function requireMessage(rule: RuleOf<"require">): string {
+  return rule.message ?? `does not match /${rule.require}/`;
 }
 
 export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): Promise<RuleResult> {
@@ -69,16 +73,29 @@ export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): P
       (file) =>
         !pattern.test(file.content) && !suppressed(parseSuppressions(file.content), rule.id),
     )
-    .map((file) => ({ path: file.path, message: `does not match /${rule.require}/` }));
+    .map((file) => ({ path: file.path, message: requireMessage(rule) }));
   return ruleResult(rule, findings);
 }
 
-export async function checkExists(rule: RuleOf<"exists">, ctx: RuleContext): Promise<RuleResult> {
-  const exists = await pathExists(path.join(ctx.root, rule.exists));
-  return ruleResult(rule, exists ? [] : [{ path: rule.exists, message: "missing" }]);
+/** One pattern missing names it; several name them all, since no single path is the one that is missing. */
+function missingFindings(patterns: string[]): Finding[] {
+  const [only] = patterns;
+  return patterns.length === 1 && only !== undefined
+    ? [{ path: only, message: "missing" }]
+    : [{ message: `none of ${patterns.join(", ")} exists` }];
 }
 
+/** Passes when any of the paths or globs matches something. */
+export async function checkExists(rule: RuleOf<"exists">, ctx: RuleContext): Promise<RuleResult> {
+  const matches = await matchPaths(ctx.root, rule.exists, ctx.ignore);
+  return ruleResult(rule, matches.length === 0 ? missingFindings(rule.exists) : []);
+}
+
+/** Fails for every path or glob match that is present. */
 export async function checkAbsent(rule: RuleOf<"absent">, ctx: RuleContext): Promise<RuleResult> {
-  const exists = await pathExists(path.join(ctx.root, rule.absent));
-  return ruleResult(rule, exists ? [{ path: rule.absent, message: "exists" }] : []);
+  const matches = await matchPaths(ctx.root, rule.absent, ctx.ignore);
+  return ruleResult(
+    rule,
+    matches.map((file) => ({ path: file, message: "exists" })),
+  );
 }

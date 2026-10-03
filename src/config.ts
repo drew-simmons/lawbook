@@ -27,20 +27,31 @@ const base = {
 const selection = { files: z.array(text).min(1), exclude: z.array(text).default([]) };
 const probability = z.number().min(0).max(1);
 
+/** What a `forbid` or `require` finding says instead of the matched line or the pattern. */
+const message = { message: text.optional() };
+
 const forbidRule = z
-  .object({ ...base, ...selection, forbid: text })
+  .object({ ...base, ...selection, ...message, forbid: text })
   .strict()
   .transform((rule) => ({ kind: "forbid" as const, ...rule }));
 const requireRule = z
-  .object({ ...base, ...selection, require: text })
+  .object({ ...base, ...selection, ...message, require: text })
   .strict()
   .transform((rule) => ({ kind: "require" as const, ...rule }));
+/** One entry or a list of them, always as a list. */
+function listOf(value: string | string[]): string[] {
+  return typeof value === "string" ? [value] : value;
+}
+
+/** The paths or globs an `exists` or `absent` rule looks for: one, or a list. */
+const paths = z.union([text, z.array(text).min(1)]).transform(listOf);
+
 const existsRule = z
-  .object({ ...base, exists: text })
+  .object({ ...base, exists: paths })
   .strict()
   .transform((rule) => ({ kind: "exists" as const, ...rule }));
 const absentRule = z
-  .object({ ...base, absent: text })
+  .object({ ...base, absent: paths })
   .strict()
   .transform((rule) => ({ kind: "absent" as const, ...rule }));
 /** Whether a `standard` rule judges each file alone or all selected files in one request. */
@@ -190,7 +201,7 @@ function assertRuleLlm(file: string, top: LlmConfig, rule: Rule): void {
 const extendsSchema = z
   .union([text, z.array(text)])
   .default([])
-  .transform((entries) => (typeof entries === "string" ? [entries] : entries));
+  .transform(listOf);
 
 /** One config file as written, before its `extends` are pulled in. */
 export const configSchema = z

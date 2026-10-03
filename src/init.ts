@@ -38,10 +38,12 @@ rules:
     absent: .env
 
   # \`forbid\` fails on every line of a selected file that matches the pattern.
+  # \`message\` replaces the matched line in the finding.
   - id: no-merge-markers
     description: Conflict markers never land
     files: ["**/*.{ts,js,json,md,yaml,yml}"]
     forbid: '^(<{7}|>{7}) '
+    message: resolve the merge conflict before committing
 
   # \`require\` fails for every selected file the pattern does not match.
   # \`level: warn\` reports a rule's findings without failing the run.
@@ -50,9 +52,10 @@ rules:
   #   files: ["src/**/*.ts"]
   #   require: '^// SPDX-License-Identifier: '
 
-  # \`exists\` fails when the path is missing.
+  # \`exists\` fails when none of the paths or globs matches; \`absent\` fails
+  # for every match. Either takes one entry or a list.
   # - id: has-readme
-  #   exists: README.md
+  #   exists: ["README.md", "docs/**/*.md"]
 
   # \`standard\` asks the model for the probability that each selected file
   # meets the prose, and fails a file below \`threshold\` (default 0.5).
