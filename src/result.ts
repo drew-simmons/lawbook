@@ -10,7 +10,8 @@ export interface Finding {
   decision?: Decision;
 }
 
-export type RuleStatus = "pass" | "fail" | "warn" | "skip";
+/** `error` means at least one file could not be judged; its findings say why. */
+export type RuleStatus = "pass" | "fail" | "warn" | "error" | "skip";
 
 export interface RuleResult {
   id: string;
@@ -26,6 +27,7 @@ export interface Summary {
   passed: number;
   failed: number;
   warned: number;
+  errored: number;
   skipped: number;
 }
 
@@ -47,18 +49,25 @@ const COUNTERS: Record<RuleStatus, keyof Summary> = {
   pass: "passed",
   fail: "failed",
   warn: "warned",
+  error: "errored",
   skip: "skipped",
 };
 
 export function summarize(results: RuleResult[]): Report {
-  const summary: Summary = { passed: 0, failed: 0, warned: 0, skipped: 0 };
+  const summary: Summary = { passed: 0, failed: 0, warned: 0, errored: 0, skipped: 0 };
   for (const result of results) {
     summary[COUNTERS[result.status]] += 1;
   }
   return { results, summary };
 }
 
-/** Exit code 1 means a requested check failed. `warn` rules never set it. */
-export function exitCodeFor(report: Report): 0 | 1 {
+/**
+ * Exit code 2 when a rule could not be judged, else 1 when a requested check
+ * failed. `warn` rules never set either.
+ */
+export function exitCodeFor(report: Report): 0 | 1 | 2 {
+  if (report.summary.errored > 0) {
+    return 2;
+  }
   return report.summary.failed === 0 ? 0 : 1;
 }

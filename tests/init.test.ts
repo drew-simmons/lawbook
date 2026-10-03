@@ -40,5 +40,5 @@ test("init output passes check", async () => {
   expect(result.code).toBe(0);
   expect(result.stdout).toContain("PASS no-env-file\n");
   expect(result.stdout).toContain("PASS no-merge-markers\n");
-  expect(result.stdout).toContain("2 passed, 0 failed, 0 warned, 0 skipped\n");
+  expect(result.stdout).toContain("2 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n");
 });

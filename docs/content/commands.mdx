@@ -36,16 +36,18 @@ WARN spdx-header
 FAIL has-readme
   README.md: missing
 
-1 passed, 1 failed, 1 warned, 0 skipped
+1 passed, 1 failed, 1 warned, 0 errored, 0 skipped
 ```
 
 Findings under a `forbid` rule read `path:line: <the line>`; under `require`,
 `path: does not match /pattern/`; under `exists` and `absent`, `path: missing`
 or `path: exists`; under `standard`, `path: <the model's reason> (noul
 <probability>)`. A rule with `level: warn` prints `WARN <id>` instead of
-`FAIL` and does not affect the exit code. A skipped rule prints `SKIP <id>`
-with no findings. The summary line always lists all four counts in this
-order.
+`FAIL` and does not affect the exit code. A `standard` rule the provider
+could not finish prints `ERROR <id>`, with the model's findings for the files
+it did judge and a `path: <error>` line for each file it did not, and the run
+exits `2` after the report. A skipped rule prints `SKIP <id>` with no
+findings. The summary line always lists all five counts in this order.
 
 ### JSON output
 
@@ -77,14 +79,15 @@ order.
       }
     }
   ],
-  "summary": { "passed": 0, "failed": 1, "warned": 1, "skipped": 0 }
+  "summary": { "passed": 0, "failed": 1, "warned": 1, "errored": 0, "skipped": 0 }
 }
 ```
 
 `level` is the rule's configured `error` or `warn`. `status` is `pass`,
-`fail`, `warn` (findings under a `warn` rule), or `skip` (a `standard` rule
-under `--no-llm`). `findings` carry `path` and, for `forbid`, a 1-based
-`line`.
+`fail`, `warn` (findings under a `warn` rule), `error` (a `standard` rule the
+provider could not finish; its findings without a `decision` name the files
+and reasons), or `skip` (a `standard` rule under `--no-llm`). `findings`
+carry `path` and, for `forbid`, a 1-based `line`.
 
 A judged `standard` rule adds `decisions`, every judged file's decision keyed
 by path, and each of its findings carries its own `decision`. A decision

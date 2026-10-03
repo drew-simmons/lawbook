@@ -27,7 +27,7 @@ rules:
 FAIL errors-are-actionable
   src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
 
-0 passed, 1 failed, 0 warned, 0 skipped
+0 passed, 1 failed, 0 warned, 0 errored, 0 skipped
 ```
 
 ## What the model sees
@@ -103,6 +103,29 @@ telling you the standard's wording is unclear, not that the model is. Where a
 regular expression can express the standard, prefer `forbid` or `require`.
 Reserve `standard` for judgment calls, and treat a failure as a prompt for a
 human to look at the file.
+
+## Provider errors
+
+When the provider rejects a request, for instance with a credential, quota,
+or network error, or answers without a verdict, lawbook records the error
+against that file instead of stopping. The rule stops sending new requests,
+lets the ones already in flight finish, and reports the rest as
+`not judged after an earlier error`. The rule's status is `ERROR`, its
+judged files keep their verdicts, every other rule still runs, and the run
+exits `2` after printing the report:
+
+```txt
+ERROR errors-are-actionable
+  src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
+  src/init.ts: bedrock: 401 invalid x-api-key
+  src/report.ts: not judged after an earlier error
+
+0 passed, 0 failed, 0 warned, 1 errored, 0 skipped
+```
+
+An `ERROR` rule is never a pass, whatever its `level`. A problem building the
+provider client, such as a missing Bedrock region, still stops the run before
+any rule runs.
 
 ## Skipping
 

@@ -81,7 +81,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 **Exit codes carry meaning.** 0 success, 1 a requested check failed, 2
 anything wrong with usage, input, or output. `src/cli.ts` maps these: a
 `CommanderError` with code 0 is help or version, any other error is 2, and
-`check` returns 1 through `exitCodeFor`.
+`check` returns 1 or 2 through `exitCodeFor`. A provider error on a file is
+not thrown: `src/rules/llm.ts` records it as that file's finding, halts the
+rest of the rule, and gives the rule status `error`, so the report still
+prints before the run exits 2.
 
 ## Conventions
 
