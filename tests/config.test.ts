@@ -71,6 +71,17 @@ test("check rejects threshold on a deterministic rule", async () => {
   expect(result.stderr).toContain("rules[0]");
 });
 
+test("check rejects an unknown level", async () => {
+  await write(
+    dir(),
+    "lawbook.yaml",
+    "version: 1\nrules:\n  - id: a\n    level: fatal\n    exists: x\n",
+  );
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0]");
+});
+
 test("check rejects duplicate ids", async () => {
   await write(
     dir(),

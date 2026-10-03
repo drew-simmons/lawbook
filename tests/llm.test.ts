@@ -18,7 +18,7 @@ test("standard rule passes when the judge passes every file", async () => {
   const fake = fakeJudge();
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(0);
-  expect(result.stdout).toBe("PASS actionable-errors\n\n1 passed, 0 failed, 0 skipped\n");
+  expect(result.stdout).toBe("PASS actionable-errors\n\n1 passed, 0 failed, 0 warned, 0 skipped\n");
 });
 
 test("standard rule fails listing each failing file with its reason and probability", async () => {
@@ -33,7 +33,7 @@ test("standard rule fails listing each failing file with its reason and probabil
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  c.ts: 'oops' names no next step (noul 0.20)\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  c.ts: 'oops' names no next step (noul 0.20)\n\n0 passed, 1 failed, 0 warned, 0 skipped\n",
   );
 });
 
@@ -45,7 +45,7 @@ test("a file at the default threshold passes and one just under it fails", async
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL actionable-errors\n  b.ts: under (noul 0.49)\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL actionable-errors\n  b.ts: under (noul 0.49)\n\n0 passed, 1 failed, 0 warned, 0 skipped\n",
   );
 });
 
@@ -56,7 +56,7 @@ test("threshold raises the bar for a standard rule", async () => {
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL actionable-errors\n  a.ts: close (noul 0.80)\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL actionable-errors\n  a.ts: close (noul 0.80)\n\n0 passed, 1 failed, 0 warned, 0 skipped\n",
   );
 });
 
@@ -72,6 +72,7 @@ test("--format json carries every decision and the failing finding's decision", 
       {
         id: "actionable-errors",
         kind: "standard",
+        level: "error",
         status: "fail",
         findings: [
           { path: "a.ts", message: "no next step", decision: { type: "noul", noul: 0.1 } },
@@ -82,7 +83,7 @@ test("--format json carries every decision and the failing finding's decision", 
         },
       },
     ],
-    summary: { passed: 0, failed: 1, skipped: 0 },
+    summary: { passed: 0, failed: 1, warned: 0, skipped: 0 },
   });
 });
 
@@ -105,7 +106,14 @@ test("standard rule with no selected files passes without asking the judge", asy
   expect(result.code).toBe(0);
   expect(fake.requests).toEqual([]);
   expect(JSON.parse(result.stdout).results).toEqual([
-    { id: "actionable-errors", kind: "standard", status: "pass", findings: [], decisions: {} },
+    {
+      id: "actionable-errors",
+      kind: "standard",
+      level: "error",
+      status: "pass",
+      findings: [],
+      decisions: {},
+    },
   ]);
 });
 
@@ -115,7 +123,7 @@ test("--no-llm skips standard rules without building a judge", async () => {
   const result = await lawbook("check", dir(), "--no-llm");
   expect(result.code).toBe(0);
   expect(result.stdout).toBe(
-    "SKIP actionable-errors\nPASS no-env\n\n1 passed, 0 failed, 1 skipped\n",
+    "SKIP actionable-errors\nPASS no-env\n\n1 passed, 0 failed, 0 warned, 1 skipped\n",
   );
 });
 
@@ -130,9 +138,30 @@ test("--format json reports skipped rules", async () => {
   await config(`rules:\n${STANDARD}`);
   const result = await lawbook("check", dir(), "--no-llm", "--format", "json");
   expect(JSON.parse(result.stdout)).toEqual({
-    results: [{ id: "actionable-errors", kind: "standard", status: "skip", findings: [] }],
-    summary: { passed: 0, failed: 0, skipped: 1 },
+    results: [
+      { id: "actionable-errors", kind: "standard", level: "error", status: "skip", findings: [] },
+    ],
+    summary: { passed: 0, failed: 0, warned: 0, skipped: 1 },
   });
+});
+
+test("a warn standard rule below the threshold prints WARN and exits zero", async () => {
+  await config(`rules:\n${STANDARD}    level: warn\n`);
+  await write(dir(), "a.ts", "throw new Error('bad');\n");
+  const fake = fakeJudge({ "a.ts": noul(0.1, "'bad' names no next step") });
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toBe(
+    "WARN actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n\n0 passed, 0 failed, 1 warned, 0 skipped\n",
+  );
+});
+
+test("--no-llm reports a skipped rule's level", async () => {
+  await config(`rules:\n${STANDARD}    level: warn\n`);
+  const result = await lawbook("check", dir(), "--no-llm", "--format", "json");
+  expect(JSON.parse(result.stdout).results).toEqual([
+    { id: "actionable-errors", kind: "standard", level: "warn", status: "skip", findings: [] },
+  ]);
 });
 
 test("a config without standard rules never builds a judge", async () => {
