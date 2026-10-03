@@ -48,6 +48,7 @@ publishes each release tag to npm.
      - `Format, lint, and package`
      - `Test (ubuntu-24.04)`
      - `Test (macos-14)`
+     - `Test (windows-2022)`
      - `CRAP score`
 
 > [!IMPORTANT]
