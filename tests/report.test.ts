@@ -164,7 +164,7 @@ test("sarif output omits region without a line and locations without a path", ()
 });
 
 test("sarif output roots ROOT at the checked directory with a trailing slash", () => {
-  const sarif = JSON.parse(formatSarif(summarize([]), { version: "0", root: "some/dir/" }));
+  const sarif = JSON.parse(formatSarif(summarize([]), { ...META, version: "0", root: "some/dir/" }));
   expect(sarif.runs[0].originalUriBaseIds).toEqual({
     ROOT: { uri: `${pathToFileURL(path.resolve("some/dir")).href}/` },
   });
