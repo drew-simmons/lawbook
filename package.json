@@ -39,6 +39,7 @@
     "@anthropic-ai/bedrock-sdk": "0.34.2",
     "@anthropic-ai/sdk": "0.131.0",
     "commander": "15.0.0",
+    "openai": "7.27.0",
     "tinyglobby": "0.2.17",
     "yaml": "2.9.1",
     "zod": "4.6.5"
