@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Format and lint
+    name: Format, lint, and package
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -27,6 +27,7 @@ jobs:
       - uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
         with:
           prek-version: "0.4.12"
+      - run: cargo package --locked
 
   test:
     name: Test (${{ matrix.os }})

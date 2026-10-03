@@ -4,9 +4,6 @@ Release Please manages versions, `Cargo.lock`, `CHANGELOG.md`, tags, and GitHub
 release notes from Conventional Commits. Cargo-dist 0.32.0 builds the macOS and
 Linux archives, checksums, and shell installer for each release tag.
 
-The crate is not published to crates.io: it has no license yet, and
-`Cargo.toml` sets `publish = false`.
-
 ## One-time GitHub setup
 
 1. Optional: to let Release Please pull requests start CI without manual
@@ -21,9 +18,11 @@ The crate is not published to crates.io: it has no license yet, and
    Release builds do not need this token.
 3. In **Settings → Actions → General**, enable **Allow GitHub Actions to create
    and approve pull requests**. The `GITHUB_TOKEN` fallback requires it.
-4. In **Settings → Pages**, set the source to **GitHub Actions**. The `Docs`
+4. Create a crates.io API token and add it as the repository Actions secret
+   `CARGO_REGISTRY_TOKEN`.
+5. In **Settings → Pages**, set the source to **GitHub Actions**. The `Docs`
    workflow deploys the site.
-5. In **Settings → General → Pull Requests**:
+6. In **Settings → General → Pull Requests**:
 
    - Disable merge commits.
    - Enable squash merging.
@@ -31,7 +30,7 @@ The crate is not published to crates.io: it has no license yet, and
    - Disable rebase merging.
    - Enable automatic deletion of head branches.
 
-6. After the workflows have run for a pull request, create an active ruleset in
+7. After the workflows have run for a pull request, create an active ruleset in
    **Settings → Rules → Rulesets** that targets the default branch:
 
    - Restrict branch deletion.
@@ -40,7 +39,7 @@ The crate is not published to crates.io: it has no license yet, and
    - Require linear history.
    - Require these status checks:
      - `Validate PR title`
-     - `Format and lint`
+     - `Format, lint, and package`
      - `Test (ubuntu-24.04)`
      - `Test (macos-14)`
      - `CRAP score`
@@ -74,6 +73,7 @@ keeps implementation-only commit types out of the public changelog.
 5. Release Please starts cargo-dist for the tag. After all targets build,
    cargo-dist attaches the archives, checksums, and `lawbook-installer.sh`.
    It then publishes the draft release.
+6. The release workflow publishes the same version to crates.io.
 
 The repository starts at version `0.0.0`. Use `feat: initial release` for the
 first project commit so the first Release PR proposes `v0.1.0`.
@@ -88,9 +88,10 @@ If Release Please created a tag but cargo-dist did not start, run the
 publishes the draft without moving or recreating the tag.
 
 > [!WARNING]
-> `.github/workflows/release.yml` has a custom step that uploads to the draft
-> from Release Please. If `dist generate` rewrites the workflow, restore the
-> `Publish GitHub Release` step before you merge the change.
+> `.github/workflows/release.yml` has custom steps that upload to the draft from
+> Release Please and publish the crate to crates.io. If `dist generate` rewrites
+> the workflow, restore the `Publish GitHub Release` and
+> `Publish crate to crates.io` steps before you merge the change.
 
 Do not move or recreate a published tag. Fix released defects with a new patch
 release.

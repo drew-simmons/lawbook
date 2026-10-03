@@ -3,6 +3,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/drew-simmons/lawbook/ci.yml?branch=main&label=CI)](https://github.com/drew-simmons/lawbook/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/drew-simmons/lawbook?label=release)](https://github.com/drew-simmons/lawbook/releases/latest)
 [![Docs](https://img.shields.io/badge/docs-drew--simmons.github.io-blue)](https://drew-simmons.github.io/lawbook/)
+[![License](https://img.shields.io/github/license/drew-simmons/lawbook)](LICENSE)
 
 Lawbook is a command-line tool. It is at an early stage and has no commands
 yet.
@@ -15,7 +16,8 @@ With Rust 1.88 or newer, from a clone:
 cargo install --path . --locked
 ```
 
-Once a release exists, the installer downloads a prebuilt binary for macOS or
+Once a release exists, `cargo install lawbook --locked` installs it from
+crates.io, and the installer downloads a prebuilt binary for macOS or
 Linux, checks its SHA-256 checksum, and puts `lawbook` in `~/.cargo/bin`:
 
 ```sh
@@ -32,6 +34,7 @@ The project uses Rust 1.88.0. Before submitting a change, run:
 cargo fmt --all --check
 cargo clippy --locked --all-targets --all-features -- -D warnings
 cargo test --locked --all-targets
+cargo package --locked --allow-dirty
 ```
 
 CI also runs [poly-crap](https://github.com/drew-simmons/poly-crap) with a
@@ -44,3 +47,7 @@ The docs site lives in `docs/`. Run `pnpm --dir docs install` once, then
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance,
 [SECURITY.md](SECURITY.md) for vulnerability reporting, and
 [RELEASING.md](RELEASING.md) for maintainer release steps.
+
+## License
+
+MIT

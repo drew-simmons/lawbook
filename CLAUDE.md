@@ -9,6 +9,7 @@ code in this repository.
 cargo fmt --all --check
 cargo clippy --locked --all-targets --all-features -- -D warnings
 cargo test --locked --all-targets
+cargo package --locked --allow-dirty
 ```
 
 `uvx prek run -a` runs the same three Rust checks plus the file hygiene hooks,

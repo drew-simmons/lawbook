@@ -26,10 +26,11 @@ you have a tested fix.
    prek install
    ```
 
-5. Run the hooks:
+5. Run the hooks and build the crate package:
 
    ```sh
    prek run --all-files
+   cargo package --locked --allow-dirty
    ```
 
 The hook runs repository checks, `cargo fmt`, Clippy with warnings denied, and
@@ -88,5 +89,8 @@ Use `fix:` for bug fixes, `feat:` for features, and `!` or a
   or requirements change.
 - Do not commit credentials, generated build output, or local tool state.
 
-Before you open a pull request, run the hooks from the setup steps and
+Before you open a pull request, run both checks from the setup steps and
 describe any check you could not run.
+
+By contributing, you agree that your contributions are licensed under the MIT
+License.
