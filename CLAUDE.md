@@ -65,7 +65,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 - `src/rules/deterministic.ts` implements `forbid`, `require`, `exists`, and
   `absent`. Runners take a rule and a `RuleContext` and return a `RuleResult`
   from `src/result.ts`. `src/rules/llm.ts` implements `standard` through a
-  `Judge`, and skips when the context has none (`--no-llm`).
+  `Judge`, and skips when the context has none (`--no-llm`). It judges up
+  to `llm.concurrency` files at once through `mapLimit` in `src/pool.ts`,
+  which keeps results in input order.
 - `src/judge/` holds the `Judge` interface, the provider-neutral
   `messagesJudge` core (fully tested with a stub `parse`), and the Bedrock
   and Anthropic adapters, which only build a client. The adapters import
@@ -74,6 +76,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   returns a `Verdict`: a noul decision in the Jev decision schema plus a
   reason; `src/rules/llm.ts` compares the probability to the rule's
   `threshold`.
+- `src/result.ts` turns findings into a `RuleResult`: a rule's `level`
+  decides whether findings make it `fail` or `warn`, and only `fail` counts
+  toward the exit code.
 - `src/report.ts` formats a `Report` as text or JSON.
 - `src/errors.ts` has `CliError` for problems the user can act on; the CLI
   prints its message without a stack and exits 2.
@@ -81,7 +86,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 **Exit codes carry meaning.** 0 success, 1 a requested check failed, 2
 anything wrong with usage, input, or output. `src/cli.ts` maps these: a
 `CommanderError` with code 0 is help or version, any other error is 2, and
-`check` returns 1 through `exitCodeFor`.
+`check` returns 1 or 2 through `exitCodeFor`. A provider error on a file is
+not thrown: `src/rules/llm.ts` records it as that file's finding, halts the
+rest of the rule, and gives the rule status `error`, so the report still
+prints before the run exits 2.
 
 ## Conventions
 

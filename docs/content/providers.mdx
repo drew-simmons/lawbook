@@ -12,17 +12,22 @@ The `llm` section of `lawbook.yaml` chooses the model that judges
 llm:
   provider: bedrock
   model: anthropic.claude-opus-5-5
+  concurrency: 4
 ```
 
-| Key        | Meaning                                                                                        |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| `provider` | `bedrock` (default) or `anthropic`.                                                            |
-| `model`    | The model id in the provider's own naming. Defaults per provider, see below.                   |
-| `region`   | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. |
+| Key           | Meaning                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| `provider`    | `bedrock` (default) or `anthropic`.                                                            |
+| `model`       | The model id in the provider's own naming. Defaults per provider, see below.                   |
+| `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. |
+| `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
 
-Unknown keys are errors. A provider or credential problem stops the run with
-exit code `2` and a one-line message that names the provider, before any
-report is printed.
+Unknown keys are errors. A problem building the client, such as a missing
+Bedrock region, stops the run with exit code `2` and a one-line message
+before any report. A provider or credential error on a request is reported
+against the file, the rule shows as `ERROR`, and the run still prints its
+report before exiting `2`; see
+[LLM rules](/llm-rules#provider-errors).
 
 ## Amazon Bedrock
 

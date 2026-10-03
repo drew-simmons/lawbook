@@ -1,6 +1,15 @@
-import type { Finding, Report, RuleResult, RuleStatus } from "./result.ts";
+import type { Finding, Report, RuleResult, RuleStatus, Summary } from "./result.ts";
 
-const LABELS: Record<RuleStatus, string> = { pass: "PASS", fail: "FAIL", skip: "SKIP" };
+const LABELS: Record<RuleStatus, string> = {
+  pass: "PASS",
+  fail: "FAIL",
+  warn: "WARN",
+  error: "ERROR",
+  skip: "SKIP",
+};
+
+/** The summary line always prints every count, in this order. */
+const SUMMARY_ORDER: (keyof Summary)[] = ["passed", "failed", "warned", "errored", "skipped"];
 
 /** `path:line: ` when the finding has a location, else nothing. */
 function location(finding: Finding): string {
@@ -21,10 +30,13 @@ function resultLines(result: RuleResult): string[] {
   return [`${LABELS[result.status]} ${result.id}`, ...findings];
 }
 
+function summaryLine(summary: Summary): string {
+  return SUMMARY_ORDER.map((key) => `${summary[key]} ${key}`).join(", ");
+}
+
 export function formatText(report: Report): string {
-  const { passed, failed, skipped } = report.summary;
   const lines = report.results.flatMap(resultLines);
-  return [...lines, "", `${passed} passed, ${failed} failed, ${skipped} skipped`, ""].join("\n");
+  return [...lines, "", summaryLine(report.summary), ""].join("\n");
 }
 
 export function formatJson(report: Report): string {

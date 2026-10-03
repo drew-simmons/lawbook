@@ -49,7 +49,7 @@ FAIL no-console
   src/cli.ts:12: console.log("starting");
 PASS has-readme
 
-1 passed, 1 failed, 0 skipped
+1 passed, 1 failed, 0 warned, 0 errored, 0 skipped
 ```
 
 `check` exits `0` when every rule passes, `1` when any rule fails, and `2` when
@@ -77,3 +77,7 @@ subset of rules while you write them:
 ```sh
 lawbook check --only no-console
 ```
+
+A rule you are not yet sure of can run with `level: warn`. Its findings print
+under `WARN` and the exit code ignores them, so CI stays green while you tune
+the rule. Drop the `level` once it is right.

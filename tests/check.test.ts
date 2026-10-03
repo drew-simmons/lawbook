@@ -14,7 +14,7 @@ test("forbid fails with path and line", async () => {
   const result = await lawbook("check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  src/a.ts:2: // TODO later\n  src/b.ts:1: // TODO first\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  src/a.ts:2: // TODO later\n  src/b.ts:1: // TODO first\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -23,7 +23,9 @@ test("forbid passes when no line matches", async () => {
   await write(dir(), "src/a.ts", "const a = 1;\n");
   const result = await lawbook("check", dir());
   expect(result.code).toBe(0);
-  expect(result.stdout).toBe("PASS no-todo\n\n1 passed, 0 failed, 0 skipped\n");
+  expect(result.stdout).toBe(
+    "PASS no-todo\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
 });
 
 test("forbid with no selected files passes", async () => {
@@ -47,7 +49,7 @@ test("require fails listing files without a match", async () => {
   const result = await lawbook("check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL header\n  b.ts: does not match /^// Copyright/\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL header\n  b.ts: does not match /^// Copyright/\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -94,7 +96,7 @@ test("check exits one when any rule fails and reports all of them", async () => 
   const result = await lawbook("check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "PASS no-env\nFAIL readme\n  README.md: missing\n\n1 passed, 1 failed, 0 skipped\n",
+    "PASS no-env\nFAIL readme\n  README.md: missing\n\n1 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -107,11 +109,71 @@ test("check --format json emits results and summary", async () => {
       {
         id: "readme",
         kind: "exists",
+        level: "error",
         status: "fail",
         findings: [{ path: "README.md", message: "missing" }],
       },
     ],
-    summary: { passed: 0, failed: 1, skipped: 0 },
+    summary: { passed: 0, failed: 1, warned: 0, errored: 0, skipped: 0 },
+  });
+});
+
+test("a warn rule with findings prints WARN and exits zero", async () => {
+  await config("  - id: no-todo\n    level: warn\n    files: ['**/*.ts']\n    forbid: 'TODO'\n");
+  await write(dir(), "src/a.ts", "// TODO later\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toBe(
+    "WARN no-todo\n  src/a.ts:1: // TODO later\n\n0 passed, 0 failed, 1 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("a warn rule without findings passes", async () => {
+  await config("  - id: no-todo\n    level: warn\n    files: ['**/*.ts']\n    forbid: 'TODO'\n");
+  await write(dir(), "src/a.ts", "const a = 1;\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toBe(
+    "PASS no-todo\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("a failing error rule beside a warn rule still exits one", async () => {
+  await config(
+    "  - id: no-env\n    level: warn\n    absent: .env\n  - id: readme\n    exists: README.md\n",
+  );
+  await write(dir(), ".env", "SECRET=1\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toBe(
+    "WARN no-env\n  .env: exists\nFAIL readme\n  README.md: missing\n\n0 passed, 1 failed, 1 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("check --format json carries each rule's level", async () => {
+  await config(
+    "  - id: no-env\n    level: warn\n    absent: .env\n  - id: readme\n    exists: README.md\n",
+  );
+  await write(dir(), ".env", "SECRET=1\n");
+  const result = await lawbook("check", dir(), "--format", "json");
+  expect(JSON.parse(result.stdout)).toEqual({
+    results: [
+      {
+        id: "no-env",
+        kind: "absent",
+        level: "warn",
+        status: "warn",
+        findings: [{ path: ".env", message: "exists" }],
+      },
+      {
+        id: "readme",
+        kind: "exists",
+        level: "error",
+        status: "fail",
+        findings: [{ path: "README.md", message: "missing" }],
+      },
+    ],
+    summary: { passed: 0, failed: 1, warned: 1, errored: 0, skipped: 0 },
   });
 });
 
@@ -128,7 +190,9 @@ test("check --only runs the named rules", async () => {
   );
   const result = await lawbook("check", dir(), "--only", "c", "a");
   expect(result.code).toBe(0);
-  expect(result.stdout).toBe("PASS a\nPASS c\n\n2 passed, 0 failed, 0 skipped\n");
+  expect(result.stdout).toBe(
+    "PASS a\nPASS c\n\n2 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
 });
 
 test("check --only with an unknown id exits two", async () => {
@@ -146,7 +210,7 @@ test("check ignores node_modules and .git by default", async () => {
   const result = await lawbook("check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  .hidden/x.ts:1: // TODO\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  .hidden/x.ts:1: // TODO\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -160,7 +224,7 @@ test("check honors a custom ignore list", async () => {
   await write(dir(), "node_modules/x.ts", "// TODO\n");
   const result = await lawbook("check", dir());
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  node_modules/x.ts:1: // TODO\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  node_modules/x.ts:1: // TODO\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 

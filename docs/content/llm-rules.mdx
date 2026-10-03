@@ -27,7 +27,7 @@ rules:
 FAIL errors-are-actionable
   src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
 
-0 passed, 1 failed, 0 skipped
+0 passed, 1 failed, 0 warned, 0 errored, 0 skipped
 ```
 
 ## What the model sees
@@ -40,8 +40,10 @@ says, to treat files the standard does not apply to as meeting it, to
 calibrate the number so that `0.5` means the file gives no way to tell, and
 to cite its evidence.
 
-Files are judged one at a time, in path order, with no context from other
-files. Write standards that one file can satisfy on its own.
+Files are judged up to `llm.concurrency` at a time (default `4`, see
+[Providers](/providers)), each with no context from other files, and the
+results are reported in path order whatever order the model answers in.
+Write standards that one file can satisfy on its own.
 
 ## Decisions
 
@@ -77,6 +79,9 @@ rules:
 
 Raise it for standards that must be met beyond doubt; lower it to flag only
 clear violations. A `threshold` of `1` fails anything but a certain pass.
+While the wording and threshold settle, give the rule `level: warn` so its
+findings print without failing the run (see
+[Configuration](/configuration#rules)).
 
 ## Writing a good standard
 
@@ -98,6 +103,29 @@ telling you the standard's wording is unclear, not that the model is. Where a
 regular expression can express the standard, prefer `forbid` or `require`.
 Reserve `standard` for judgment calls, and treat a failure as a prompt for a
 human to look at the file.
+
+## Provider errors
+
+When the provider rejects a request, for instance with a credential, quota,
+or network error, or answers without a verdict, lawbook records the error
+against that file instead of stopping. The rule stops sending new requests,
+lets the ones already in flight finish, and reports the rest as
+`not judged after an earlier error`. The rule's status is `ERROR`, its
+judged files keep their verdicts, every other rule still runs, and the run
+exits `2` after printing the report:
+
+```txt
+ERROR errors-are-actionable
+  src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
+  src/init.ts: bedrock: 401 invalid x-api-key
+  src/report.ts: not judged after an earlier error
+
+0 passed, 0 failed, 0 warned, 1 errored, 0 skipped
+```
+
+An `ERROR` rule is never a pass, whatever its `level`. A problem building the
+provider client, such as a missing Bedrock region, still stops the run before
+any rule runs.
 
 ## Skipping
 

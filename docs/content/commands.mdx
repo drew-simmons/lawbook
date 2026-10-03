@@ -68,17 +68,23 @@ A CI job on a pull request checks only what the branch changed:
 
 ```txt
 PASS no-console
-FAIL spdx-header
+WARN spdx-header
   src/cli.ts: does not match /^// SPDX-License-Identifier: /
-PASS has-readme
+FAIL has-readme
+  README.md: missing
 
-2 passed, 1 failed, 0 skipped
+1 passed, 1 failed, 1 warned, 0 errored, 0 skipped
 ```
 
 Findings under a `forbid` rule read `path:line: <the line>`; under `require`,
 `path: does not match /pattern/`; under `exists` and `absent`, `path: missing`
 or `path: exists`; under `standard`, `path: <the model's reason> (noul
-<probability>)`. A skipped rule prints `SKIP <id>` with no findings.
+<probability>)`. A rule with `level: warn` prints `WARN <id>` instead of
+`FAIL` and does not affect the exit code. A `standard` rule the provider
+could not finish prints `ERROR <id>`, with the model's findings for the files
+it did judge and a `path: <error>` line for each file it did not, and the run
+exits `2` after the report. A skipped rule prints `SKIP <id>` with no
+findings. The summary line always lists all five counts in this order.
 
 ### JSON output
 
@@ -88,12 +94,14 @@ or `path: exists`; under `standard`, `path: <the model's reason> (noul
     {
       "id": "spdx-header",
       "kind": "require",
-      "status": "fail",
+      "level": "warn",
+      "status": "warn",
       "findings": [{ "path": "src/cli.ts", "message": "does not match /^// SPDX-License-Identifier: /" }]
     },
     {
       "id": "errors-are-actionable",
       "kind": "standard",
+      "level": "error",
       "status": "fail",
       "findings": [
         {
@@ -108,12 +116,15 @@ or `path: exists`; under `standard`, `path: <the model's reason> (noul
       }
     }
   ],
-  "summary": { "passed": 0, "failed": 2, "skipped": 0 }
+  "summary": { "passed": 0, "failed": 1, "warned": 1, "errored": 0, "skipped": 0 }
 }
 ```
 
-`status` is `pass`, `fail`, or `skip` (a `standard` rule under `--no-llm`).
-`findings` carry `path` and, for `forbid`, a 1-based `line`.
+`level` is the rule's configured `error` or `warn`. `status` is `pass`,
+`fail`, `warn` (findings under a `warn` rule), `error` (a `standard` rule the
+provider could not finish; its findings without a `decision` name the files
+and reasons), or `skip` (a `standard` rule under `--no-llm`). `findings`
+carry `path` and, for `forbid`, a 1-based `line`.
 
 A judged `standard` rule adds `decisions`, every judged file's decision keyed
 by path, and each of its findings carries its own `decision`. A decision

@@ -94,6 +94,7 @@ export async function check(options: CheckOptions): Promise<Report> {
     ignore: options.config.ignore,
     candidates: await candidatesFor(options),
     judge: await judgeFor(rules, options),
+    concurrency: options.config.llm.concurrency,
   };
   const results: RuleResult[] = [];
   for (const rule of rules) {

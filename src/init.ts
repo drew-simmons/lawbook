@@ -18,6 +18,7 @@ version: 1
 #   provider: bedrock           # bedrock | anthropic
 #   model: anthropic.claude-opus-5-5
 #   region: us-west-2           # bedrock only; else AWS_REGION
+#   concurrency: 4              # files judged at once
 
 rules:
   # \`absent\` fails when the path exists.
@@ -32,7 +33,9 @@ rules:
     forbid: '^(<{7}|>{7}) '
 
   # \`require\` fails for every selected file the pattern does not match.
+  # \`level: warn\` reports a rule's findings without failing the run.
   # - id: license-header
+  #   level: warn
   #   files: ["src/**/*.ts"]
   #   require: '^// SPDX-License-Identifier: '
 

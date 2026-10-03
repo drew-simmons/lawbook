@@ -60,6 +60,21 @@ test.each([
   expect(result.stderr).toContain("rules[0]");
 });
 
+test.each([
+  ["zero", "0"],
+  ["a fraction", "1.5"],
+  ["a word", "two"],
+])("check rejects an llm.concurrency that is %s", async (_name, concurrency) => {
+  await write(
+    dir(),
+    "lawbook.yaml",
+    `version: 1\nllm:\n  concurrency: ${concurrency}\nrules:\n${STANDARD}`,
+  );
+  const result = await lawbook("check", dir(), "--no-llm");
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("llm.concurrency");
+});
+
 test("check rejects threshold on a deterministic rule", async () => {
   await write(
     dir(),
@@ -67,6 +82,17 @@ test("check rejects threshold on a deterministic rule", async () => {
     "version: 1\nrules:\n  - id: a\n    files: ['**/*']\n    forbid: x\n    threshold: 0.5\n",
   );
   const result = await lawbook("check", dir(), "--no-llm");
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0]");
+});
+
+test("check rejects an unknown level", async () => {
+  await write(
+    dir(),
+    "lawbook.yaml",
+    "version: 1\nrules:\n  - id: a\n    level: fatal\n    exists: x\n",
+  );
+  const result = await lawbook("check", dir());
   expect(result.code).toBe(2);
   expect(result.stderr).toContain("rules[0]");
 });

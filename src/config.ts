@@ -11,8 +11,17 @@ export const CONFIG_NAMES = ["lawbook.yaml", "lawbook.yml", "lawbook.json"];
 /** Paths no rule looks at unless the config sets its own `ignore`. */
 export const DEFAULT_IGNORE = ["**/node_modules/**", "**/.git/**"];
 
+/** How a rule's findings count: `error` fails the run, `warn` only reports them. */
+export const LEVELS = ["error", "warn"] as const;
+
+export type Level = (typeof LEVELS)[number];
+
 const text = z.string().min(1);
-const base = { id: text, description: z.string().optional() };
+const base = {
+  id: text,
+  description: z.string().optional(),
+  level: z.enum(LEVELS).default("error"),
+};
 const files = z.array(text).min(1);
 const probability = z.number().min(0).max(1);
 
@@ -65,6 +74,8 @@ const llmSchema = z
     provider: z.enum(PROVIDERS).default("bedrock"),
     model: text.optional(),
     region: text.optional(),
+    /** How many files a `standard` rule judges at once. */
+    concurrency: z.int().min(1).default(4),
   })
   .strict()
   .transform((llm) => ({ ...llm, model: llm.model ?? DEFAULT_MODELS[llm.provider] }));

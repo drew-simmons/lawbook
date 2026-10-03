@@ -20,7 +20,7 @@ test("--files limits files rules to the named files", async () => {
   const result = await lawbook("check", dir(), "--files", abs("a.ts"));
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  a.ts:1: // TODO a\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  a.ts:1: // TODO a\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -38,7 +38,9 @@ test("--files drops paths outside the root and files no rule selects", async () 
   await write(dir(), "c.md", "TODO\n");
   const result = await lawbook("check", dir(), "--files", abs("../x.ts"), abs("c.md"));
   expect(result.code).toBe(0);
-  expect(result.stdout).toBe("PASS no-todo\n\n1 passed, 0 failed, 0 skipped\n");
+  expect(result.stdout).toBe(
+    "PASS no-todo\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
 });
 
 test("--files leaves exists and absent rules alone", async () => {
@@ -49,7 +51,7 @@ test("--files leaves exists and absent rules alone", async () => {
   const result = await lawbook("check", dir(), "--files", abs("a.ts"));
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "PASS no-todo\nFAIL readme\n  README.md: missing\nFAIL no-env\n  .env: exists\n\n1 passed, 2 failed, 0 skipped\n",
+    "PASS no-todo\nFAIL readme\n  README.md: missing\nFAIL no-env\n  .env: exists\n\n1 passed, 2 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -65,7 +67,7 @@ test("--changed checks staged, unstaged, and untracked files but not unchanged o
   const result = await lawbook("check", dir(), "--changed");
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  a.ts:1: // TODO a\n  b.ts:1: // TODO b\n  c.ts:1: // TODO c\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  a.ts:1: // TODO a\n  b.ts:1: // TODO b\n  c.ts:1: // TODO c\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -79,7 +81,7 @@ test("--changed rebases git paths onto a root below the repository's top level",
   await write(dir(), "y.md", "TODO y\n");
   const result = await lawbook("check", root, "--changed");
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  x.ts:1: // TODO x\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  x.ts:1: // TODO x\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -99,7 +101,7 @@ test("--since checks files committed since the merge base, not the working tree"
   await write(dir(), "e.ts", "// TODO e\n");
   const result = await lawbook("check", dir(), "--since", "main");
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  b.ts:1: // TODO b\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  b.ts:1: // TODO b\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
@@ -112,7 +114,7 @@ test("--changed and --files combine", async () => {
   await write(dir(), "c.ts", "// TODO c!\n");
   const result = await lawbook("check", dir(), "--changed", "--files", abs("a.ts"));
   expect(result.stdout).toBe(
-    "FAIL no-todo\n  a.ts:1: // TODO a\n  c.ts:1: // TODO c!\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL no-todo\n  a.ts:1: // TODO a\n  c.ts:1: // TODO c!\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
   );
 });
 
