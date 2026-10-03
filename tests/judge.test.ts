@@ -138,3 +138,12 @@ test("bedrockRegion without any region is a CliError", () => {
   expect(() => bedrockRegion(llm, {})).toThrow(CliError);
   expect(() => bedrockRegion(llm, {})).toThrow("set llm.region");
 });
+
+test.each([1.5, -0.1])("a probability of %s is a CliError naming the file", async (noul) => {
+  const stub = stubParse(message({ noul, reason: "x" }));
+  const failure = messagesJudge(stub.parse, "m", "bedrock").judge(REQUEST);
+  await expect(failure).rejects.toThrow(CliError);
+  await expect(failure).rejects.toThrow(
+    `the judge gave an out-of-range probability ${noul} for src/a.ts`,
+  );
+});

@@ -107,7 +107,8 @@ human to look at the file.
 ## Provider errors
 
 When the provider rejects a request, for instance with a credential, quota,
-or network error, or answers without a verdict, lawbook records the error
+or network error, or answers without a verdict or with a probability outside
+`0` to `1`, lawbook records the error
 against that file instead of stopping. The rule stops sending new requests,
 lets the ones already in flight finish, and reports the rest as
 `not judged after an earlier error`. The rule's status is `ERROR`, its

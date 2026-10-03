@@ -3,7 +3,14 @@ import { AnthropicError } from "@anthropic-ai/sdk/error";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages";
 import { CliError } from "../errors.ts";
-import { type Answer, answerSchema, type Judge, type JudgeRequest, type Verdict } from "./judge.ts";
+import {
+  type Answer,
+  answerSchema,
+  decisionSchema,
+  type Judge,
+  type JudgeRequest,
+  type Verdict,
+} from "./judge.ts";
 
 export const SYSTEM_PROMPT = `You review one file against one written standard.
 
@@ -43,7 +50,7 @@ export function buildRequest(request: JudgeRequest, model: string): AnswerParams
   };
 }
 
-/** The parsed answer as a noul decision, or an error naming why the model gave none. */
+/** The parsed answer as a noul decision, or an error naming why the model gave no usable one. */
 export function toVerdict(message: ParsedMessage<Answer>, path: string): Verdict {
   const answer = message.parsed_output;
   if (answer === null) {
@@ -51,7 +58,11 @@ export function toVerdict(message: ParsedMessage<Answer>, path: string): Verdict
       `the judge gave no verdict for ${path} (stop reason: ${message.stop_reason})`,
     );
   }
-  return { decision: { type: "noul", noul: answer.noul }, reason: answer.reason };
+  const decision = decisionSchema.safeParse({ type: "noul", noul: answer.noul });
+  if (!decision.success) {
+    throw new CliError(`the judge gave an out-of-range probability ${answer.noul} for ${path}`);
+  }
+  return { decision: decision.data, reason: answer.reason };
 }
 
 /** SDK errors become one-line `CliError`s naming the provider; anything else is a bug. */
