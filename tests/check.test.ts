@@ -1,3 +1,4 @@
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect, test } from "vitest";
 import { NO_TOTALS } from "../src/result.ts";
@@ -256,6 +257,32 @@ test("check --format sarif carries the rule description and the root", async () 
     artifactLocation: { uri: "src/a.ts", uriBaseId: "ROOT" },
     region: { startLine: 1 },
   });
+});
+
+test("check --format gitlab reports a missing file against the config", async () => {
+  await write(
+    dir(),
+    "cfg/rules.yaml",
+    "version: 1\nrules:\n  - id: readme\n    exists: README.md\n",
+  );
+  const result = await lawbook(
+    "check",
+    dir(),
+    "--format",
+    "gitlab",
+    "--config",
+    path.join(dir(), "cfg/rules.yaml"),
+  );
+  expect(result.code).toBe(1);
+  expect(JSON.parse(result.stdout)).toEqual([
+    {
+      description: "missing",
+      check_name: "readme",
+      fingerprint: expect.any(String),
+      severity: "major",
+      location: { path: "README.md", lines: { begin: 1 } },
+    },
+  ]);
 });
 
 test("check --format json includes the rule description when present", async () => {

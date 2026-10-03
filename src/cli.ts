@@ -1,13 +1,16 @@
+import path from "node:path";
 import { Command, CommanderError, Option } from "commander";
 import pkg from "../package.json" with { type: "json" };
 import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
 import { CliError, errorMessage } from "./errors.ts";
+import { underRoot } from "./files.ts";
 import { init } from "./init.ts";
 import { defaultJudges } from "./judge/index.ts";
 import { plan, type PlanOptions } from "./plan.ts";
 import type { Judges } from "./judge/judge.ts";
 import { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
+import type { ReportMeta } from "./report.ts";
 import { exitCodeFor } from "./result.ts";
 
 /** Where the CLI writes. Tests pass their own to capture output. */
@@ -82,8 +85,13 @@ async function runCheck(
     cacheDir: flags.cacheDir,
     judges: deps.judges,
   });
-  output.stdout(FORMATTERS[flags.format](report, { version: pkg.version, root }));
+  output.stdout(FORMATTERS[flags.format](report, reportMeta(root, file)));
   return exitCodeFor(report);
+}
+
+/** The config file relative to the root, or just its name when it lies outside. */
+function reportMeta(root: string, file: string): ReportMeta {
+  return { version: pkg.version, root, config: underRoot(root, file) ?? path.basename(file) };
 }
 
 function initCommand(output: Output): Command {
