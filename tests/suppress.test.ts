@@ -1,6 +1,14 @@
 import { expect, test } from "vitest";
 import { parseSuppressions, suppressed } from "../src/suppress.ts";
-import { fakeJudge, lawbook, lawbookWith, usageLine, useTempDir, write } from "./helpers.ts";
+import {
+  fakeJudge,
+  requestKey,
+  lawbook,
+  lawbookWith,
+  usageLine,
+  useTempDir,
+  write,
+} from "./helpers.ts";
 
 const dir = useTempDir();
 
@@ -96,7 +104,7 @@ test("standard lists a file that disables it as skipped without a request", asyn
   await write(dir(), "b.ts", "const b = 1;\n");
   const fake = fakeJudge();
   const result = await lawbookWith(fake.deps, "check", dir(), "--no-cache");
-  expect(fake.requests.map((request) => request.path)).toEqual(["b.ts"]);
+  expect(fake.requests.map(requestKey)).toEqual(["b.ts"]);
   expect(result.stdout).toBe(
     `PASS actionable-errors\n  a.ts: suppressed by lawbook-disable-file\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(1)}`,
   );

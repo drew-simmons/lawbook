@@ -19,8 +19,7 @@ export function cacheKey(model: string, request: JudgeRequest): string {
     model,
     systemPrompt: SYSTEM_PROMPT,
     standard: request.standard,
-    path: request.path,
-    content: request.content,
+    files: request.files,
   };
   return createHash("sha256").update(JSON.stringify(fields)).digest("hex");
 }

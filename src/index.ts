@@ -16,6 +16,8 @@ export {
   resolveConfig,
   type Rule,
   type RuleKind,
+  type Scope,
+  SCOPES,
 } from "./config.ts";
 export { type Deps, type Output, run } from "./cli.ts";
 export { CliError } from "./errors.ts";
@@ -35,7 +37,7 @@ export {
   type Usage,
   type Verdict,
 } from "./judge/judge.ts";
-export { messagesJudge, type ParseFn } from "./judge/messages.ts";
+export { messagesJudge, type ParseFn, requestLabel } from "./judge/messages.ts";
 export { type Plan, plan, type PlanOptions, type PlanRule } from "./plan.ts";
 export { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
 export { formatGithub } from "./github.ts";

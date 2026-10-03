@@ -49,8 +49,10 @@ export interface RuleResult {
   description?: string;
   status: RuleStatus;
   findings: Finding[];
-  /** Every judged file's decision, keyed by path. Only judged `standard` rules set it. */
+  /** Every judged file's decision, keyed by path. Only judged `scope: file` rules set it. */
   decisions?: Record<string, Decision>;
+  /** The one decision on the whole set. Only judged `scope: set` rules set it. */
+  decision?: Decision;
   /** Files left out and why. Present only when there are any. */
   skipped?: Skipped[];
   /** What the rule's requests cost. Only judged `standard` rules set it. */

@@ -13,10 +13,14 @@ import {
   type AnswerParams,
   messagesJudge,
   type ParseFn,
+  requestLabel,
   SYSTEM_PROMPT,
 } from "../src/judge/messages.ts";
 
-const REQUEST = { standard: "Errors are actionable", path: "src/a.ts", content: "throw 1;\n" };
+const REQUEST = {
+  standard: "Errors are actionable",
+  files: [{ path: "src/a.ts", content: "throw 1;\n" }],
+};
 
 function message(parsed: Answer | null, stopReason = "end_turn"): ParsedMessage<Answer> {
   return {
@@ -187,4 +191,46 @@ test("messagesJudge carries the provider's cache token counts", async () => {
   const stub = stubParse(full);
   const verdict = await messagesJudge(stub.parse, "m", "bedrock").judge(REQUEST);
   expect(verdict.usage).toMatchObject({ cacheReadInputTokens: 900, cacheCreationInputTokens: 30 });
+});
+
+test("buildRequest joins several files into blank-line separated blocks", async () => {
+  const stub = stubParse(message({ noul: 0.9, reason: "ok" }));
+  const request = {
+    standard: "s",
+    files: [
+      { path: "a.ts", content: "1;\n" },
+      { path: "b.ts", content: "2;\n" },
+    ],
+  };
+  await messagesJudge(stub.parse, "m", "bedrock").judge(request);
+  expect(stub.calls[0]?.messages).toEqual([
+    { role: "user", content: "File: a.ts\n\n1;\n\n\nFile: b.ts\n\n2;\n" },
+  ]);
+});
+
+test("requestLabel names one file by path and several by count", () => {
+  expect(requestLabel(REQUEST)).toBe("src/a.ts");
+  expect(
+    requestLabel({
+      standard: "s",
+      files: [
+        { path: "a", content: "" },
+        { path: "b", content: "" },
+      ],
+    }),
+  ).toBe("2 files");
+});
+
+test("a verdictless answer for a set names the file count", async () => {
+  const stub = stubParse(message(null, "max_tokens"));
+  const request = {
+    standard: "s",
+    files: [
+      { path: "a", content: "" },
+      { path: "b", content: "" },
+    ],
+  };
+  await expect(messagesJudge(stub.parse, "m", "bedrock").judge(request)).rejects.toThrow(
+    "the judge gave no verdict for 2 files (stop reason: max_tokens)",
+  );
 });

@@ -43,9 +43,20 @@ const absentRule = z
   .object({ ...base, absent: text })
   .strict()
   .transform((rule) => ({ kind: "absent" as const, ...rule }));
-// A `standard` rule is a yes/no question; a file fails below `threshold`.
+/** Whether a `standard` rule judges each file alone or all selected files in one request. */
+export const SCOPES = ["file", "set"] as const;
+
+export type Scope = (typeof SCOPES)[number];
+
+// A `standard` rule is a yes/no question; a file, or the set, fails below `threshold`.
 const standardRule = z
-  .object({ ...base, ...selection, standard: text, threshold: probability.default(0.5) })
+  .object({
+    ...base,
+    ...selection,
+    standard: text,
+    threshold: probability.default(0.5),
+    scope: z.enum(SCOPES).default("file"),
+  })
   .strict()
   .transform((rule) => ({ kind: "standard" as const, ...rule }));
 

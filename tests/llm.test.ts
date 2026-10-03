@@ -8,6 +8,7 @@ import { NOT_JUDGED } from "../src/rules/llm.ts";
 import {
   type FakeJudge,
   fakeJudge,
+  requestKey,
   lawbook,
   lawbookWith,
   noul,
@@ -111,8 +112,14 @@ test("standard rule sends the standard, path, and content for each file in order
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir(), "--no-cache");
   expect(fake.requests).toEqual([
-    { standard: "Errors say what to do next", path: "a.ts", content: "const a = 1;\n" },
-    { standard: "Errors say what to do next", path: "b.ts", content: "const b = 2;\n" },
+    {
+      standard: "Errors say what to do next",
+      files: [{ path: "a.ts", content: "const a = 1;\n" }],
+    },
+    {
+      standard: "Errors say what to do next",
+      files: [{ path: "b.ts", content: "const b = 2;\n" }],
+    },
   ]);
 });
 
@@ -129,7 +136,7 @@ function gate(fake: FakeJudge, verdicts: Record<string, Verdict> = {}): () => nu
     peak = Math.max(peak, inFlight);
     await new Promise((resolve) => setImmediate(resolve));
     inFlight -= 1;
-    return verdicts[request.path] ?? noul(1, "fine");
+    return verdicts[requestKey(request)] ?? noul(1, "fine");
   };
   return () => peak;
 }
@@ -148,13 +155,7 @@ test("standard rules judge up to llm.concurrency files at once", async () => {
   const result = await lawbookWith(fake.deps, "check", dir(), "--no-cache");
   expect(result.code).toBe(0);
   expect(peak()).toBe(2);
-  expect(fake.requests.map((request) => request.path)).toEqual([
-    "a.ts",
-    "b.ts",
-    "c.ts",
-    "d.ts",
-    "e.ts",
-  ]);
+  expect(fake.requests.map(requestKey)).toEqual(["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"]);
 });
 
 test("concurrency defaults to four", async () => {
@@ -171,7 +172,7 @@ test("decisions and findings stay in path order when files finish out of order",
   await writeFiles(2);
   const fake = fakeJudge();
   fake.judge.judge = async (request) => {
-    if (request.path === "a.ts") {
+    if (requestKey(request) === "a.ts") {
       await new Promise((resolve) => setImmediate(resolve));
       await new Promise((resolve) => setImmediate(resolve));
       return noul(0.1, "late");
@@ -311,7 +312,7 @@ test("a file over llm.maxBytes is skipped without a request", async () => {
   const fake = fakeJudge();
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(0);
-  expect(fake.requests.map((request) => request.path)).toEqual(["a.ts"]);
+  expect(fake.requests.map(requestKey)).toEqual(["a.ts"]);
   expect(result.stdout).toBe(
     `PASS actionable-errors\n  big.ts: skipped, 21 bytes over llm.maxBytes 16\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(1)}`,
   );
@@ -368,7 +369,7 @@ test("a judge factory error exits two with its message", async () => {
 function rejecting(fake: FakeJudge, path: string, error: Error): void {
   const answer = fake.judge.judge;
   fake.judge.judge = (request) => {
-    if (request.path !== path) {
+    if (requestKey(request) !== path) {
       return answer(request);
     }
     fake.requests.push(request);
@@ -395,7 +396,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
   const fake = fakeJudge();
   fake.judge.judge = async (request) => {
     fake.requests.push(request);
-    if (request.path === "b.ts") {
+    if (requestKey(request) === "b.ts") {
       throw new CliError("anthropic: 429 rate limited");
     }
     await new Promise((resolve) => setImmediate(resolve));
@@ -403,7 +404,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
   };
   const result = await lawbookWith(fake.deps, "check", dir(), "--format", "json", "--no-cache");
   expect(result.code).toBe(2);
-  expect(fake.requests.map((request) => request.path)).toEqual(["a.ts", "b.ts"]);
+  expect(fake.requests.map(requestKey)).toEqual(["a.ts", "b.ts"]);
   const [rule] = JSON.parse(result.stdout).results;
   expect(rule).toEqual({
     id: "actionable-errors",

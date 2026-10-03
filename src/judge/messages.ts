@@ -3,6 +3,7 @@ import { AnthropicError } from "@anthropic-ai/sdk/error";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages";
 import { CliError } from "../errors.ts";
+import type { SourceFile } from "../files.ts";
 import {
   type Answer,
   answerSchema,
@@ -13,20 +14,21 @@ import {
   type Verdict,
 } from "./judge.ts";
 
-export const SYSTEM_PROMPT = `You review one file against one written standard.
+export const SYSTEM_PROMPT = `You review one or more files against one written standard.
 
-Give the probability, from 0 to 1, that the file meets the standard. Judge
+Give the probability, from 0 to 1, that the files meet the standard. Judge
 only what the standard says: a file that has other problems still meets the
 standard when the standard is met, and a file the standard does not apply to
-meets it. Base the probability on the file alone.
+meets it. Base the probability on the files alone. When several files are
+given, judge whether they meet the standard together.
 
-Calibrate the number. 1 means the file plainly meets the standard and 0
-means it plainly does not. 0.5 means the file gives no way to tell. Use
+Calibrate the number. 1 means the files plainly meet the standard and 0
+means they plainly do not. 0.5 means the files give no way to tell. Use
 values in between when the evidence is mixed, and stay away from 0 and 1
-unless the file leaves no doubt.
+unless the files leave no doubt.
 
-In the reason, cite the evidence in one or two sentences, quoting the
-relevant line when that helps the reader find it.`;
+In the reason, cite the evidence in one or two sentences, naming the file
+and quoting the relevant line when that helps the reader find it.`;
 
 /** A Messages API request whose answer parses into an `Answer`. */
 export type AnswerParams = MessageCreateParamsNonStreaming & {
@@ -35,6 +37,17 @@ export type AnswerParams = MessageCreateParamsNonStreaming & {
 
 /** `client.messages.parse` from any Anthropic SDK client. */
 export type ParseFn = (params: AnswerParams) => Promise<ParsedMessage<Answer>>;
+
+/** `File: <path>` and the content, one block per file, blank-line separated. */
+function fileBlocks(files: SourceFile[]): string {
+  return files.map((file) => `File: ${file.path}\n\n${file.content}`).join("\n\n");
+}
+
+/** What messages call the request: the one file's path, or how many files there were. */
+export function requestLabel(request: JudgeRequest): string {
+  const paths = request.files.map((file) => file.path);
+  return paths.length === 1 ? paths.join("") : `${paths.length} files`;
+}
 
 export function buildRequest(request: JudgeRequest, model: string): AnswerParams {
   return {
@@ -49,7 +62,7 @@ export function buildRequest(request: JudgeRequest, model: string): AnswerParams
         cache_control: { type: "ephemeral" },
       },
     ],
-    messages: [{ role: "user", content: `File: ${request.path}\n\n${request.content}` }],
+    messages: [{ role: "user", content: fileBlocks(request.files) }],
     output_config: { format: zodOutputFormat(answerSchema) },
   };
 }
@@ -94,7 +107,7 @@ export function messagesJudge(parse: ParseFn, model: string, provider: string): 
       const message = await parse(buildRequest(request, model)).catch((error: unknown) =>
         translateError(error, provider),
       );
-      return toVerdict(message, request.path);
+      return toVerdict(message, requestLabel(request));
     },
   };
 }

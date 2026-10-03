@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LlmConfig, Provider } from "../config.ts";
+import type { SourceFile } from "../files.ts";
 
 /**
  * A decision in the Jev decision schema (TypeSafe's System One API). A
@@ -14,12 +15,12 @@ export const decisionSchema = z.object({
 export type Decision = z.infer<typeof decisionSchema>;
 
 /**
- * What the model answers for one file. The range is stated in the
+ * What the model answers for one request. The range is stated in the
  * description, not as a schema constraint, because the Messages API rejects
  * numeric constraints in structured outputs.
  */
 export const answerSchema = z.object({
-  noul: z.number().describe("probability, from 0 to 1, that the file meets the standard"),
+  noul: z.number().describe("probability, from 0 to 1, that the files meet the standard"),
   reason: z.string().describe("one or two sentences citing the evidence"),
 });
 
@@ -42,7 +43,7 @@ export const NO_USAGE: Usage = {
   cacheCreationInputTokens: 0,
 };
 
-/** The decision on one file. `reason` is lawbook's evidence; Jev has none. */
+/** The decision on one request. `reason` is lawbook's evidence; Jev has none. */
 export interface Verdict {
   decision: Decision;
   reason: string;
@@ -54,12 +55,11 @@ export interface Verdict {
 export interface JudgeRequest {
   /** The standard in prose, from the rule. */
   standard: string;
-  /** The file's path relative to the checked directory. */
-  path: string;
-  content: string;
+  /** The files judged together: one for a `scope: file` rule, all of them for `scope: set`. */
+  files: SourceFile[];
 }
 
-/** Applies a standard to one file. Providers implement it; tests fake it. */
+/** Applies a standard to one or more files. Providers implement it; tests fake it. */
 export interface Judge {
   judge(request: JudgeRequest): Promise<Verdict>;
 }

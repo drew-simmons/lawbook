@@ -142,14 +142,19 @@ export function usageTotals(requests: number): UsageTotals {
   };
 }
 
-/** A judge that answers from `verdicts` by path and passes anything else. */
+/** The paths a request carries, joined with commas: the key scripted verdicts use. */
+export function requestKey(request: JudgeRequest): string {
+  return request.files.map((file) => file.path).join(",");
+}
+
+/** A judge that answers from `verdicts` by request key and passes anything else. */
 export function fakeJudge(verdicts: Record<string, Verdict> = {}): FakeJudge {
   const requests: JudgeRequest[] = [];
   const built: LlmConfig[] = [];
   const judge: Judge = {
     judge: async (request) => {
       requests.push(request);
-      return verdicts[request.path] ?? noul(1, "fine");
+      return verdicts[requestKey(request)] ?? noul(1, "fine");
     },
   };
   const factory = async (llm: LlmConfig) => {

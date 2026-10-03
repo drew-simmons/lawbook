@@ -73,8 +73,8 @@ A CI job on a pull request checks only what the branch changed:
 the files its globs select, after `ignore`, `exclude`, `.gitignore`, and any
 `--files`, `--changed`, or `--since` selector; `exists` and `absent` list
 their one path. The last line counts the distinct files and the model
-requests: one per selected file of a `standard` rule, or none under
-`--no-llm`. Nothing is read, so binary and oversize files still appear, and
+requests: one per selected file of a `standard` rule, one for a `scope: set`
+rule with any files, or none under `--no-llm`. Nothing is read, so binary and oversize files still appear, and
 no provider client is built.
 
 ```txt
@@ -90,8 +90,8 @@ PLAN errors-are-actionable (standard, 2 files)
 3 files, 2 model requests
 ```
 
-`--format json` prints `{ "rules": [{ "id", "kind", "level", "files" }],
-"requests" }`. The `github` and `sarif` formats have nothing to annotate and
+`--format json` prints `{ "rules": [{ "id", "kind", "level", "files",
+"requests" }], "requests" }`, with each rule's own request count. The `github` and `sarif` formats have nothing to annotate and
 are rejected with exit code `2`.
 
 ### Text output
@@ -178,8 +178,9 @@ and reasons), or `skip` (a `standard` rule under `--no-llm`). `findings`
 carry `path` and, for `forbid`, a 1-based `line`.
 
 A judged `standard` rule adds `decisions`, every judged file's decision keyed
-by path, and each of its findings carries its own `decision`. When it left
-files out, `skipped` lists each as `{ "path", "message" }`. Its `usage`, and
+by path, and each of its findings carries its own `decision`. A `scope: set` rule carries
+one `decision` for the set instead, and its finding has no `path`. When it
+left files out, `skipped` lists each as `{ "path", "message" }`. Its `usage`, and
 the summary's, count `requests` sent to the provider, verdicts served
 `cached` from lawbook's cache, and the provider's token counts, with
 `cacheReadInputTokens` and `cacheCreationInputTokens` for its prompt cache. A decision
