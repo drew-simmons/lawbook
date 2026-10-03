@@ -1,12 +1,20 @@
 import type { Rule, RuleOf } from "../config.ts";
 import type { SourceFile } from "../files.ts";
-import type { Decision, Judge, Verdict } from "../judge/judge.ts";
+import type { Judge, Verdict } from "../judge/judge.ts";
+import { mapLimit } from "../pool.ts";
 import { type Finding, type RuleResult, ruleResult } from "../result.ts";
 import { readSelected, type RuleContext } from "./deterministic.ts";
 
 /** `judge` is absent when the run skips LLM rules. */
 export interface JudgeContext extends RuleContext {
   judge?: Judge;
+  /** How many files the judge sees at once. */
+  concurrency: number;
+}
+
+interface Judged {
+  file: SourceFile;
+  verdict: Verdict;
 }
 
 export function skipResult(rule: Rule): RuleResult {
@@ -20,19 +28,24 @@ function findingFor(file: SourceFile, verdict: Verdict, threshold: number): Find
     : [];
 }
 
-/** One decision per selected file, in order; a file under the threshold is a finding. */
+/**
+ * One decision per selected file, up to `concurrency` at a time. Results
+ * stay in path order, so a file under the threshold is a finding in order.
+ */
 async function judgeFiles(
   rule: RuleOf<"standard">,
   judge: Judge,
-  ctx: RuleContext,
+  ctx: JudgeContext,
 ): Promise<RuleResult> {
-  const findings: Finding[] = [];
-  const decisions: Record<string, Decision> = {};
-  for (const file of await readSelected(rule.files, ctx)) {
-    const verdict = await judge.judge({ standard: rule.standard, ...file });
-    decisions[file.path] = verdict.decision;
-    findings.push(...findingFor(file, verdict, rule.threshold));
-  }
+  const files = await readSelected(rule.files, ctx);
+  const judged = await mapLimit(files, ctx.concurrency, async (file): Promise<Judged> => ({
+    file,
+    verdict: await judge.judge({ standard: rule.standard, ...file }),
+  }));
+  const decisions = Object.fromEntries(
+    judged.map(({ file, verdict }) => [file.path, verdict.decision]),
+  );
+  const findings = judged.flatMap(({ file, verdict }) => findingFor(file, verdict, rule.threshold));
   return { ...ruleResult(rule, findings), decisions };
 }
 

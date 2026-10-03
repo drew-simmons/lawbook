@@ -74,6 +74,8 @@ const llmSchema = z
     provider: z.enum(PROVIDERS).default("bedrock"),
     model: text.optional(),
     region: text.optional(),
+    /** How many files a `standard` rule judges at once. */
+    concurrency: z.int().min(1).default(4),
   })
   .strict()
   .transform((llm) => ({ ...llm, model: llm.model ?? DEFAULT_MODELS[llm.provider] }));

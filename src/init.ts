@@ -18,6 +18,7 @@ version: 1
 #   provider: bedrock           # bedrock | anthropic
 #   model: anthropic.claude-opus-5-5
 #   region: us-west-2           # bedrock only; else AWS_REGION
+#   concurrency: 4              # files judged at once
 
 rules:
   # \`absent\` fails when the path exists.
