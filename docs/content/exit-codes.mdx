@@ -1,0 +1,15 @@
+---
+title: Exit codes
+description: What lawbook's exit codes 0, 1, and 2 mean.
+sidebar:
+  order: 4
+---
+
+| Code | Meaning                                                                                                   |
+| ---- | --------------------------------------------------------------------------------------------------------- |
+| `0`  | Success. For `check`, every rule passed or was skipped.                                                   |
+| `1`  | A requested check failed. Only `check` returns it, and only when at least one rule has a finding.         |
+| `2`  | Lawbook could not do what was asked: bad usage, a missing or invalid config, an unreadable file, an invalid pattern, an unknown `--only` id, or a directory that cannot be written. |
+
+Code `2` comes with a one-line `error:` message on stderr. Code `1` prints the
+findings on stdout and nothing on stderr, so a CI log shows the report once.

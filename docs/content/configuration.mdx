@@ -1,0 +1,71 @@
+---
+title: Configuration
+description: The lawbook.yaml format, the four rule kinds, and how files are selected.
+sidebar:
+  order: 2
+---
+
+`lawbook check` reads the first of `lawbook.yaml`, `lawbook.yml`, or
+`lawbook.json` it finds in the directory it checks, unless `--config` names a
+file. JSON is valid YAML, so both formats share one schema.
+
+```yaml
+version: 1
+ignore:
+  - "**/node_modules/**"
+  - "**/.git/**"
+rules:
+  - id: no-console
+    description: Production code logs through the logger
+    files: ["src/**/*.ts"]
+    forbid: 'console\.(log|debug)\('
+  - id: spdx-header
+    files: ["src/**/*.ts"]
+    require: '^// SPDX-License-Identifier: '
+  - id: has-readme
+    exists: README.md
+  - id: no-env-file
+    absent: .env
+```
+
+## Top level
+
+| Key       | Required | Meaning                                                                                      |
+| --------- | -------- | -------------------------------------------------------------------------------------------- |
+| `version` | yes      | Always `1`.                                                                                  |
+| `ignore`  | no       | Globs no rule looks at. Defaults to `**/node_modules/**` and `**/.git/**`; setting it replaces the defaults. |
+| `rules`   | yes      | The rules, run in order.                                                                     |
+
+Unknown keys anywhere in the file are errors, so a typo cannot silently
+disable a rule.
+
+## Rules
+
+Every rule has an `id`, which must be unique, and may have a `description`.
+The rule's kind is the one remaining key.
+
+| Kind      | Needs `files` | Fails when                                                        |
+| --------- | ------------- | ----------------------------------------------------------------- |
+| `forbid`  | yes           | Any line of a selected file matches the pattern. One finding per line, carrying the line. |
+| `require` | yes           | A selected file does not match the pattern anywhere. One finding per file. |
+| `exists`  | no            | The path is missing.                                              |
+| `absent`  | no            | The path is present.                                              |
+
+`exists` and `absent` take a single path relative to the checked directory.
+
+### Patterns
+
+`forbid` and `require` are JavaScript regular expressions compiled with the
+`m` and `u` flags, so `^` and `$` match at line boundaries and the pattern must
+be valid Unicode-mode syntax. Quote patterns with single quotes in YAML so
+backslashes survive. An invalid pattern stops the run with exit code `2`.
+
+### Selecting files
+
+`files` is a list of globs relative to the checked directory. Globs follow the
+usual conventions: `*` matches within a path segment, `**` crosses directories,
+and `{a,b}` lists alternatives. Dotfiles and dot directories are included, so
+`.github/**/*.yml` works; the default `ignore` keeps `.git` out.
+
+A rule whose globs select no files passes. Selected files are read as UTF-8
+text.
