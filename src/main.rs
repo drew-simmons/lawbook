@@ -3,7 +3,11 @@ use clap::Parser;
 use std::process::ExitCode;
 
 #[derive(Debug, Parser)]
-#[command(name = "lawbook", version, about = "lawbook command-line tool")]
+#[command(
+    name = "lawbook",
+    version,
+    about = "Checks code standards with repeatable rules and LLM decisions"
+)]
 struct Cli {}
 
 fn run(_cli: &Cli) -> Result<()> {

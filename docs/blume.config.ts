@@ -2,7 +2,7 @@ import { defineConfig } from "blume";
 
 export default defineConfig({
   title: "lawbook",
-  description: "lawbook command-line tool.",
+  description: "Checks code standards with repeatable rules and LLM decisions.",
   content: {
     root: "content",
   },

@@ -5,8 +5,8 @@
 [![Docs](https://img.shields.io/badge/docs-drew--simmons.github.io-blue)](https://drew-simmons.github.io/lawbook/)
 [![License](https://img.shields.io/github/license/drew-simmons/lawbook)](LICENSE)
 
-Lawbook is a command-line tool. It is at an early stage and has no commands
-yet.
+Lawbook checks code standards with repeatable rules and LLM decisions. It is
+at an early stage and has no commands yet.
 
 ## Install
 
