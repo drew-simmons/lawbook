@@ -134,6 +134,11 @@ const standardRule = z
     llm: ruleLlmSchema.optional(),
     /** Root-relative files sent with every request as reference material, never judged. */
     context: z.array(text).default([]),
+    /** Example files `lawbook test` judges: ones the standard must pass, and ones it must fail. */
+    fixtures: z
+      .object({ pass: z.array(text).default([]), fail: z.array(text).default([]) })
+      .strict()
+      .optional(),
   })
   .strict()
   .transform((rule) => ({ kind: "standard" as const, ...rule }));

@@ -98,6 +98,42 @@ findings print without failing the run (see
 - Run `lawbook check --only <id>` while you refine the wording, and pin the
   rest of the suite with `--no-llm`.
 
+## Testing a standard
+
+Writing a standard is writing a prompt, and a prompt wants a test. Give a
+rule `fixtures`: files the standard must pass and files it must fail. Then
+`lawbook test` judges each one and reports the ones the model put on the
+wrong side of the threshold:
+
+```yaml
+rules:
+  - id: errors-are-actionable
+    files: ["src/**/*.ts"]
+    standard: Every error message says what went wrong and what to do next.
+    fixtures:
+      pass: ["fixtures/errors/good.ts"]
+      fail: ["fixtures/errors/vague.ts", "fixtures/errors/silent.ts"]
+```
+
+```sh
+lawbook test
+```
+
+```txt
+FAIL errors-are-actionable
+  fixtures/errors/vague.ts: expected fail, judged pass (noul 0.72): The messages name the failing step.
+
+3 fixtures, 1 misclassified
+```
+
+The reason shows what the model read into the standard, which is usually the
+exemption it needs spelled out. Tighten the wording, raise or lower
+`threshold`, and run again; verdicts are cached, so only changed fixtures
+and changed standards cost a request. Keep the fixtures out of `files`, or
+`exclude` them, so `check` does not judge them as code. A standard with
+fixtures that still misclassify is telling you the standard, not the code,
+needs work; see [Commands](/commands#lawbook-test-root).
+
 ## Repeatability
 
 Models can give different probabilities for the same file on different runs,

@@ -271,3 +271,37 @@ directory as a file URL. Upload it to GitHub code scanning:
 `level` is `warning` for findings under a `warn` rule and `error` otherwise.
 A finding without a path, such as a missing file under `exists`, has no
 `locations`.
+
+## `lawbook test [root]`
+
+Judges each `standard` rule's [fixtures](/llm-rules#testing-a-standard),
+example files the standard must pass or must fail, and reports the ones the
+model put on the wrong side of the rule's `threshold`. Rules without
+`fixtures` are left out.
+
+| Flag                  | Meaning                                                                          |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `-c, --config <file>` | Read this config instead of looking for one in `root`.                           |
+| `--format <format>`   | `text` (default) or `json`.                                                      |
+| `--only <ids...>`     | Test only the rules with these ids. An unknown id is an error.                   |
+| `--no-cache`          | Ask the model for every fixture even when a cached verdict exists.               |
+| `--cache-dir <dir>`   | Where verdicts are cached; the same default as `check`.                          |
+
+Each fixture is judged alone, as a `scope: file` request, with the rule's
+`context` and `llm` settings, through the same verdict cache `check` uses.
+Text output prints `PASS <id>` or `FAIL <id>` per rule, one line per
+misclassified fixture, and a total:
+
+```txt
+FAIL errors-are-actionable
+  fixtures/errors/vague.ts: expected fail, judged pass (noul 0.72): The messages name the failing step.
+
+4 fixtures, 1 misclassified
+```
+
+`--format json` prints `{ "rules": [{ "id", "cases": [{ "path", "expected",
+"actual", "decision", "reason" }] }], "summary": { "cases", "misclassified" } }`
+with every fixture, not only the misclassified ones.
+
+The exit code is `1` when any fixture is misclassified, `2` when a fixture
+is missing or binary or the provider fails, and `0` otherwise.

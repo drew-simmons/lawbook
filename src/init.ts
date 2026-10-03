@@ -64,6 +64,8 @@ rules:
   #     to do next.
   #   # Reference files the model reads but does not judge.
   #   context: ["docs/style.md"]
+  #   # Example files for \`lawbook test\`: ones that must pass, ones that must fail.
+  #   fixtures: { pass: ["fixtures/good.ts"], fail: ["fixtures/bad.ts"] }
   #   # A cheaper model for this rule alone; provider, region, and baseUrl work too.
   #   llm: { model: anthropic.claude-sonnet-5-5 }
 `;

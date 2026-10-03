@@ -14,12 +14,13 @@ test("version prints package version", async () => {
   expect(result.stdout).toContain(pkg.version);
 });
 
-test("help lists init and check", async () => {
+test("help lists init, check, and test", async () => {
   const result = await lawbook("--help");
   expect(result.code).toBe(0);
   expect(result.stdout).toContain("Usage: lawbook");
   expect(result.stdout).toContain("init");
   expect(result.stdout).toContain("check");
+  expect(result.stdout).toContain("test");
 });
 
 test("unknown flag exits two", async () => {

@@ -1,3 +1,4 @@
+import type { FixtureCase, FixtureReport, FixtureRule } from "./fixtures.ts";
 import type { Plan, PlanRule } from "./plan.ts";
 import type {
   Count,
@@ -107,4 +108,30 @@ export function formatPlanText(plan: Plan): string {
 
 export function formatPlanJson(plan: Plan): string {
   return `${JSON.stringify(plan, null, 2)}\n`;
+}
+
+/** `  path: expected fail, judged pass (noul 0.80): <reason>` for a fixture on the wrong side. */
+function misclassifiedLine(entry: FixtureCase): string[] {
+  const noul = entry.decision.noul.toFixed(2);
+  return entry.actual === entry.expected
+    ? []
+    : [
+        `  ${entry.path}: expected ${entry.expected}, judged ${entry.actual} (noul ${noul}): ${entry.reason}`,
+      ];
+}
+
+function fixtureLines(rule: FixtureRule): string[] {
+  const wrong = rule.cases.flatMap(misclassifiedLine);
+  return [`${wrong.length === 0 ? "PASS" : "FAIL"} ${rule.id}`, ...wrong];
+}
+
+/** Every tested rule with its misclassified fixtures, then the totals. */
+export function formatFixturesText(report: FixtureReport): string {
+  const { cases, misclassified } = report.summary;
+  const total = `${count(cases, "fixture")}, ${misclassified} misclassified`;
+  return [...report.rules.flatMap(fixtureLines), "", total, ""].join("\n");
+}
+
+export function formatFixturesJson(report: FixtureReport): string {
+  return `${JSON.stringify(report, null, 2)}\n`;
 }
