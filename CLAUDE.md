@@ -53,10 +53,13 @@ in `src/cli.ts`, which parses the CLI; logic belongs in library modules
 under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 `src/index.ts` into `dist/`.
 
-- `src/config.ts` holds the zod schema for `lawbook.yaml`. Each rule schema
-  adds a `kind` so `src/check.ts` can dispatch through a lookup table instead
-  of a chain of `if`s. New rule kinds add a schema, a runner in `src/rules/`,
-  and a table entry.
+- `src/config.ts` holds the zod schema for one `lawbook.yaml` and
+  `loadConfig`, which resolves `extends` (paths relative to the file, or
+  package specifiers through `createRequire`) depth-first, inherits only
+  `rules`, and rejects cycles and duplicate ids across files. Each rule
+  schema adds a `kind` so `src/check.ts` can dispatch through a lookup
+  table instead of a chain of `if`s. New rule kinds add a schema, a runner
+  in `src/rules/`, and a table entry.
 - `src/candidates.ts` turns `--files`, `--changed`, `--since`, and the
   `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
   which selects files the way `check` does but reads nothing and builds no

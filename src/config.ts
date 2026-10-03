@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
@@ -54,12 +55,6 @@ export type Rule = z.infer<typeof ruleSchema>;
 export type RuleKind = Rule["kind"];
 export type RuleOf<K extends RuleKind> = Extract<Rule, { kind: K }>;
 
-/** Ids that appear more than once, in order of their second appearance. */
-function duplicateIds(rules: { id: string }[]): string[] {
-  const seen = new Set<string>();
-  return rules.map((rule) => rule.id).filter((id) => seen.size === seen.add(id).size);
-}
-
 export const PROVIDERS = ["bedrock", "anthropic"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
@@ -97,9 +92,18 @@ const llmSchema = z
 
 export type LlmConfig = z.infer<typeof llmSchema>;
 
+/** One config file's `extends`: a path or package, or a list of them, always as a list. */
+const extendsSchema = z
+  .union([text, z.array(text)])
+  .default([])
+  .transform((entries) => (typeof entries === "string" ? [entries] : entries));
+
+/** One config file as written, before its `extends` are pulled in. */
 export const configSchema = z
   .object({
     version: z.literal(1),
+    /** Config files whose rules come first, by path or package specifier. */
+    extends: extendsSchema,
     ignore: z.array(z.string()).default(DEFAULT_IGNORE),
     /** Whether files `.gitignore` covers are left out when the root is in a git work tree. */
     gitignore: z.boolean().default(true),
@@ -107,19 +111,12 @@ export const configSchema = z
     llm: llmSchema.prefault({}),
     rules: z.array(ruleSchema),
   })
-  .strict()
-  .check((ctx) => {
-    for (const id of duplicateIds(ctx.value.rules)) {
-      ctx.issues.push({
-        code: "custom",
-        input: ctx.value,
-        path: ["rules"],
-        message: `duplicate rule id "${id}"`,
-      });
-    }
-  });
+  .strict();
 
-export type Config = z.infer<typeof configSchema>;
+export type ConfigFile = z.infer<typeof configSchema>;
+
+/** A config with its `extends` resolved: every rule, in order, and the top-level settings. */
+export type Config = Omit<ConfigFile, "extends">;
 
 /** The config files present in `root`, in order of preference. */
 export async function existingConfigFiles(root: string): Promise<string[]> {
@@ -155,10 +152,91 @@ function parseConfigText(file: string, source: string): unknown {
   }
 }
 
-export async function loadConfig(file: string): Promise<Config> {
+async function loadFile(file: string): Promise<ConfigFile> {
   const parsed = configSchema.safeParse(parseConfigText(file, await readConfigText(file)));
   if (!parsed.success) {
     throw new CliError(`${file}: ${z.prettifyError(parsed.error)}`);
   }
   return parsed.data;
+}
+
+/** A rule and the config file it came from, for error messages. */
+interface Owned {
+  rule: Rule;
+  file: string;
+}
+
+function isPathLike(entry: string): boolean {
+  return entry.startsWith(".") || path.isAbsolute(entry);
+}
+
+/** A path entry is relative to the extending file's directory; anything else is a package specifier. */
+function resolveExtend(from: string, entry: string): string {
+  if (isPathLike(entry)) {
+    return path.resolve(path.dirname(from), entry);
+  }
+  try {
+    return createRequire(path.resolve(from)).resolve(entry);
+  } catch (error) {
+    throw new CliError(`${from}: cannot resolve extends "${entry}": ${errorMessage(error)}`);
+  }
+}
+
+/** The rules of every file `entries` name, depth-first, each with its own `extends` first. */
+async function extendedRules(from: string, entries: string[], chain: string[]): Promise<Owned[]> {
+  const owned: Owned[] = [];
+  for (const entry of entries) {
+    owned.push(...(await loadRules(resolveExtend(from, entry), chain)));
+  }
+  return owned;
+}
+
+/** `file`'s rules after those it extends. `chain` holds the real paths above it, to catch cycles. */
+async function loadRules(file: string, chain: string[]): Promise<Owned[]> {
+  const parsed = await loadFile(file);
+  const real = await realpath(file);
+  if (chain.includes(real)) {
+    throw new CliError(`extends cycle: ${[...chain, real].join(" -> ")}`);
+  }
+  const inherited = await extendedRules(file, parsed.extends, [...chain, real]);
+  return [...inherited, ...parsed.rules.map((rule) => ({ rule, file }))];
+}
+
+function duplicateMessage(id: string, first: string, file: string): string {
+  return first === file
+    ? `${file}: duplicate rule id "${id}"`
+    : `duplicate rule id "${id}" in ${first} and ${file}`;
+}
+
+/** Every id once across every file; the error names where it repeats. */
+function assertUniqueIds(owned: Owned[]): void {
+  const seen = new Map<string, string>();
+  for (const { rule, file } of owned) {
+    const first = seen.get(rule.id);
+    if (first !== undefined) {
+      throw new CliError(duplicateMessage(rule.id, first, file));
+    }
+    seen.set(rule.id, file);
+  }
+}
+
+/**
+ * `top` with its `extends` pulled in: inherited rules first, then its own.
+ * Only rules are inherited; `ignore`, `gitignore`, and `llm` come from `top`.
+ */
+export async function resolveConfig(file: string, top: ConfigFile): Promise<Config> {
+  const inherited = await extendedRules(file, top.extends, [await realpath(file)]);
+  const owned = [...inherited, ...top.rules.map((rule) => ({ rule, file }))];
+  assertUniqueIds(owned);
+  return {
+    version: top.version,
+    ignore: top.ignore,
+    gitignore: top.gitignore,
+    llm: top.llm,
+    rules: owned.map((entry) => entry.rule),
+  };
+}
+
+export async function loadConfig(file: string): Promise<Config> {
+  return resolveConfig(file, await loadFile(file));
 }

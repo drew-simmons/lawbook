@@ -40,6 +40,7 @@ rules:
 | Key       | Required | Meaning                                                                                      |
 | --------- | -------- | -------------------------------------------------------------------------------------------- |
 | `version` | yes      | Always `1`.                                                                                  |
+| `extends` | no       | A config file, or a list of them, whose rules run before this file's own. See [Sharing rules](#sharing-rules). |
 | `ignore`  | no       | Globs no rule looks at. Defaults to `**/node_modules/**` and `**/.git/**`; setting it replaces the defaults. |
 | `gitignore` | no     | Whether files `.gitignore` covers are left out when the checked directory is inside a git work tree. Defaults to `true`. |
 | `llm`     | no       | The model that judges `standard` rules. See [Providers](/providers).                         |
@@ -117,3 +118,36 @@ false` to look at ignored files too. Outside a repository, or when `--files`,
 rule to the files they name, so a pre-commit hook or a pull request check
 looks only at what changed. See
 [Commands](/commands#checking-a-subset-of-files).
+
+## Sharing rules
+
+`extends` pulls the rules of other config files in ahead of the file's own,
+so a team can keep one rule set and have every repository extend it:
+
+```yaml
+version: 1
+extends:
+  - ./rules/base.yaml
+  - "@acme/lawbook-rules"
+rules:
+  - id: has-readme
+    exists: README.md
+```
+
+An entry that starts with `.` or is an absolute path is resolved relative to
+the file that names it. Any other entry is a package specifier resolved from
+`node_modules` the way `require` would: the package's `main` can point at
+its `lawbook.yaml`, or an `exports` entry can expose a subpath such as
+`@acme/lawbook-rules/strict.yaml`. There is no network access; install the
+package first.
+
+Every extended file is a full config with `version: 1`, and may extend others
+in turn. Rules are collected depth-first, each file's inherited rules before
+its own, and run in that order. Only `rules` are inherited: `ignore`,
+`gitignore`, and `llm` always come from the file `lawbook check` reads.
+Globs in an inherited rule are relative to the checked directory, not to the
+file the rule came from.
+
+A rule id that appears in two files, a file that extends itself through any
+chain, and an entry that cannot be found are errors with exit code `2`, each
+naming the files involved.
