@@ -401,7 +401,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
     await new Promise((resolve) => setImmediate(resolve));
     return noul(0.3, "slow but judged");
   };
-  const result = await lawbookWith(fake.deps, "check", dir(), "--format", "json");
+  const result = await lawbookWith(fake.deps, "check", dir(), "--format", "json", "--no-cache");
   expect(result.code).toBe(2);
   expect(fake.requests.map((request) => request.path)).toEqual(["a.ts", "b.ts"]);
   const [rule] = JSON.parse(result.stdout).results;
