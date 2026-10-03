@@ -36,8 +36,15 @@ export async function selectFiles(
  */
 export function underRoot(root: string, file: string): string | undefined {
   const relative = path.relative(path.resolve(root), path.resolve(file));
-  const outside = relative === ".." || relative.startsWith(`..${path.sep}`);
+  // On another drive, `relative` comes back absolute.
+  const outside =
+    relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
   return outside ? undefined : relative.split(path.sep).join("/");
+}
+
+/** The lines of a file, whether it ends them with LF or CRLF. */
+export function splitLines(content: string): string[] {
+  return content.split(/\r?\n/u);
 }
 
 /** How many leading bytes are checked for a NUL, which marks a binary file. */
