@@ -25,10 +25,30 @@ export const answerSchema = z.object({
 
 export type Answer = z.infer<typeof answerSchema>;
 
+/** What one request cost, as the provider counts tokens. */
+export interface Usage {
+  inputTokens: number;
+  outputTokens: number;
+  /** Prompt tokens the provider read from its cache. */
+  cacheReadInputTokens: number;
+  /** Prompt tokens the provider wrote to its cache. */
+  cacheCreationInputTokens: number;
+}
+
+export const NO_USAGE: Usage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadInputTokens: 0,
+  cacheCreationInputTokens: 0,
+};
+
 /** The decision on one file. `reason` is lawbook's evidence; Jev has none. */
 export interface Verdict {
   decision: Decision;
   reason: string;
+  usage: Usage;
+  /** True when the verdict came from lawbook's verdict cache, so `usage` is zero. */
+  cached?: boolean;
 }
 
 export interface JudgeRequest {

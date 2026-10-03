@@ -17,6 +17,7 @@ export {
 export { type Deps, type Output, run } from "./cli.ts";
 export { CliError } from "./errors.ts";
 export { init } from "./init.ts";
+export { cachedJudge, cacheKey, DEFAULT_CACHE_DIR } from "./judge/cache.ts";
 export { defaultJudges } from "./judge/index.ts";
 export {
   type Answer,
@@ -27,6 +28,8 @@ export {
   type JudgeFactory,
   type JudgeRequest,
   type Judges,
+  NO_USAGE,
+  type Usage,
   type Verdict,
 } from "./judge/judge.ts";
 export { messagesJudge, type ParseFn } from "./judge/messages.ts";
@@ -41,5 +44,6 @@ export {
   type RuleStatus,
   skipResult,
   type Summary,
+  type UsageTotals,
 } from "./result.ts";
 export { formatSarif } from "./sarif.ts";

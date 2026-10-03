@@ -9,6 +9,7 @@ import {
   decisionSchema,
   type Judge,
   type JudgeRequest,
+  type Usage,
   type Verdict,
 } from "./judge.ts";
 
@@ -39,14 +40,27 @@ export function buildRequest(request: JudgeRequest, model: string): AnswerParams
   return {
     model,
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [
+    // The standard is the same for every file in a rule, so the provider caches it.
+    system: [
+      { type: "text", text: SYSTEM_PROMPT },
       {
-        role: "user",
-        content: `Standard:\n${request.standard}\n\nFile: ${request.path}\n\n${request.content}`,
+        type: "text",
+        text: `Standard:\n${request.standard}`,
+        cache_control: { type: "ephemeral" },
       },
     ],
+    messages: [{ role: "user", content: `File: ${request.path}\n\n${request.content}` }],
     output_config: { format: zodOutputFormat(answerSchema) },
+  };
+}
+
+/** The provider's counts in lawbook's names; a provider without a cache reports null. */
+export function toUsage(usage: ParsedMessage<Answer>["usage"]): Usage {
+  return {
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cacheReadInputTokens: usage.cache_read_input_tokens ?? 0,
+    cacheCreationInputTokens: usage.cache_creation_input_tokens ?? 0,
   };
 }
 
@@ -62,7 +76,7 @@ export function toVerdict(message: ParsedMessage<Answer>, path: string): Verdict
   if (!decision.success) {
     throw new CliError(`the judge gave an out-of-range probability ${answer.noul} for ${path}`);
   }
-  return { decision: decision.data, reason: answer.reason };
+  return { decision: decision.data, reason: answer.reason, usage: toUsage(message.usage) };
 }
 
 /** SDK errors become one-line `CliError`s naming the provider; anything else is a bug. */

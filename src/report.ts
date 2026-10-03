@@ -1,4 +1,12 @@
-import type { Finding, Report, RuleResult, RuleStatus, Summary } from "./result.ts";
+import type {
+  Count,
+  Finding,
+  Report,
+  RuleResult,
+  RuleStatus,
+  Summary,
+  UsageTotals,
+} from "./result.ts";
 
 /** What a formatter may need beyond the report itself. */
 export interface ReportMeta {
@@ -19,7 +27,7 @@ const LABELS: Record<RuleStatus, string> = {
 };
 
 /** The summary line always prints every count, in this order. */
-const SUMMARY_ORDER: (keyof Summary)[] = ["passed", "failed", "warned", "errored", "skipped"];
+const SUMMARY_ORDER: Count[] = ["passed", "failed", "warned", "errored", "skipped"];
 
 /** `path:line: ` when the finding has a location, else nothing. */
 function location(finding: Finding): string {
@@ -45,9 +53,23 @@ export function summaryLine(summary: Summary): string {
   return SUMMARY_ORDER.map((key) => `${summary[key]} ${key}`).join(", ");
 }
 
+/** `1 request`, `2 requests`. */
+export function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+/** What the run cost, only when a model was involved; input counts every token it read. */
+function usageLine(usage: UsageTotals): string[] {
+  const input = usage.inputTokens + usage.cacheReadInputTokens + usage.cacheCreationInputTokens;
+  const line = `${count(usage.requests, "request")} (${usage.cached} cached), ${count(input, "input token")}, ${count(usage.outputTokens, "output token")}`;
+  return usage.requests + usage.cached === 0 ? [] : [line];
+}
+
 export function formatText(report: Report): string {
   const lines = report.results.flatMap(resultLines);
-  return [...lines, "", summaryLine(report.summary), ""].join("\n");
+  return [...lines, "", summaryLine(report.summary), ...usageLine(report.summary.usage), ""].join(
+    "\n",
+  );
 }
 
 export function formatJson(report: Report): string {

@@ -1,5 +1,5 @@
 import type { Level, Rule, RuleKind } from "./config.ts";
-import type { Decision } from "./judge/judge.ts";
+import { type Decision, NO_USAGE, type Usage } from "./judge/judge.ts";
 
 /** One place a rule found wrong. `path` and `line` are relative to the root. */
 export interface Finding {
@@ -14,6 +14,28 @@ export interface Finding {
 export interface Skipped {
   path: string;
   message: string;
+}
+
+/**
+ * Tokens and calls summed over verdicts. `requests` went to the provider;
+ * `cached` came from the verdict cache and cost nothing.
+ */
+export interface UsageTotals extends Usage {
+  requests: number;
+  cached: number;
+}
+
+export const NO_TOTALS: UsageTotals = { ...NO_USAGE, requests: 0, cached: 0 };
+
+export function addTotals(a: UsageTotals, b: UsageTotals): UsageTotals {
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    cacheReadInputTokens: a.cacheReadInputTokens + b.cacheReadInputTokens,
+    cacheCreationInputTokens: a.cacheCreationInputTokens + b.cacheCreationInputTokens,
+    requests: a.requests + b.requests,
+    cached: a.cached + b.cached,
+  };
 }
 
 /** `error` means at least one file could not be judged; its findings say why. */
@@ -31,6 +53,8 @@ export interface RuleResult {
   decisions?: Record<string, Decision>;
   /** Files left out and why. Present only when there are any. */
   skipped?: Skipped[];
+  /** What the rule's requests cost. Only judged `standard` rules set it. */
+  usage?: UsageTotals;
 }
 
 export interface Summary {
@@ -39,7 +63,12 @@ export interface Summary {
   warned: number;
   errored: number;
   skipped: number;
+  /** What the whole run cost. Zero when no rule asked a model. */
+  usage: UsageTotals;
 }
+
+/** The counts in the summary, which the text format prints in this order. */
+export type Count = Exclude<keyof Summary, "usage">;
 
 export interface Report {
   results: RuleResult[];
@@ -70,7 +99,7 @@ export function skipResult(rule: Rule): RuleResult {
   return { ...base(rule), status: "skip", findings: [] };
 }
 
-const COUNTERS: Record<RuleStatus, keyof Summary> = {
+const COUNTERS: Record<RuleStatus, Count> = {
   pass: "passed",
   fail: "failed",
   warn: "warned",
@@ -79,7 +108,11 @@ const COUNTERS: Record<RuleStatus, keyof Summary> = {
 };
 
 export function summarize(results: RuleResult[]): Report {
-  const summary: Summary = { passed: 0, failed: 0, warned: 0, errored: 0, skipped: 0 };
+  const usage = results.reduce(
+    (total, result) => addTotals(total, result.usage ?? NO_TOTALS),
+    NO_TOTALS,
+  );
+  const summary: Summary = { passed: 0, failed: 0, warned: 0, errored: 0, skipped: 0, usage };
   for (const result of results) {
     summary[COUNTERS[result.status]] += 1;
   }

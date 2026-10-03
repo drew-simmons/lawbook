@@ -73,8 +73,13 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   which keeps results in input order, and lists files over `llm.maxBytes`
   under `RuleResult.skipped` instead of sending them.
 - `src/judge/` holds the `Judge` interface, the provider-neutral
-  `messagesJudge` core (fully tested with a stub `parse`), and the Bedrock
-  and Anthropic adapters, which only build a client. The adapters import
+  `messagesJudge` core (fully tested with a stub `parse`), the Bedrock
+  and Anthropic adapters, which only build a client, and `cache.ts`, a
+  `Judge` wrapper that answers from `node_modules/.cache/lawbook` when the
+  hash of model, prompt, standard, path, and content matches. The request
+  marks the standard block for the provider's prompt cache, and every
+  `Verdict` carries the provider's token `usage`, summed per rule and in
+  the summary. The adapters import
   their SDK lazily and stay at complexity 1, since no test covers them. `run`
   takes the factories as its `deps` argument; tests inject fakes. The judge
   returns a `Verdict`: a noul decision in the Jev decision schema plus a

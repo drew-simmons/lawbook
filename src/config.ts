@@ -79,6 +79,8 @@ const llmSchema = z
     concurrency: z.int().min(1).default(4),
     /** The largest file, in bytes, a `standard` rule sends to the model. */
     maxBytes: z.int().min(1).default(131072),
+    /** Whether verdicts are cached on disk and reused for unchanged files. */
+    cache: z.boolean().default(true),
   })
   .strict()
   .check((ctx) => {

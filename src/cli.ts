@@ -35,6 +35,8 @@ interface CheckFlags {
   files?: string[];
   changed?: boolean;
   since?: string;
+  cache: boolean;
+  cacheDir?: string;
 }
 
 /** Commander actions return nothing, so the exit code travels in here. */
@@ -58,6 +60,8 @@ async function runCheck(
     files: flags.files,
     changed: flags.changed,
     since: flags.since,
+    cache: flags.cache,
+    cacheDir: flags.cacheDir,
     judges: deps.judges,
   });
   output.stdout(FORMATTERS[flags.format](report, { version: pkg.version, root }));
@@ -87,6 +91,11 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
       "check only files changed in the working tree: staged, unstaged, untracked",
     )
     .option("--since <ref>", "check only files committed since the merge base with ref")
+    .option("--no-cache", "ask the model even when a cached verdict exists")
+    .option(
+      "--cache-dir <dir>",
+      "where verdicts are cached (default: node_modules/.cache/lawbook under root)",
+    )
     .action(async (root: string, flags: CheckFlags) => {
       exit.code = await runCheck(root, flags, output, deps);
     });
