@@ -11,6 +11,10 @@ sidebar:
 | `1`  | A requested check failed. Only `check` returns it, and only when a rule with `level: error` (the default) has a finding. Findings under a `level: warn` rule leave the code at `0`. |
 | `2`  | Lawbook could not do what was asked: bad usage, a missing or invalid config, an unreadable file, an invalid pattern, an unknown `--only` id, a directory that cannot be written, or a provider that could not be reached, refused the credentials, or gave no verdict. |
 
-Code `2` comes with a one-line `error:` message on stderr. Code `1` prints the
-findings on stdout and nothing on stderr, so a CI log shows the report once.
-A provider error stops the run before any report, so stdout stays empty.
+Code `1` prints the findings on stdout and nothing on stderr, so a CI log
+shows the report once. Code `2` for usage, config, or client setup problems
+comes with a one-line `error:` message on stderr and no report. Code `2` for
+a provider error during a `standard` rule still prints the report: the rule
+shows as `ERROR` with the files that could not be judged and their reasons,
+the other rules' results stand, and stderr stays empty. See
+[LLM rules](/llm-rules#provider-errors).

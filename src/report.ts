@@ -4,11 +4,12 @@ const LABELS: Record<RuleStatus, string> = {
   pass: "PASS",
   fail: "FAIL",
   warn: "WARN",
+  error: "ERROR",
   skip: "SKIP",
 };
 
 /** The summary line always prints every count, in this order. */
-const SUMMARY_ORDER: (keyof Summary)[] = ["passed", "failed", "warned", "skipped"];
+const SUMMARY_ORDER: (keyof Summary)[] = ["passed", "failed", "warned", "errored", "skipped"];
 
 /** `path:line: ` when the finding has a location, else nothing. */
 function location(finding: Finding): string {
