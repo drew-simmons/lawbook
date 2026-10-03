@@ -34,7 +34,8 @@ you have a tested fix.
    pnpm pack --dry-run
    ```
 
-The hook runs repository checks, Biome, the type checker, and the test suite.
+The hook runs repository checks, oxlint, oxfmt, the type checker, and the test
+suite.
 The matching commands are:
 
 ```sh

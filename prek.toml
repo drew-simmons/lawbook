@@ -19,7 +19,7 @@ hooks = [
 [[repos]]
 repo = "local"
 hooks = [
-  { id = "biome", name = "biome check", entry = "pnpm run lint", language = "system", pass_filenames = false, files = '\.(ts|json)$' },
+  { id = "lint", name = "oxlint and oxfmt", entry = "pnpm run lint", language = "system", pass_filenames = false, files = '\.(ts|json|ya?ml|toml)$' },
   { id = "typecheck", name = "tsc", entry = "pnpm run typecheck", language = "system", pass_filenames = false, files = '^((src|tests)/.*\.ts|[^/]*\.config\.ts|package\.json|pnpm-lock\.yaml|tsconfig\.json)$' },
   { id = "test", name = "vitest", entry = "pnpm test", language = "system", pass_filenames = false, files = '^((src|tests)/.*\.ts|[^/]*\.config\.ts|package\.json|pnpm-lock\.yaml|tsconfig\.json)$' },
 ]

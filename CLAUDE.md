@@ -12,7 +12,8 @@ pnpm test
 pnpm pack --dry-run
 ```
 
-`pnpm run format` applies Biome's fixes. `pnpm test` builds `dist/` first,
+`pnpm run lint` runs oxlint and checks formatting with oxfmt;
+`pnpm run format` applies both tools' fixes. `pnpm test` builds `dist/` first,
 because one test runs the built binary.
 
 `uvx prek run -a` runs the same three checks plus the file hygiene hooks,
