@@ -1,7 +1,6 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { expect, test } from "vitest";
-import { DEFAULT_MODELS } from "../src/config.ts";
 import { cacheKey, DEFAULT_CACHE_DIR } from "../src/judge/cache.ts";
 import {
   fakeJudge,
@@ -88,7 +87,7 @@ test("the default cache dir is node_modules/.cache/lawbook under the root", asyn
 test("a corrupt cache entry is a miss and is rewritten", async () => {
   await config(`rules:\n${STANDARD}`);
   await write(dir(), "a.ts", "throw new Error('bad');\n");
-  const key = cacheKey(DEFAULT_MODELS.bedrock, {
+  const key = cacheKey("anthropic.claude-opus-5-5", {
     standard: "Errors say what to do next",
     files: [{ path: "a.ts", content: "throw new Error('bad');\n" }],
   });

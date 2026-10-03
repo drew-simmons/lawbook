@@ -86,8 +86,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   the runner, the guards, and the result shape through lookup tables. A
   `JudgeRequest` always carries `files`, one for `scope: file`.
 - `src/judge/` holds the `Judge` interface, the provider-neutral
-  `messagesJudge` core (fully tested with a stub `parse`), the Bedrock
-  and Anthropic adapters, which only build a client, and `cache.ts`, a
+  `messagesJudge` core (fully tested with a stub `parse`), its Chat
+  Completions twin `chatJudge` in `chat.ts`, the Bedrock, Anthropic, and
+  OpenAI adapters, which only build a client, and `cache.ts`, a
   `Judge` wrapper that answers from `node_modules/.cache/lawbook` when the
   hash of model, prompt, standard, path, and content matches. The request
   marks the standard block for the provider's prompt cache, and every

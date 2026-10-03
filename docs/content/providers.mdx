@@ -1,6 +1,6 @@
 ---
 title: Providers
-description: Configure Amazon Bedrock, the default, or the Anthropic API for standard rules.
+description: Configure Amazon Bedrock, the default, the Anthropic API, or OpenAI for standard rules.
 sidebar:
   order: 4
 ---
@@ -19,9 +19,10 @@ llm:
 
 | Key           | Meaning                                                                                        |
 | ------------- | ---------------------------------------------------------------------------------------------- |
-| `provider`    | `bedrock` (default) or `anthropic`.                                                            |
-| `model`       | The model id in the provider's own naming. Defaults per provider, see below.                   |
-| `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. Setting it under `provider: anthropic` is a config error. |
+| `provider`    | `bedrock` (default), `anthropic`, or `openai`.                                                 |
+| `model`       | The model id in the provider's own naming. Defaults per provider, see below; `openai` has no default, so `model` is required. |
+| `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. Setting it under another provider is a config error. |
+| `baseUrl`     | OpenAI only. The URL of a server that speaks the Chat Completions API, in place of `https://api.openai.com/v1`. Setting it under another provider is a config error. |
 | `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
 | `cache`       | Whether verdicts are cached on disk and reused for unchanged files. Defaults to `true`; `--no-cache` overrides one run. See [LLM rules](/llm-rules#verdict-cache). |
 | `maxBytes`    | The largest file, in bytes, a `standard` rule sends. A whole number, at least `1`; defaults to `131072` (128 KiB). Larger files are listed as skipped and never judged. See [LLM rules](/llm-rules#large-files). |
@@ -63,10 +64,40 @@ Credentials come from the environment: `ANTHROPIC_API_KEY`, or a profile
 created with `ant auth login`. The default model is `claude-opus-5-5`, and ids
 have no prefix.
 
+## OpenAI
+
+```yaml
+llm:
+  provider: openai
+  model: gpt-5
+```
+
+The key comes from `OPENAI_API_KEY` in the environment. Lawbook sends the
+same prompt as to the other providers through the Chat Completions API with
+a JSON schema response format, so `model` must be one that supports
+structured outputs. There is no default model; name one.
+
+`baseUrl` points the same client at any server that speaks Chat Completions,
+such as a local model server, so a team can judge files without sending them
+outside its network:
+
+```yaml
+llm:
+  provider: openai
+  model: llama3.3
+  baseUrl: http://localhost:11434/v1
+```
+
+The server must support `response_format` with `json_schema`; one that does
+not answers with a provider error. OpenAI caches shared prompt prefixes on
+its own, and lawbook reports the tokens it served from that cache under
+`cacheReadInputTokens`, as it does for the Anthropic providers.
+
 ## No network in tests
 
 Both providers sit behind one `Judge` interface, and `run` accepts the
 factories that build them, so a test or an embedding program can pass its own
 judge and never reach a network. The package exports `messagesJudge`, the
-provider-neutral core both adapters wrap, for anyone adding a provider that
-speaks the Anthropic Messages API.
+provider-neutral core the Bedrock and Anthropic adapters wrap, and
+`chatJudge`, which the OpenAI adapter wraps, for anyone adding a provider
+that speaks the Anthropic Messages API or the Chat Completions API.

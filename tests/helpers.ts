@@ -13,6 +13,7 @@ import type { Judge, JudgeRequest, Judges, Usage, Verdict } from "../src/judge/j
 export const noJudges: Judges = {
   bedrock: () => Promise.reject(new Error("tests must inject a judge")),
   anthropic: () => Promise.reject(new Error("tests must inject a judge")),
+  openai: () => Promise.reject(new Error("tests must inject a judge")),
 };
 
 /**
@@ -161,5 +162,10 @@ export function fakeJudge(verdicts: Record<string, Verdict> = {}): FakeJudge {
     built.push(llm);
     return judge;
   };
-  return { judge, requests, built, deps: { judges: { bedrock: factory, anthropic: factory } } };
+  return {
+    judge,
+    requests,
+    built,
+    deps: { judges: { bedrock: factory, anthropic: factory, openai: factory } },
+  };
 }
