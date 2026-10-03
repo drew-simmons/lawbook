@@ -1,5 +1,6 @@
 import { Command, CommanderError, Option } from "commander";
 import pkg from "../package.json" with { type: "json" };
+import { assertWithinBudget, parseCount, requestLimit } from "./budget.ts";
 import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
 import { CliError, errorMessage } from "./errors.ts";
@@ -40,6 +41,7 @@ interface CheckFlags {
   cacheDir?: string;
   dryRun?: boolean;
   explain?: boolean;
+  maxRequests?: number;
 }
 
 /** Commander actions return nothing, so the exit code travels in here. */
@@ -77,6 +79,7 @@ async function runCheck(
   if (flags.dryRun === true) {
     return runPlan(options, flags.format, output);
   }
+  await checkBudget(options, flags);
   const report = await check({
     ...options,
     cache: flags.cache,
@@ -86,6 +89,14 @@ async function runCheck(
   });
   output.stdout(FORMATTERS[flags.format](report, { version: pkg.version, root }));
   return exitCodeFor(report);
+}
+
+/** Under a request cap, counts the plan first; `--no-llm` makes no requests, so it never trips. */
+async function checkBudget(options: PlanOptions, flags: CheckFlags): Promise<void> {
+  const limit = requestLimit(options.config, flags.maxRequests);
+  if (limit !== undefined && flags.llm) {
+    await assertWithinBudget(options, limit);
+  }
 }
 
 function initCommand(output: Output): Command {
@@ -113,6 +124,11 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
     .option("--since <ref>", "check only files committed since the merge base with ref")
     .option("--dry-run", "list the files each rule would check and exit without reading them")
     .option("--explain", "print the model's reason for files that pass, not only for findings")
+    .option(
+      "--max-requests <n>",
+      "stop before asking the model when the run would make more requests than this (default: llm.maxRequests)",
+      (value: string) => parseCount("--max-requests", value),
+    )
     .option("--no-cache", "ask the model even when a cached verdict exists")
     .option(
       "--cache-dir <dir>",

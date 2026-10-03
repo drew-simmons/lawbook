@@ -29,6 +29,7 @@ version: 1
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
 #   cache: true                 # reuse verdicts for unchanged files
+#   maxRequests: 200            # stop before the first request when a run would exceed this
 
 rules:
   # \`absent\` fails when the path exists.

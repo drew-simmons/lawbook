@@ -3,6 +3,7 @@
  * logic lives in modules here.
  */
 export { type CandidateSource, candidatesFor } from "./candidates.ts";
+export { assertWithinBudget, parseCount, requestLimit } from "./budget.ts";
 export { check, type CheckOptions, judgesFor } from "./check.ts";
 export {
   type Config,

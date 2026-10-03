@@ -225,6 +225,28 @@ the lockfile or the branch; a stale entry only costs one request. A cache
 file lawbook cannot write is reported as that file's error, like a provider
 error, with the two flags to try.
 
+## Budget
+
+A `**/*` glob on a large repository can turn one run into thousands of
+requests. `llm.maxRequests` caps a run: before any client is built, lawbook
+counts the requests the way `--dry-run` does and stops with exit code `2`
+when the count is over the cap, naming both numbers and what to do:
+
+```yaml
+llm:
+  maxRequests: 200
+```
+
+```txt
+error: the run would make 412 model requests, over llm.maxRequests 200; narrow files, pass --only, or raise the limit
+```
+
+The count is the plan's, so it includes files the [verdict cache](#verdict-cache)
+would answer and files the size and suppression guards would drop; it is an
+upper bound on what the run would send. `--max-requests <n>` overrides the
+config for one run, and `--no-llm` makes no requests, so the cap never
+applies to it.
+
 ## Large files
 
 A `standard` rule never sends a file larger than `llm.maxBytes` (default

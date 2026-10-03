@@ -31,6 +31,7 @@ line per rule followed by a summary.
 | `--since <ref>`         | Check only files committed since the merge base with `ref`, as `git diff <ref>...HEAD` lists them. |
 | `--dry-run`             | List the files each rule would check and how many model requests the run would make, then exit `0` without reading a file or building a client. Text or JSON only. |
 | `--explain`             | Print the model's reason for files that pass a `standard` rule, not only for findings. JSON carries them as `reasons` by path, or `reason` for a set. |
+| `--max-requests <n>`    | Stop with exit code `2` before asking the model when the run would make more than `n` requests. Overrides `llm.maxRequests`. See [LLM rules](/llm-rules#budget). |
 | `--no-cache`            | Ask the model for every file even when a cached verdict exists. See [LLM rules](/llm-rules#verdict-cache). |
 | `--cache-dir <dir>`     | Where verdicts are cached. Relative to the current directory; default `node_modules/.cache/lawbook` under `root`. |
 
