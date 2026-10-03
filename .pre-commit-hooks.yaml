@@ -1,0 +1,18 @@
+# Hook definitions for pre-commit and prek. Both hooks take the staged file
+# names, so only what is being committed is checked.
+- id: lawbook
+  name: lawbook (no model)
+  description: Checks the staged files against lawbook.yaml without asking a model
+  entry: lawbook check . --no-llm --files
+  language: node
+  pass_filenames: true
+  types: [text]
+  require_serial: true
+- id: lawbook-llm
+  name: lawbook
+  description: Checks the staged files against lawbook.yaml, including standard rules
+  entry: lawbook check . --files
+  language: node
+  pass_filenames: true
+  types: [text]
+  require_serial: true
