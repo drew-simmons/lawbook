@@ -59,6 +59,11 @@ it could not run at all, so it works as a CI step without extra scripting:
 - run: npx lawbook check
 ```
 
+On a pull request, check only the files the branch changed with
+`--since origin/main`, and in a pre-commit hook pass the staged files with
+`--files`; see [Commands](/commands#checking-a-subset-of-files). Both keep a
+`standard` rule's model requests to the files that moved.
+
 Point it at another directory, or at a config kept elsewhere:
 
 ```sh

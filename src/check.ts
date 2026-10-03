@@ -1,5 +1,7 @@
 import type { Config, Rule, RuleKind, RuleOf } from "./config.ts";
 import { CliError } from "./errors.ts";
+import { underRoot } from "./files.ts";
+import { changedFiles } from "./git.ts";
 import type { Judge, Judges } from "./judge/judge.ts";
 import { type Report, type RuleResult, summarize } from "./result.ts";
 import { checkAbsent, checkExists, checkForbid, checkRequire } from "./rules/deterministic.ts";
@@ -13,6 +15,12 @@ export interface CheckOptions {
   only?: string[];
   /** `false` reports `standard` rules as skipped instead of asking a model. */
   llm?: boolean;
+  /** Check only these files, given relative to the current directory or absolute. */
+  files?: string[];
+  /** Check only files changed in the working tree against HEAD. */
+  changed?: boolean;
+  /** Check only files committed since the merge base with this ref. */
+  since?: string;
   /** The provider factories; the config's `llm.provider` picks one. */
   judges: Judges;
 }
@@ -51,12 +59,40 @@ async function judgeFor(rules: Rule[], options: CheckOptions): Promise<Judge | u
   return wanted ? options.judges[llm.provider](llm) : undefined;
 }
 
+/** The root-relative paths `files` names; those outside the root are dropped. */
+function namedFiles(root: string, files: string[] | undefined): string[] | undefined {
+  return files === undefined ? undefined : files.flatMap((file) => underRoot(root, file) ?? []);
+}
+
+function workingTreeFiles(options: CheckOptions): Promise<string[] | undefined> {
+  return options.changed === true ? changedFiles(options.root) : Promise.resolve(undefined);
+}
+
+function committedFiles(options: CheckOptions): Promise<string[] | undefined> {
+  const { root, since } = options;
+  return since === undefined ? Promise.resolve(undefined) : changedFiles(root, since);
+}
+
+/**
+ * The files `files` rules may select: the union of every selector given, or
+ * undefined when none was, so every file may be.
+ */
+async function candidatesFor(options: CheckOptions): Promise<Set<string> | undefined> {
+  const selected = [
+    namedFiles(options.root, options.files),
+    await workingTreeFiles(options),
+    await committedFiles(options),
+  ].filter((paths) => paths !== undefined);
+  return selected.length === 0 ? undefined : new Set(selected.flat());
+}
+
 /** Runs the rules in config order and reports every result. */
 export async function check(options: CheckOptions): Promise<Report> {
   const rules = filterOnly(options.config.rules, options.only);
   const ctx: JudgeContext = {
     root: options.root,
     ignore: options.config.ignore,
+    candidates: await candidatesFor(options),
     judge: await judgeFor(rules, options),
     concurrency: options.config.llm.concurrency,
   };

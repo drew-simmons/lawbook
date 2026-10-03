@@ -57,6 +57,11 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   adds a `kind` so `src/check.ts` can dispatch through a lookup table instead
   of a chain of `if`s. New rule kinds add a schema, a runner in `src/rules/`,
   and a table entry.
+- `src/files.ts` globs the files a rule selects and, when `check` was given
+  `--files`, `--changed`, or `--since`, keeps only the candidates in
+  `RuleContext.candidates`. `src/git.ts` runs git under the root and
+  rebases the paths it reports onto the root; tests build real repositories
+  in a temp dir with `gitRepo()` from `tests/helpers.ts`.
 - `src/rules/deterministic.ts` implements `forbid`, `require`, `exists`, and
   `absent`. Runners take a rule and a `RuleContext` and return a `RuleResult`
   from `src/result.ts`. `src/rules/llm.ts` implements `standard` through a
