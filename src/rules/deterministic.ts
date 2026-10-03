@@ -41,12 +41,12 @@ export async function readSelected(rule: FileSelection, ctx: RuleContext): Promi
   return read.filter((file) => file !== undefined);
 }
 
-/** One finding per matching line the file's markers do not suppress for `id`, carrying the trimmed line. */
-function lineFindings(file: SourceFile, pattern: RegExp, id: string): Finding[] {
+/** One finding per matching line the file's markers do not suppress, carrying the rule's `message` or the trimmed line. */
+function lineFindings(file: SourceFile, pattern: RegExp, rule: RuleOf<"forbid">): Finding[] {
   const marks = parseSuppressions(file.content);
   return splitLines(file.content).flatMap((line, index) =>
-    pattern.test(line) && !suppressed(marks, id, index + 1)
-      ? [{ path: file.path, line: index + 1, message: line.trim() }]
+    pattern.test(line) && !suppressed(marks, rule.id, index + 1)
+      ? [{ path: file.path, line: index + 1, message: rule.message ?? line.trim() }]
       : [],
   );
 }
@@ -61,8 +61,13 @@ export async function checkForbid(rule: RuleOf<"forbid">, ctx: RuleContext): Pro
   const files = await readSelected(rule, ctx);
   return ruleResult(
     rule,
-    files.flatMap((file) => lineFindings(file, pattern, rule.id)),
+    files.flatMap((file) => lineFindings(file, pattern, rule)),
   );
+}
+
+/** The rule's `message`, else what the file failed to match. */
+function requireMessage(rule: RuleOf<"require">): string {
+  return rule.message ?? `does not match /${rule.require}/`;
 }
 
 export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): Promise<RuleResult> {
@@ -72,7 +77,7 @@ export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): P
     .filter(
       (file) => !matches(pattern, file) && !suppressed(parseSuppressions(file.content), rule.id),
     )
-    .map((file) => ({ path: file.path, message: `does not match /${rule.require}/` }));
+    .map((file) => ({ path: file.path, message: requireMessage(rule) }));
   return ruleResult(rule, findings);
 }
 
