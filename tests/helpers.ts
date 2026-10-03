@@ -76,6 +76,11 @@ export interface FakeJudge {
   deps: Deps;
 }
 
+/** A yes/no verdict, for tests that script the judge. */
+export function noul(probability: number, reason: string): Verdict {
+  return { decision: { type: "noul", noul: probability }, reason };
+}
+
 /** A judge that answers from `verdicts` by path and passes anything else. */
 export function fakeJudge(verdicts: Record<string, Verdict> = {}): FakeJudge {
   const requests: JudgeRequest[] = [];
@@ -83,7 +88,7 @@ export function fakeJudge(verdicts: Record<string, Verdict> = {}): FakeJudge {
   const judge: Judge = {
     judge: async (request) => {
       requests.push(request);
-      return verdicts[request.path] ?? { pass: true, reason: "fine" };
+      return verdicts[request.path] ?? noul(1, "fine");
     },
   };
   const factory = async (llm: LlmConfig) => {

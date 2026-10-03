@@ -44,6 +44,33 @@ test("check rejects a rule with two kinds", async () => {
   expect(result.stderr).toContain("rules[0]");
 });
 
+const STANDARD = "  - id: s\n    files: ['**/*.ts']\n    standard: Errors say what to do next\n";
+
+test.each([
+  ["above one", "1.5"],
+  ["negative", "-0.1"],
+])("check rejects a threshold that is %s", async (_name, threshold) => {
+  await write(
+    dir(),
+    "lawbook.yaml",
+    `version: 1\nrules:\n${STANDARD}    threshold: ${threshold}\n`,
+  );
+  const result = await lawbook("check", dir(), "--no-llm");
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0]");
+});
+
+test("check rejects threshold on a deterministic rule", async () => {
+  await write(
+    dir(),
+    "lawbook.yaml",
+    "version: 1\nrules:\n  - id: a\n    files: ['**/*']\n    forbid: x\n    threshold: 0.5\n",
+  );
+  const result = await lawbook("check", dir(), "--no-llm");
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0]");
+});
+
 test("check rejects duplicate ids", async () => {
   await write(
     dir(),

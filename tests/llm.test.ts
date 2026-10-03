@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { DEFAULT_MODELS } from "../src/config.ts";
 import { defaultJudges } from "../src/judge/index.ts";
-import { fakeJudge, lawbook, lawbookWith, useTempDir, write } from "./helpers.ts";
+import { fakeJudge, lawbook, lawbookWith, noul, useTempDir, write } from "./helpers.ts";
 
 const dir = useTempDir();
 
@@ -21,20 +21,69 @@ test("standard rule passes when the judge passes every file", async () => {
   expect(result.stdout).toBe("PASS actionable-errors\n\n1 passed, 0 failed, 0 skipped\n");
 });
 
-test("standard rule fails listing each failing file with its reason", async () => {
+test("standard rule fails listing each failing file with its reason and probability", async () => {
   await config(`rules:\n${STANDARD}`);
   await write(dir(), "a.ts", "throw new Error('bad');\n");
   await write(dir(), "b.ts", "throw new Error('set NAME');\n");
   await write(dir(), "c.ts", "throw new Error('oops');\n");
   const fake = fakeJudge({
-    "a.ts": { pass: false, reason: "'bad' names no next step" },
-    "c.ts": { pass: false, reason: "'oops' names no next step" },
+    "a.ts": noul(0.1, "'bad' names no next step"),
+    "c.ts": noul(0.2, "'oops' names no next step"),
   });
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(1);
   expect(result.stdout).toBe(
-    "FAIL actionable-errors\n  a.ts: 'bad' names no next step\n  c.ts: 'oops' names no next step\n\n0 passed, 1 failed, 0 skipped\n",
+    "FAIL actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  c.ts: 'oops' names no next step (noul 0.20)\n\n0 passed, 1 failed, 0 skipped\n",
   );
+});
+
+test("a file at the default threshold passes and one just under it fails", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  await write(dir(), "b.ts", "const b = 2;\n");
+  const fake = fakeJudge({ "a.ts": noul(0.5, "cannot tell"), "b.ts": noul(0.49, "under") });
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toBe(
+    "FAIL actionable-errors\n  b.ts: under (noul 0.49)\n\n0 passed, 1 failed, 0 skipped\n",
+  );
+});
+
+test("threshold raises the bar for a standard rule", async () => {
+  await config(`rules:\n${STANDARD}    threshold: 0.9\n`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const fake = fakeJudge({ "a.ts": noul(0.8, "close") });
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toBe(
+    "FAIL actionable-errors\n  a.ts: close (noul 0.80)\n\n0 passed, 1 failed, 0 skipped\n",
+  );
+});
+
+test("--format json carries every decision and the failing finding's decision", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  await write(dir(), "b.ts", "const b = 2;\n");
+  const fake = fakeJudge({ "a.ts": noul(0.1, "no next step") });
+  const result = await lawbookWith(fake.deps, "check", dir(), "--format", "json");
+  expect(result.code).toBe(1);
+  expect(JSON.parse(result.stdout)).toEqual({
+    results: [
+      {
+        id: "actionable-errors",
+        kind: "standard",
+        status: "fail",
+        findings: [
+          { path: "a.ts", message: "no next step", decision: { type: "noul", noul: 0.1 } },
+        ],
+        decisions: {
+          "a.ts": { type: "noul", noul: 0.1 },
+          "b.ts": { type: "noul", noul: 1 },
+        },
+      },
+    ],
+    summary: { passed: 0, failed: 1, skipped: 0 },
+  });
 });
 
 test("standard rule sends the standard, path, and content for each file in order", async () => {
@@ -52,9 +101,12 @@ test("standard rule sends the standard, path, and content for each file in order
 test("standard rule with no selected files passes without asking the judge", async () => {
   await config(`rules:\n${STANDARD}`);
   const fake = fakeJudge();
-  const result = await lawbookWith(fake.deps, "check", dir());
+  const result = await lawbookWith(fake.deps, "check", dir(), "--format", "json");
   expect(result.code).toBe(0);
   expect(fake.requests).toEqual([]);
+  expect(JSON.parse(result.stdout).results).toEqual([
+    { id: "actionable-errors", kind: "standard", status: "pass", findings: [], decisions: {} },
+  ]);
 });
 
 test("--no-llm skips standard rules without building a judge", async () => {

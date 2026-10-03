@@ -65,7 +65,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   `messagesJudge` core (fully tested with a stub `parse`), and the Bedrock
   and Anthropic adapters, which only build a client. The adapters import
   their SDK lazily and stay at complexity 1, since no test covers them. `run`
-  takes the factories as its `deps` argument; tests inject fakes.
+  takes the factories as its `deps` argument; tests inject fakes. The judge
+  returns a `Verdict`: a noul decision in the Jev decision schema plus a
+  reason; `src/rules/llm.ts` compares the probability to the rule's
+  `threshold`.
 - `src/report.ts` formats a `Report` as text or JSON.
 - `src/errors.ts` has `CliError` for problems the user can act on; the CLI
   prints its message without a stack and exits 2.

@@ -40,9 +40,11 @@ rules:
   # - id: has-readme
   #   exists: README.md
 
-  # \`standard\` asks the model whether each selected file meets the prose.
+  # \`standard\` asks the model for the probability that each selected file
+  # meets the prose, and fails a file below \`threshold\` (default 0.5).
   # - id: errors-are-actionable
   #   files: ["src/**/*.ts"]
+  #   threshold: 0.5
   #   standard: |
   #     Every error message shown to a user says what went wrong and what
   #     to do next.

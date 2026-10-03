@@ -3,25 +3,32 @@ import { AnthropicError } from "@anthropic-ai/sdk/error";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages";
 import { CliError } from "../errors.ts";
-import { type Judge, type JudgeRequest, type Verdict, verdictSchema } from "./judge.ts";
+import { type Answer, answerSchema, type Judge, type JudgeRequest, type Verdict } from "./judge.ts";
 
 export const SYSTEM_PROMPT = `You review one file against one written standard.
 
-Decide whether the file meets the standard. Judge only what the standard
-says: a file that has other problems still passes when the standard is met,
-and a file the standard does not apply to passes. Base the verdict on the
-file alone. In the reason, cite the evidence in one or two sentences, quoting
-the relevant line when that helps the reader find it.`;
+Give the probability, from 0 to 1, that the file meets the standard. Judge
+only what the standard says: a file that has other problems still meets the
+standard when the standard is met, and a file the standard does not apply to
+meets it. Base the probability on the file alone.
 
-/** A Messages API request whose answer parses into a `Verdict`. */
-export type VerdictParams = MessageCreateParamsNonStreaming & {
-  output_config: { format: AutoParseableOutputFormat<Verdict> };
+Calibrate the number. 1 means the file plainly meets the standard and 0
+means it plainly does not. 0.5 means the file gives no way to tell. Use
+values in between when the evidence is mixed, and stay away from 0 and 1
+unless the file leaves no doubt.
+
+In the reason, cite the evidence in one or two sentences, quoting the
+relevant line when that helps the reader find it.`;
+
+/** A Messages API request whose answer parses into an `Answer`. */
+export type AnswerParams = MessageCreateParamsNonStreaming & {
+  output_config: { format: AutoParseableOutputFormat<Answer> };
 };
 
 /** `client.messages.parse` from any Anthropic SDK client. */
-export type ParseFn = (params: VerdictParams) => Promise<ParsedMessage<Verdict>>;
+export type ParseFn = (params: AnswerParams) => Promise<ParsedMessage<Answer>>;
 
-export function buildRequest(request: JudgeRequest, model: string): VerdictParams {
+export function buildRequest(request: JudgeRequest, model: string): AnswerParams {
   return {
     model,
     max_tokens: 1024,
@@ -32,18 +39,19 @@ export function buildRequest(request: JudgeRequest, model: string): VerdictParam
         content: `Standard:\n${request.standard}\n\nFile: ${request.path}\n\n${request.content}`,
       },
     ],
-    output_config: { format: zodOutputFormat(verdictSchema) },
+    output_config: { format: zodOutputFormat(answerSchema) },
   };
 }
 
-/** The parsed verdict, or an error naming why the model gave none. */
-export function toVerdict(message: ParsedMessage<Verdict>, path: string): Verdict {
-  if (message.parsed_output === null) {
+/** The parsed answer as a noul decision, or an error naming why the model gave none. */
+export function toVerdict(message: ParsedMessage<Answer>, path: string): Verdict {
+  const answer = message.parsed_output;
+  if (answer === null) {
     throw new CliError(
       `the judge gave no verdict for ${path} (stop reason: ${message.stop_reason})`,
     );
   }
-  return message.parsed_output;
+  return { decision: { type: "noul", noul: answer.noul }, reason: answer.reason };
 }
 
 /** SDK errors become one-line `CliError`s naming the provider; anything else is a bug. */

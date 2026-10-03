@@ -8,24 +8,24 @@ import {
 import { expect, test } from "vitest";
 import { CliError } from "../src/errors.ts";
 import { bedrockRegion } from "../src/judge/bedrock.ts";
-import type { Verdict } from "../src/judge/judge.ts";
+import { type Answer, decisionSchema } from "../src/judge/judge.ts";
 import {
+  type AnswerParams,
   messagesJudge,
   type ParseFn,
   SYSTEM_PROMPT,
-  type VerdictParams,
 } from "../src/judge/messages.ts";
 
 const REQUEST = { standard: "Errors are actionable", path: "src/a.ts", content: "throw 1;\n" };
 
-function message(parsed: Verdict | null, stopReason = "end_turn"): ParsedMessage<Verdict> {
+function message(parsed: Answer | null, stopReason = "end_turn"): ParsedMessage<Answer> {
   return {
     id: "msg_1",
     type: "message",
     role: "assistant",
     model: "anthropic.claude-opus-5-5",
     content: [],
-    stop_reason: stopReason as ParsedMessage<Verdict>["stop_reason"],
+    stop_reason: stopReason as ParsedMessage<Answer>["stop_reason"],
     stop_sequence: null,
     stop_details: null,
     usage: {
@@ -46,8 +46,8 @@ function message(parsed: Verdict | null, stopReason = "end_turn"): ParsedMessage
 }
 
 /** A `parse` that records its params and answers with `result`. */
-function stubParse(result: ParsedMessage<Verdict> | Error) {
-  const calls: VerdictParams[] = [];
+function stubParse(result: ParsedMessage<Answer> | Error) {
+  const calls: AnswerParams[] = [];
   const parse: ParseFn = async (params) => {
     calls.push(params);
     if (result instanceof Error) {
@@ -58,8 +58,8 @@ function stubParse(result: ParsedMessage<Verdict> | Error) {
   return { parse, calls };
 }
 
-test("messagesJudge sends the standard and file with the verdict format", async () => {
-  const stub = stubParse(message({ pass: true, reason: "ok" }));
+test("messagesJudge sends the standard and file with the answer format", async () => {
+  const stub = stubParse(message({ noul: 0.9, reason: "ok" }));
   await messagesJudge(stub.parse, "anthropic.claude-opus-5-5", "bedrock").judge(REQUEST);
   expect(stub.calls).toHaveLength(1);
   const [params] = stub.calls;
@@ -75,14 +75,22 @@ test("messagesJudge sends the standard and file with the verdict format", async 
   expect(params?.output_config.format.type).toBe("json_schema");
   expect(params?.output_config.format.schema).toMatchObject({
     type: "object",
-    required: ["pass", "reason"],
+    required: ["noul", "reason"],
+    properties: { noul: { type: "number" }, reason: { type: "string" } },
   });
 });
 
-test("messagesJudge returns the parsed verdict", async () => {
-  const stub = stubParse(message({ pass: false, reason: "no next step" }));
+test("messagesJudge returns the answer as a noul decision with its reason", async () => {
+  const stub = stubParse(message({ noul: 0.2, reason: "no next step" }));
   const verdict = await messagesJudge(stub.parse, "m", "bedrock").judge(REQUEST);
-  expect(verdict).toEqual({ pass: false, reason: "no next step" });
+  expect(verdict).toEqual({ decision: { type: "noul", noul: 0.2 }, reason: "no next step" });
+});
+
+test("decisionSchema is a Jev noul with a probability within 0 and 1", () => {
+  expect(decisionSchema.parse({ type: "noul", noul: 0.98 })).toEqual({ type: "noul", noul: 0.98 });
+  expect(decisionSchema.safeParse({ type: "noul", noul: 1.2 }).success).toBe(false);
+  expect(decisionSchema.safeParse({ type: "noul", noul: -0.1 }).success).toBe(false);
+  expect(decisionSchema.safeParse({ type: "choice", choice: "x" }).success).toBe(false);
 });
 
 test("a missing verdict becomes a CliError naming the stop reason", async () => {

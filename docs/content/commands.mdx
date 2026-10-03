@@ -40,8 +40,8 @@ PASS has-readme
 
 Findings under a `forbid` rule read `path:line: <the line>`; under `require`,
 `path: does not match /pattern/`; under `exists` and `absent`, `path: missing`
-or `path: exists`; under `standard`, `path: <the model's reason>`. A skipped
-rule prints `SKIP <id>` with no findings.
+or `path: exists`; under `standard`, `path: <the model's reason> (noul
+<probability>)`. A skipped rule prints `SKIP <id>` with no findings.
 
 ### JSON output
 
@@ -53,11 +53,33 @@ rule prints `SKIP <id>` with no findings.
       "kind": "require",
       "status": "fail",
       "findings": [{ "path": "src/cli.ts", "message": "does not match /^// SPDX-License-Identifier: /" }]
+    },
+    {
+      "id": "errors-are-actionable",
+      "kind": "standard",
+      "status": "fail",
+      "findings": [
+        {
+          "path": "src/cli.ts",
+          "message": "\"unexpected state\" on line 41 says what broke but not what to do.",
+          "decision": { "type": "noul", "noul": 0.12 }
+        }
+      ],
+      "decisions": {
+        "src/cli.ts": { "type": "noul", "noul": 0.12 },
+        "src/init.ts": { "type": "noul", "noul": 0.97 }
+      }
     }
   ],
-  "summary": { "passed": 0, "failed": 1, "skipped": 0 }
+  "summary": { "passed": 0, "failed": 2, "skipped": 0 }
 }
 ```
 
 `status` is `pass`, `fail`, or `skip` (a `standard` rule under `--no-llm`).
 `findings` carry `path` and, for `forbid`, a 1-based `line`.
+
+A judged `standard` rule adds `decisions`, every judged file's decision keyed
+by path, and each of its findings carries its own `decision`. A decision
+follows the Jev decision schema: `{ "type": "noul", "noul": <0..1> }`, the
+probability that the file meets the standard. See
+[LLM rules](/llm-rules#decisions).

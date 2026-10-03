@@ -6,8 +6,9 @@ sidebar:
 ---
 
 A `standard` rule states a standard in prose. `lawbook check` sends each
-selected file to a model with that text and asks for a verdict: does the file
-meet the standard, and why. A file that does not is a finding.
+selected file to a model with that text and asks for a decision: the
+probability that the file meets the standard, and why. A file whose
+probability falls below the rule's `threshold` (default `0.5`) is a finding.
 
 ```yaml
 version: 1
@@ -24,7 +25,7 @@ rules:
 
 ```txt
 FAIL errors-are-actionable
-  src/cli.ts: "unexpected state" on line 41 says what broke but not what to do.
+  src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
 
 0 passed, 1 failed, 0 skipped
 ```
@@ -33,12 +34,49 @@ FAIL errors-are-actionable
 
 For each file, one request carries a fixed system prompt, the standard, the
 file's path, and its full content. The model answers with structured JSON,
-`{ "pass": boolean, "reason": string }`, so there is nothing to parse from
+`{ "noul": number, "reason": string }`, so there is nothing to parse from
 prose. The system prompt tells the model to judge only what the standard
-says, to pass files the standard does not apply to, and to cite its evidence.
+says, to treat files the standard does not apply to as meeting it, to
+calibrate the number so that `0.5` means the file gives no way to tell, and
+to cite its evidence.
 
 Files are judged one at a time, in path order, with no context from other
 files. Write standards that one file can satisfy on its own.
+
+## Decisions
+
+lawbook records each answer as a decision in the
+[Jev decision schema](https://docs.typesafe.ai/api). A `standard` rule is a
+yes/no question, which Jev calls a *noul*:
+
+```json
+{ "type": "noul", "noul": 0.12 }
+```
+
+`noul` is the probability, from `0` to `1`, that the file meets the standard.
+There is no separate confidence: the probability already says how sure the
+model is, and `0.5` means it cannot tell.
+
+JSON output lists every judged file's decision under `decisions`, and each
+failing finding carries its own `decision`. See
+[Commands](/commands#json-output).
+
+## Threshold
+
+`threshold` sets the probability a file must reach to pass. It ranges from
+`0` to `1` and defaults to `0.5`, so by default a file the model cannot judge
+either way passes.
+
+```yaml
+rules:
+  - id: errors-are-actionable
+    files: ["src/**/*.ts"]
+    threshold: 0.8
+    standard: Every error message says what went wrong and what to do next.
+```
+
+Raise it for standards that must be met beyond doubt; lower it to flag only
+clear violations. A `threshold` of `1` fails anything but a certain pass.
 
 ## Writing a good standard
 
@@ -53,11 +91,13 @@ files. Write standards that one file can satisfy on its own.
 
 ## Repeatability
 
-Models can give different verdicts for the same file on different runs, so a
-`standard` rule is not as repeatable as a `forbid` rule. Where a regular
-expression can express the standard, prefer `forbid` or `require`. Reserve
-`standard` for judgment calls, and treat a failure as a prompt for a human to
-look at the file.
+Models can give different probabilities for the same file on different runs,
+so a `standard` rule is not as repeatable as a `forbid` rule. The number makes
+borderline files visible: a file that flips between `0.48` and `0.52` is
+telling you the standard's wording is unclear, not that the model is. Where a
+regular expression can express the standard, prefer `forbid` or `require`.
+Reserve `standard` for judgment calls, and treat a failure as a prompt for a
+human to look at the file.
 
 ## Skipping
 
