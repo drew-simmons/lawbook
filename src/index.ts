@@ -68,6 +68,7 @@ export {
   testFixtures,
 } from "./fixtures.ts";
 export { formatGithub } from "./github.ts";
+export { formatGitlab, type GitlabIssue } from "./gitlab.ts";
 export {
   type Formatter,
   formatJson,

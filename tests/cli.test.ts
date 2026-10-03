@@ -32,7 +32,7 @@ test("unknown flag exits two", async () => {
 test("check help lists every output format", async () => {
   const result = await lawbook("check", "--help");
   expect(result.code).toBe(0);
-  for (const format of ["text", "json", "github", "sarif"]) {
+  for (const format of ["text", "json", "github", "sarif", "gitlab"]) {
     expect(result.stdout).toContain(`"${format}"`);
   }
 });

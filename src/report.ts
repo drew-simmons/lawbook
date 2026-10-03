@@ -16,6 +16,8 @@ export interface ReportMeta {
   version: string;
   /** The checked directory, for formats that need absolute locations. */
   root: string;
+  /** The config file, relative to the root, for findings that have no path of their own. */
+  config: string;
 }
 
 export type Formatter = (report: Report, meta: ReportMeta) => string;

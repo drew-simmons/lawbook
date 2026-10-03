@@ -1,9 +1,11 @@
+import path from "node:path";
 import { Command, CommanderError, Option } from "commander";
 import pkg from "../package.json" with { type: "json" };
 import { assertWithinBudget, parseCount, requestLimit } from "./budget.ts";
 import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
 import { CliError, errorMessage } from "./errors.ts";
+import { underRoot } from "./files.ts";
 import { exitCodeForFixtures, testFixtures } from "./fixtures.ts";
 import { init } from "./init.ts";
 import { defaultJudges } from "./judge/index.ts";
@@ -18,6 +20,7 @@ import {
   FORMATTERS,
   PLAN_FORMATTERS,
 } from "./formats.ts";
+import type { ReportMeta } from "./report.ts";
 import { exitCodeFor } from "./result.ts";
 
 /** Where the CLI writes. Tests pass their own to capture output. */
@@ -96,7 +99,7 @@ async function runCheck(
     judges: deps.judges,
     explain: flags.explain,
   });
-  output.stdout(FORMATTERS[flags.format](report, { version: pkg.version, root }));
+  output.stdout(FORMATTERS[flags.format](report, reportMeta(root, file)));
   return exitCodeFor(report);
 }
 
@@ -106,6 +109,11 @@ async function checkBudget(options: PlanOptions, flags: CheckFlags): Promise<voi
   if (limit !== undefined && flags.llm) {
     await assertWithinBudget(options, limit);
   }
+}
+
+/** The config file relative to the root, or just its name when it lies outside. */
+function reportMeta(root: string, file: string): ReportMeta {
+  return { version: pkg.version, root, config: underRoot(root, file) ?? path.basename(file) };
 }
 
 interface TestFlags {
