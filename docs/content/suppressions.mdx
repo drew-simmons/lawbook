@@ -1,0 +1,43 @@
+---
+title: Suppressions
+description: Turn a rule off for one line or one file with a comment in the file.
+sidebar:
+  order: 5
+---
+
+A comment anywhere in a file can turn a rule off for a line or for the whole
+file. The marker names the rule ids it applies to, separated by commas, and
+can sit in any comment syntax, since lawbook only looks for the words:
+
+```ts
+// lawbook-disable-next-line no-console
+console.log("the one place we print");
+
+debug(); // lawbook-disable-line no-debug, no-console
+
+/* lawbook-disable-file errors-are-actionable */
+```
+
+| Marker                        | Effect                                                   |
+| ----------------------------- | -------------------------------------------------------- |
+| `lawbook-disable-next-line`   | The named rules ignore the line after the marker.        |
+| `lawbook-disable-line`        | The named rules ignore the line the marker is on.        |
+| `lawbook-disable-file`        | The named rules ignore the whole file.                   |
+
+A marker only affects the rules it names; a marker for another rule changes
+nothing, and there is no marker that turns every rule off.
+
+What a marker means depends on the rule kind:
+
+- `forbid` drops the findings on suppressed lines, and reports nothing for a
+  file that disables it. A line marker on a matching line hides that match.
+- `require` passes a file that disables it. Line markers do not apply, since
+  a `require` finding is about the file, not a line.
+- `standard` never sends a file that disables it to the model. The file is
+  listed under the rule as `path: suppressed by lawbook-disable-file`, which
+  does not affect the rule's status. Line markers do not apply.
+- `exists` and `absent` look at paths, not content, so markers do nothing.
+
+Prefer a rule's `exclude` globs when a whole directory should be left out;
+see [Configuration](/configuration#selecting-files). Markers are for the
+single line or file that is a deliberate exception.

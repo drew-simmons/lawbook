@@ -14,6 +14,7 @@ import {
   type UsageTotals,
   withSkipped,
 } from "../result.ts";
+import { parseSuppressions, suppressed } from "../suppress.ts";
 import { readSelected, type RuleContext } from "./deterministic.ts";
 
 /** `judge` is absent when the run skips LLM rules. */
@@ -49,9 +50,19 @@ export function sizeSkip(file: SourceFile, maxBytes: number): Skipped[] {
     : [];
 }
 
-/** Splits the files into those the judge sees and those left out, with the reason. */
-function partition(files: SourceFile[], ctx: JudgeContext): Partition {
-  const sized = files.map((file) => ({ file, skipped: sizeSkip(file, ctx.maxBytes) }));
+/** The skip entry for a file whose comments turn the rule off, else nothing. */
+export function suppressionSkip(file: SourceFile, id: string): Skipped[] {
+  return suppressed(parseSuppressions(file.content), id)
+    ? [{ path: file.path, message: "suppressed by lawbook-disable-file" }]
+    : [];
+}
+
+/** Splits the files into those the judge sees and those left out, with the first reason that applies. */
+function partition(files: SourceFile[], rule: RuleOf<"standard">, ctx: JudgeContext): Partition {
+  const sized = files.map((file) => ({
+    file,
+    skipped: [...suppressionSkip(file, rule.id), ...sizeSkip(file, ctx.maxBytes)].slice(0, 1),
+  }));
   return {
     judged: sized.filter((entry) => entry.skipped.length === 0).map((entry) => entry.file),
     skipped: sized.flatMap((entry) => entry.skipped),
@@ -124,7 +135,7 @@ async function judgeFiles(
   judge: Judge,
   ctx: JudgeContext,
 ): Promise<RuleResult> {
-  const { judged, skipped } = partition(await readSelected(rule, ctx), ctx);
+  const { judged, skipped } = partition(await readSelected(rule, ctx), rule, ctx);
   const halt: Halt = { stopped: false };
   const outcomes = await mapLimit(judged, ctx.concurrency, (file) =>
     judgeOne(rule, judge, file, halt),

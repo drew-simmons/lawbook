@@ -65,6 +65,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   8 KiB). `src/git.ts` runs git under the root and rebases the paths it
   reports onto the root; tests build real repositories in a temp dir with
   `gitRepo()` from `tests/helpers.ts`.
+- `src/suppress.ts` parses `lawbook-disable-next-line|line|file <ids>`
+  comments; `forbid` drops suppressed lines, `require` passes a file that
+  disables it, and `standard` lists such a file as skipped without a request.
 - `src/rules/deterministic.ts` implements `forbid`, `require`, `exists`, and
   `absent`. Runners take a rule and a `RuleContext` and return a `RuleResult`
   from `src/result.ts`. `src/rules/llm.ts` implements `standard` through a

@@ -47,3 +47,4 @@ export {
   type UsageTotals,
 } from "./result.ts";
 export { formatSarif } from "./sarif.ts";
+export { parseSuppressions, suppressed, type Suppressions } from "./suppress.ts";
