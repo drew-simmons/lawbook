@@ -37,7 +37,8 @@ function resultLines(result: RuleResult): string[] {
   const findings = result.findings.map(
     (finding) => `  ${location(finding)}${finding.message}${probability(finding)}`,
   );
-  return [`${LABELS[result.status]} ${result.id}`, ...findings];
+  const skipped = (result.skipped ?? []).map((entry) => `  ${entry.path}: ${entry.message}`);
+  return [`${LABELS[result.status]} ${result.id}`, ...findings, ...skipped];
 }
 
 export function summaryLine(summary: Summary): string {

@@ -89,8 +89,9 @@ findings print without failing the run (see
   function has a doc comment that states what it returns" is checkable;
   "code is well documented" is not.
 - Name the exemptions. Without them the model has to guess.
-- Keep `files` narrow. Every selected file is one model request, so a
-  `**/*` glob on a large repository is slow and costly.
+- Keep `files` narrow, and use `exclude` for fixtures and generated code.
+  Every selected file is one model request, so a `**/*` glob on a large
+  repository is slow and costly.
 - Run `lawbook check --only <id>` while you refine the wording, and pin the
   rest of the suite with `--no-llm`.
 
@@ -103,6 +104,16 @@ telling you the standard's wording is unclear, not that the model is. Where a
 regular expression can express the standard, prefer `forbid` or `require`.
 Reserve `standard` for judgment calls, and treat a failure as a prompt for a
 human to look at the file.
+
+## Large files
+
+A `standard` rule never sends a file larger than `llm.maxBytes` (default
+`131072`, see [Providers](/providers)). Such a file is listed under the rule
+as `path: skipped, <bytes> bytes over llm.maxBytes <limit>`, in text and in
+JSON under `skipped`, and does not affect the rule's status, since nothing
+was judged. Raise the limit for a rule that must see a large file, or narrow
+`files` so the file is not selected. Binary files are skipped by every rule
+without being listed; see [Configuration](/configuration#selecting-files).
 
 ## Provider errors
 

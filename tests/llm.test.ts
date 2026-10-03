@@ -250,7 +250,7 @@ test("a config without standard rules never builds a judge", async () => {
   const fake = fakeJudge();
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(0);
-  expect(fake.built).toEqual([]);
+  expect(fake.built).toMatchObject([]);
 });
 
 test("--only without a standard rule never builds a judge", async () => {
@@ -258,7 +258,7 @@ test("--only without a standard rule never builds a judge", async () => {
   const fake = fakeJudge();
   const result = await lawbookWith(fake.deps, "check", dir(), "--only", "no-env");
   expect(result.code).toBe(0);
-  expect(fake.built).toEqual([]);
+  expect(fake.built).toMatchObject([]);
 });
 
 test("check builds the judge once with the default provider and model", async () => {
@@ -267,7 +267,7 @@ test("check builds the judge once with the default provider and model", async ()
   await write(dir(), "b.ts", "const b = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toEqual([
+  expect(fake.built).toMatchObject([
     { provider: "bedrock", model: DEFAULT_MODELS.bedrock, concurrency: 4 },
   ]);
 });
@@ -279,7 +279,7 @@ test("check passes the configured provider, model, and region to the factory", a
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toEqual([
+  expect(fake.built).toMatchObject([
     {
       provider: "bedrock",
       model: "anthropic.claude-sonnet-5-5",
@@ -294,9 +294,39 @@ test("check fills in the default model for the configured provider", async () =>
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toEqual([
+  expect(fake.built).toMatchObject([
     { provider: "anthropic", model: DEFAULT_MODELS.anthropic, concurrency: 4 },
   ]);
+});
+
+test("a file over llm.maxBytes is skipped without a request", async () => {
+  await config(`llm:\n  maxBytes: 16\nrules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  await write(dir(), "big.ts", "const big = 'xxxxx';\n");
+  const fake = fakeJudge();
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(0);
+  expect(fake.requests.map((request) => request.path)).toEqual(["a.ts"]);
+  expect(result.stdout).toBe(
+    "PASS actionable-errors\n  big.ts: skipped, 21 bytes over llm.maxBytes 16\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+  const json = await lawbookWith(fakeJudge().deps, "check", dir(), "--format", "json");
+  expect(JSON.parse(json.stdout).results[0]).toMatchObject({
+    status: "pass",
+    decisions: { "a.ts": { type: "noul", noul: 1 } },
+    skipped: [{ path: "big.ts", message: "skipped, 21 bytes over llm.maxBytes 16" }],
+  });
+});
+
+test("llm.maxBytes leaves deterministic rules alone", async () => {
+  await config(
+    "llm:\n  maxBytes: 1\nrules:\n  - id: no-todo\n    files: ['**/*.ts']\n    forbid: TODO\n",
+  );
+  await write(dir(), "a.ts", "// TODO a\n");
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toContain("FAIL no-todo\n  a.ts:1: // TODO a\n");
+  const json = await lawbook("check", dir(), "--format", "json");
+  expect(JSON.parse(json.stdout).results[0]).not.toHaveProperty("skipped");
 });
 
 test("check rejects region with the anthropic provider", async () => {

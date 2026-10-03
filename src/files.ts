@@ -40,8 +40,23 @@ export function underRoot(root: string, file: string): string | undefined {
   return outside ? undefined : relative.split(path.sep).join("/");
 }
 
-export async function readSourceFile(root: string, file: string): Promise<SourceFile> {
-  return { path: file, content: await readFile(path.join(root, file), "utf8") };
+/** How many leading bytes are checked for a NUL, which marks a binary file. */
+export const BINARY_PROBE_BYTES = 8192;
+
+export function isBinary(buffer: Buffer): boolean {
+  return buffer.subarray(0, BINARY_PROBE_BYTES).includes(0);
+}
+
+/** The file as UTF-8 text, or undefined for a binary file, which no rule reads. */
+export async function readSourceFile(root: string, file: string): Promise<SourceFile | undefined> {
+  const buffer = await readFile(path.join(root, file));
+  return isBinary(buffer) ? undefined : { path: file, content: buffer.toString("utf8") };
+}
+
+/** The globs a `files` rule selects with and the globs it leaves out. */
+export interface FileSelection {
+  files: string[];
+  exclude: string[];
 }
 
 export async function pathExists(file: string): Promise<boolean> {

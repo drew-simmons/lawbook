@@ -1,7 +1,7 @@
 import type { Config, Rule, RuleKind, RuleOf } from "./config.ts";
 import { CliError } from "./errors.ts";
 import { underRoot } from "./files.ts";
-import { changedFiles } from "./git.ts";
+import { changedFiles, listedFiles } from "./git.ts";
 import type { Judge, Judges } from "./judge/judge.ts";
 import { type Report, type RuleResult, summarize } from "./result.ts";
 import { checkAbsent, checkExists, checkForbid, checkRequire } from "./rules/deterministic.ts";
@@ -73,9 +73,16 @@ function committedFiles(options: CheckOptions): Promise<string[] | undefined> {
   return since === undefined ? Promise.resolve(undefined) : changedFiles(root, since);
 }
 
+/** What git tracks or does not ignore, when the config respects `.gitignore` and git knows the root. */
+async function gitCandidates(options: CheckOptions): Promise<Set<string> | undefined> {
+  const listed = options.config.gitignore ? await listedFiles(options.root) : undefined;
+  return listed === undefined ? undefined : new Set(listed);
+}
+
 /**
- * The files `files` rules may select: the union of every selector given, or
- * undefined when none was, so every file may be.
+ * The files `files` rules may select: the union of every selector given;
+ * else what `.gitignore` leaves, in a git work tree; else undefined, so
+ * every file may be.
  */
 async function candidatesFor(options: CheckOptions): Promise<Set<string> | undefined> {
   const selected = [
@@ -83,7 +90,7 @@ async function candidatesFor(options: CheckOptions): Promise<Set<string> | undef
     await workingTreeFiles(options),
     await committedFiles(options),
   ].filter((paths) => paths !== undefined);
-  return selected.length === 0 ? undefined : new Set(selected.flat());
+  return selected.length === 0 ? gitCandidates(options) : new Set(selected.flat());
 }
 
 /** Runs the rules in config order and reports every result. */
@@ -95,6 +102,7 @@ export async function check(options: CheckOptions): Promise<Report> {
     candidates: await candidatesFor(options),
     judge: await judgeFor(rules, options),
     concurrency: options.config.llm.concurrency,
+    maxBytes: options.config.llm.maxBytes,
   };
   const results: RuleResult[] = [];
   for (const rule of rules) {

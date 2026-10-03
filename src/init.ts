@@ -13,12 +13,16 @@ version: 1
 #   - "**/node_modules/**"
 #   - "**/.git/**"
 
+# Inside a git work tree, files .gitignore covers are left out. This is the default.
+# gitignore: true
+
 # The model that judges \`standard\` rules. These are the defaults.
 # llm:
 #   provider: bedrock           # bedrock | anthropic
 #   model: anthropic.claude-opus-5-5
 #   region: us-west-2           # bedrock only; else AWS_REGION
 #   concurrency: 4              # files judged at once
+#   maxBytes: 131072            # largest file sent to the model
 
 rules:
   # \`absent\` fails when the path exists.

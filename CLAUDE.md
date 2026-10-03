@@ -59,15 +59,19 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   and a table entry.
 - `src/files.ts` globs the files a rule selects and, when `check` was given
   `--files`, `--changed`, or `--since`, keeps only the candidates in
-  `RuleContext.candidates`. `src/git.ts` runs git under the root and
-  rebases the paths it reports onto the root; tests build real repositories
-  in a temp dir with `gitRepo()` from `tests/helpers.ts`.
+  `RuleContext.candidates`; with none given, inside a git work tree, the
+  candidates are what `git ls-files` lists, so `.gitignore` applies. It
+  reads files once as a Buffer and drops binary ones (a NUL in the first
+  8 KiB). `src/git.ts` runs git under the root and rebases the paths it
+  reports onto the root; tests build real repositories in a temp dir with
+  `gitRepo()` from `tests/helpers.ts`.
 - `src/rules/deterministic.ts` implements `forbid`, `require`, `exists`, and
   `absent`. Runners take a rule and a `RuleContext` and return a `RuleResult`
   from `src/result.ts`. `src/rules/llm.ts` implements `standard` through a
   `Judge`, and skips when the context has none (`--no-llm`). It judges up
   to `llm.concurrency` files at once through `mapLimit` in `src/pool.ts`,
-  which keeps results in input order.
+  which keeps results in input order, and lists files over `llm.maxBytes`
+  under `RuleResult.skipped` instead of sending them.
 - `src/judge/` holds the `Judge` interface, the provider-neutral
   `messagesJudge` core (fully tested with a stub `parse`), and the Bedrock
   and Anthropic adapters, which only build a client. The adapters import

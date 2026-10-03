@@ -178,6 +178,39 @@ test("check --format json carries each rule's level", async () => {
   });
 });
 
+test("a rule's exclude keeps those files out while ignore still applies", async () => {
+  await config(
+    "  - id: no-todo\n    files: ['**/*.ts']\n    exclude: ['vendor/**']\n    forbid: 'TODO'\n  - id: all-todo\n    files: ['**/*.ts']\n    forbid: 'TODO'\n",
+  );
+  await write(dir(), "src/a.ts", "// TODO a\n");
+  await write(dir(), "vendor/x.ts", "// TODO x\n");
+  await write(dir(), "node_modules/dep/y.ts", "// TODO y\n");
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toBe(
+    "FAIL no-todo\n  src/a.ts:1: // TODO a\nFAIL all-todo\n  src/a.ts:1: // TODO a\n  vendor/x.ts:1: // TODO x\n\n0 passed, 2 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("exclude on a rule without files is rejected", async () => {
+  await config("  - id: readme\n    exists: README.md\n    exclude: ['x']\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0]");
+});
+
+test("binary files are skipped by forbid and require rules", async () => {
+  await config(
+    "  - id: no-todo\n    files: ['**/*.{ts,bin}']\n    forbid: 'TODO'\n  - id: header\n    files: ['**/*.{ts,bin}']\n    require: 'Copyright'\n",
+  );
+  await write(dir(), "a.ts", "// Copyright\n");
+  await write(dir(), "x.bin", "TODO\0\x01\x02");
+  const result = await lawbook("check", dir(), "--only", "no-todo", "header");
+  expect(result.code).toBe(0);
+  expect(result.stdout).toBe(
+    "PASS no-todo\nPASS header\n\n2 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+});
+
 test("check --format github prints a workflow command per finding", async () => {
   await config(
     "  - id: no-todo\n    files: ['**/*.ts']\n    forbid: 'TODO'\n  - id: readme\n    exists: README.md\n",

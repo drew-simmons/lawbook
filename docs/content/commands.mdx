@@ -83,8 +83,11 @@ or `path: exists`; under `standard`, `path: <the model's reason> (noul
 `FAIL` and does not affect the exit code. A `standard` rule the provider
 could not finish prints `ERROR <id>`, with the model's findings for the files
 it did judge and a `path: <error>` line for each file it did not, and the run
-exits `2` after the report. A skipped rule prints `SKIP <id>` with no
-findings. The summary line always lists all five counts in this order.
+exits `2` after the report. A `standard` rule lists files it left out, such
+as one over `llm.maxBytes`, as `path: skipped, <why>` after its findings;
+those lines do not change the rule's status. A skipped rule prints
+`SKIP <id>` with no findings. The summary line always lists all five counts
+in this order.
 
 ### JSON output
 
@@ -127,7 +130,8 @@ and reasons), or `skip` (a `standard` rule under `--no-llm`). `findings`
 carry `path` and, for `forbid`, a 1-based `line`.
 
 A judged `standard` rule adds `decisions`, every judged file's decision keyed
-by path, and each of its findings carries its own `decision`. A decision
+by path, and each of its findings carries its own `decision`. When it left
+files out, `skipped` lists each as `{ "path", "message" }`. A decision
 follows the Jev decision schema: `{ "type": "noul", "noul": <0..1> }`, the
 probability that the file meets the standard. See
 [LLM rules](/llm-rules#decisions).

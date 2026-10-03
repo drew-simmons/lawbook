@@ -22,15 +22,16 @@ const base = {
   description: z.string().optional(),
   level: z.enum(LEVELS).default("error"),
 };
-const files = z.array(text).min(1);
+/** What a `files` rule selects with: globs to include and globs to leave out. */
+const selection = { files: z.array(text).min(1), exclude: z.array(text).default([]) };
 const probability = z.number().min(0).max(1);
 
 const forbidRule = z
-  .object({ ...base, files, forbid: text })
+  .object({ ...base, ...selection, forbid: text })
   .strict()
   .transform((rule) => ({ kind: "forbid" as const, ...rule }));
 const requireRule = z
-  .object({ ...base, files, require: text })
+  .object({ ...base, ...selection, require: text })
   .strict()
   .transform((rule) => ({ kind: "require" as const, ...rule }));
 const existsRule = z
@@ -43,7 +44,7 @@ const absentRule = z
   .transform((rule) => ({ kind: "absent" as const, ...rule }));
 // A `standard` rule is a yes/no question; a file fails below `threshold`.
 const standardRule = z
-  .object({ ...base, files, standard: text, threshold: probability.default(0.5) })
+  .object({ ...base, ...selection, standard: text, threshold: probability.default(0.5) })
   .strict()
   .transform((rule) => ({ kind: "standard" as const, ...rule }));
 
@@ -76,6 +77,8 @@ const llmSchema = z
     region: text.optional(),
     /** How many files a `standard` rule judges at once. */
     concurrency: z.int().min(1).default(4),
+    /** The largest file, in bytes, a `standard` rule sends to the model. */
+    maxBytes: z.int().min(1).default(131072),
   })
   .strict()
   .check((ctx) => {
@@ -96,6 +99,8 @@ export const configSchema = z
   .object({
     version: z.literal(1),
     ignore: z.array(z.string()).default(DEFAULT_IGNORE),
+    /** Whether files `.gitignore` covers are left out when the root is in a git work tree. */
+    gitignore: z.boolean().default(true),
     // `prefault` runs the defaults through the schema, so `model` gets filled in.
     llm: llmSchema.prefault({}),
     rules: z.array(ruleSchema),
