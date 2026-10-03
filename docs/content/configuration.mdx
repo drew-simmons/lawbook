@@ -67,11 +67,24 @@ can turn a rule off for one line or the whole file; see
 | --------- | ------------- | ----------------------------------------------------------------- |
 | `forbid`  | yes           | Any line of a selected file matches the pattern. One finding per line, carrying the line. |
 | `require` | yes           | A selected file does not match the pattern anywhere. One finding per file. |
-| `exists`  | no            | The path is missing.                                              |
-| `absent`  | no            | The path is present.                                              |
+| `exists`  | no            | None of its paths or globs matches anything.                      |
+| `absent`  | no            | Any of its paths or globs matches something. One finding per match. |
 | `standard` | yes          | A model's probability that a selected file meets the prose is below `threshold`. One finding per file, carrying the model's reason and decision. See [LLM rules](/llm-rules). |
 
-`exists` and `absent` take a single path relative to the checked directory.
+`exists` and `absent` take a path or glob relative to the checked directory,
+or a list of them. A plain path matches a file or a directory with that name.
+A glob follows the rules under [Selecting files](#selecting-files) and
+matches files only, leaving out the top-level `ignore` but not candidates
+from `--files`, `--changed`, or `--since`, since these rules are about the
+tree, not the change set. `exists` passes when anything matches; `absent`
+reports every match.
+
+```yaml
+  - id: has-docs
+    exists: ["README.md", "docs/**/*.md"]
+  - id: no-keys
+    absent: ["**/*.pem", ".env"]
+```
 
 ### Standard rules
 

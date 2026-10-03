@@ -31,13 +31,13 @@ export interface PlanOptions {
 
 type Paths<K extends RuleKind> = (rule: RuleOf<K>, ctx: RuleContext) => Promise<string[]>;
 
-/** `files` rules list what their globs select; path rules list the one path they look at. */
+/** `files` rules list what their globs select; path rules list their patterns as written, since nothing is read. */
 const PATHS: { [K in RuleKind]: Paths<K> } = {
   forbid: selectRuleFiles,
   require: selectRuleFiles,
   standard: selectRuleFiles,
-  exists: async (rule) => [rule.exists],
-  absent: async (rule) => [rule.absent],
+  exists: async (rule) => rule.exists,
+  absent: async (rule) => rule.absent,
 };
 
 /** Requests by scope: one per file, or one for the whole set when it has any files. */

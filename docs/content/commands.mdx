@@ -2,7 +2,7 @@
 title: Commands
 description: Every lawbook command and flag.
 sidebar:
-  order: 6
+  order: 7
 ---
 
 Running `lawbook` with no command prints the usage and exits `2`.
@@ -29,6 +29,8 @@ line per rule followed by a summary.
 | `--files <paths...>`    | Check only these files. Paths are relative to the current directory, or absolute, like `root` itself. |
 | `--changed`             | Check only files changed in the working tree against `HEAD`: staged, unstaged, and untracked. |
 | `--since <ref>`         | Check only files committed since the merge base with `ref`, as `git diff <ref>...HEAD` lists them. |
+| `--baseline <file>`     | Hide the findings this file records; see [Baseline](/baseline). Relative to the current directory. |
+| `--update-baseline`     | Write this run's findings to the `--baseline` file, then report with them hidden. |
 | `--dry-run`             | List the files each rule would check and how many model requests the run would make, then exit `0` without reading a file or building a client. Text or JSON only. |
 | `--no-cache`            | Ask the model for every file even when a cached verdict exists. See [LLM rules](/llm-rules#verdict-cache). |
 | `--cache-dir <dir>`     | Where verdicts are cached. Relative to the current directory; default `node_modules/.cache/lawbook` under `root`. |
@@ -87,7 +89,7 @@ A CI job on a pull request checks only what the branch changed:
 `--dry-run` shows what a run would look at before it looks. Each rule lists
 the files its globs select, after `ignore`, `exclude`, `.gitignore`, and any
 `--files`, `--changed`, or `--since` selector; `exists` and `absent` list
-their one path. The last line counts the distinct files and the model
+their paths and globs as written, since nothing is read. The last line counts the distinct files and the model
 requests: one per selected file of a `standard` rule, one for a `scope: set`
 rule with any files, or none under `--no-llm`. Nothing is read, so binary and oversize files still appear, and
 no provider client is built.
@@ -126,7 +128,9 @@ Findings under a `forbid` rule read `path:line: <the line>`; under `require`,
 line or the pattern when it sets one; under `exists` and `absent`, `path: missing`
 or `path: exists`; under `standard`, `path: <the model's reason> (noul
 <probability>)`. A rule with `level: warn` prints `WARN <id>` instead of
-`FAIL` and does not affect the exit code. A `standard` rule the provider
+`FAIL` and does not affect the exit code. Findings a [baseline](/baseline)
+hides are counted on one line, `  2 findings in baseline`, after the rule's
+findings. A `standard` rule the provider
 could not finish prints `ERROR <id>`, with the model's findings for the files
 it did judge and a `path: <error>` line for each file it did not, and the run
 exits `2` after the report. A `standard` rule lists files it left out, such
@@ -187,7 +191,9 @@ the model read, including what the provider served from its own cache.
 }
 ```
 
-`level` is the rule's configured `error` or `warn`. `status` is `pass`,
+`level` is the rule's configured `error` or `warn`. `baselined` counts the
+findings a [baseline](/baseline) hid, and appears only when there were any.
+`status` is `pass`,
 `fail`, `warn` (findings under a `warn` rule), `error` (a `standard` rule the
 provider could not finish; its findings without a `decision` name the files
 and reasons), or `skip` (a `standard` rule under `--no-llm`). `findings`

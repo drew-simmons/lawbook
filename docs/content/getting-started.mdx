@@ -80,4 +80,5 @@ lawbook check --only no-console
 
 A rule you are not yet sure of can run with `level: warn`. Its findings print
 under `WARN` and the exit code ignores them, so CI stays green while you tune
-the rule. Drop the `level` once it is right.
+the rule. Drop the `level` once it is right. On a codebase with many existing
+findings, record them in a [baseline](/baseline) so that only new ones fail.
