@@ -19,7 +19,3 @@ updates:
     schedule:
       interval: weekly
     labels: [dependencies]
-    ignore:
-      # Blume 2 needs a migration; see the "Migrate docs to Blume 2" issue.
-      - dependency-name: blume
-        update-types: ["version-update:semver-major"]

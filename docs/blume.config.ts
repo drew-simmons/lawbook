@@ -13,19 +13,15 @@ export default defineConfig({
     dir: "docs",
   },
   deployment: {
-    output: "static",
     site: "https://drew-simmons.github.io",
     base: "/lawbook",
   },
-  search: {
-    provider: "orama",
-  },
-  ai: {
+  agents: {
     llmsTxt: true,
   },
   seo: {
     sitemap: true,
     robots: true,
   },
-  lastModified: { type: "git" },
+  lastModified: "git",
 });
