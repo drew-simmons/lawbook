@@ -59,7 +59,13 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   and a table entry.
 - `src/rules/deterministic.ts` implements `forbid`, `require`, `exists`, and
   `absent`. Runners take a rule and a `RuleContext` and return a `RuleResult`
-  from `src/result.ts`.
+  from `src/result.ts`. `src/rules/llm.ts` implements `standard` through a
+  `Judge`, and skips when the context has none (`--no-llm`).
+- `src/judge/` holds the `Judge` interface, the provider-neutral
+  `messagesJudge` core (fully tested with a stub `parse`), and the Bedrock
+  and Anthropic adapters, which only build a client. The adapters import
+  their SDK lazily and stay at complexity 1, since no test covers them. `run`
+  takes the factories as its `deps` argument; tests inject fakes.
 - `src/report.ts` formats a `Report` as text or JSON.
 - `src/errors.ts` has `CliError` for problems the user can act on; the CLI
   prints its message without a stack and exits 2.
@@ -78,7 +84,8 @@ anything wrong with usage, input, or output. `src/cli.ts` maps these: a
   `tests/helpers.ts`, which runs the CLI in process, captures its output,
   and scrubs `NO_COLOR`, `CLICOLOR`, and `CLICOLOR_FORCE`. `useTempDir()`
   gives each test an empty directory to pass as the root; never
-  `process.chdir`.
+  `process.chdir`. `lawbook()` refuses to build a judge; tests that need
+  one use `fakeJudge()` with `lawbookWith()`.
 - Conventional Commit subjects. The project squash-merges, so the PR title
   becomes the commit on `main` and drives release-please.
 - Never add `Co-Authored-By` or AI attribution to commits.

@@ -1,0 +1,63 @@
+---
+title: Providers
+description: Configure Amazon Bedrock, the default, or the Anthropic API for standard rules.
+sidebar:
+  order: 4
+---
+
+The `llm` section of `lawbook.yaml` chooses the model that judges
+[`standard` rules](/llm-rules). It is optional; these are the defaults:
+
+```yaml
+llm:
+  provider: bedrock
+  model: anthropic.claude-opus-5-5
+```
+
+| Key        | Meaning                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| `provider` | `bedrock` (default) or `anthropic`.                                                            |
+| `model`    | The model id in the provider's own naming. Defaults per provider, see below.                   |
+| `region`   | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. |
+
+Unknown keys are errors. A provider or credential problem stops the run with
+exit code `2` and a one-line message that names the provider, before any
+report is printed.
+
+## Amazon Bedrock
+
+The default. Lawbook calls the Bedrock Messages endpoint through the Anthropic
+Bedrock SDK, which takes credentials from the usual AWS chain: environment
+variables, a shared config profile, SSO, or an instance role. Nothing is
+configured in lawbook itself beyond the region.
+
+```yaml
+llm:
+  provider: bedrock
+  model: anthropic.claude-opus-5-5
+  region: us-west-2
+```
+
+Model ids on Bedrock carry the `anthropic.` prefix. The default is
+`anthropic.claude-opus-5-5`; pick a cheaper model with `model` when a rule
+runs over many files. The region must offer the model you name.
+
+## Anthropic API
+
+```yaml
+llm:
+  provider: anthropic
+  model: claude-opus-5-5
+```
+
+Credentials come from the environment: `ANTHROPIC_API_KEY`, or a profile
+created with `ant auth login`. The default model is `claude-opus-5-5`, and ids
+have no prefix.
+
+## No network in tests
+
+Both providers sit behind one `Judge` interface, and `run` accepts the
+factories that build them, so a test or an embedding program can pass its own
+judge and never reach a network. The package exports `messagesJudge`, the
+provider-neutral core both adapters wrap, for anyone adding a provider that
+speaks the Anthropic Messages API.

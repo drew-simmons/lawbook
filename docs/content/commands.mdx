@@ -2,7 +2,7 @@
 title: Commands
 description: Every lawbook command and flag.
 sidebar:
-  order: 3
+  order: 5
 ---
 
 Running `lawbook` with no command prints the usage and exits `2`.
@@ -25,6 +25,7 @@ line per rule followed by a summary.
 | `-c, --config <file>`   | Read this config instead of looking for `lawbook.yaml`, `lawbook.yml`, or `lawbook.json` in `root`. Paths in the config stay relative to `root`. |
 | `--format <format>`     | `text` (default) or `json`.                                                                  |
 | `--only <ids...>`       | Run only the rules with these ids, in config order. An unknown id is an error.                |
+| `--no-llm`              | Report `standard` rules as skipped instead of asking a model. No provider client is built.    |
 
 ### Text output
 
@@ -39,7 +40,8 @@ PASS has-readme
 
 Findings under a `forbid` rule read `path:line: <the line>`; under `require`,
 `path: does not match /pattern/`; under `exists` and `absent`, `path: missing`
-or `path: exists`.
+or `path: exists`; under `standard`, `path: <the model's reason>`. A skipped
+rule prints `SKIP <id>` with no findings.
 
 ### JSON output
 
@@ -57,5 +59,5 @@ or `path: exists`.
 }
 ```
 
-`status` is `pass`, `fail`, or `skip`. `findings` carry `path` and, for
-`forbid`, a 1-based `line`.
+`status` is `pass`, `fail`, or `skip` (a `standard` rule under `--no-llm`).
+`findings` carry `path` and, for `forbid`, a 1-based `line`.

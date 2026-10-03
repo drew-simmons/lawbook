@@ -19,7 +19,7 @@ export function compilePattern(source: string): RegExp {
   }
 }
 
-async function readSelected(patterns: string[], ctx: RuleContext): Promise<SourceFile[]> {
+export async function readSelected(patterns: string[], ctx: RuleContext): Promise<SourceFile[]> {
   const files = await selectFiles(ctx.root, patterns, ctx.ignore);
   return Promise.all(files.map((file) => readSourceFile(ctx.root, file)));
 }
