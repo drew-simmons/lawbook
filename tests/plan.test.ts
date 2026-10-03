@@ -5,7 +5,7 @@ import { fakeJudge, lawbook, lawbookWith, useTempDir, write } from "./helpers.ts
 const dir = useTempDir();
 
 const RULES =
-  "  - id: no-todo\n    files: ['**/*.ts']\n    forbid: TODO\n  - id: readme\n    exists: README.md\n  - id: actionable-errors\n    files: ['**/*.ts']\n    standard: Errors say what to do next\n";
+  "  - id: no-todo\n    files: ['**/*.ts']\n    forbid: TODO\n  - id: readme\n    exists: [README.md, 'docs/**/*.md']\n  - id: actionable-errors\n    files: ['**/*.ts']\n    standard: Errors say what to do next\n";
 
 async function config(rules = RULES): Promise<void> {
   await write(dir(), "lawbook.yaml", `version: 1\nrules:\n${rules}`);
@@ -14,7 +14,7 @@ async function config(rules = RULES): Promise<void> {
 }
 
 const TEXT =
-  "PLAN no-todo (forbid, 2 files)\n  src/a.ts\n  src/b.ts\nPLAN readme (exists, 1 file)\n  README.md\nPLAN actionable-errors (standard, 2 files)\n  src/a.ts\n  src/b.ts\n\n3 files, 2 model requests\n";
+  "PLAN no-todo (forbid, 2 files)\n  src/a.ts\n  src/b.ts\nPLAN readme (exists, 2 files)\n  README.md\n  docs/**/*.md\nPLAN actionable-errors (standard, 2 files)\n  src/a.ts\n  src/b.ts\n\n4 files, 2 model requests\n";
 
 test("--dry-run lists each rule's files in config order and builds no judge", async () => {
   await config();
@@ -29,7 +29,7 @@ test("--dry-run lists each rule's files in config order and builds no judge", as
 test("--dry-run counts zero model requests under --no-llm", async () => {
   await config();
   const result = await lawbook("check", dir(), "--dry-run", "--no-llm");
-  expect(result.stdout).toContain("\n3 files, 0 model requests\n");
+  expect(result.stdout).toContain("\n4 files, 0 model requests\n");
 });
 
 test("--dry-run --format json prints the plan", async () => {
@@ -53,7 +53,13 @@ test("--dry-run --format json prints the plan", async () => {
         files: ["src/a.ts", "src/b.ts"],
         requests: 0,
       },
-      { id: "readme", kind: "exists", level: "error", files: ["README.md"], requests: 0 },
+      {
+        id: "readme",
+        kind: "exists",
+        level: "error",
+        files: ["README.md", "docs/**/*.md"],
+        requests: 0,
+      },
     ],
     requests: 0,
   });

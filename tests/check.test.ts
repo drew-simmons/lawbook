@@ -133,6 +133,57 @@ test("absent fails when the path is present", async () => {
   expect(result.stdout).toContain("FAIL no-env\n  .env: exists\n");
 });
 
+test("exists passes when any listed path is present", async () => {
+  await config("  - id: readme\n    exists: [README.md, README.rst]\n");
+  await write(dir(), "README.rst", "hi\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("PASS readme\n");
+});
+
+test("exists with several patterns fails naming them all", async () => {
+  await config("  - id: readme\n    exists: [README.md, 'docs/**/*.md']\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toContain("FAIL readme\n  none of README.md, docs/**/*.md exists\n");
+});
+
+test("exists with a glob passes when a file matches", async () => {
+  await config("  - id: docs\n    exists: 'docs/**/*.md'\n");
+  await write(dir(), "docs/guide/intro.md", "# intro\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("PASS docs\n");
+});
+
+test("exists accepts a directory", async () => {
+  await config("  - id: src\n    exists: src\n");
+  await write(dir(), "src/a.ts", "const a = 1;\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("PASS src\n");
+});
+
+test("absent with a glob fails for every match in path order and skips ignored directories", async () => {
+  await config("  - id: no-keys\n    absent: ['**/*.pem', secrets]\n");
+  await write(dir(), "b/server.pem", "key\n");
+  await write(dir(), "a.pem", "key\n");
+  await write(dir(), "node_modules/dep/cert.pem", "key\n");
+  await write(dir(), "secrets/token", "x\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toContain(
+    "FAIL no-keys\n  a.pem: exists\n  b/server.pem: exists\n  secrets: exists\n",
+  );
+});
+
+test("exists rejects an empty list", async () => {
+  await config("  - id: readme\n    exists: []\n");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0]");
+});
+
 test("check exits one when any rule fails and reports all of them", async () => {
   await config("  - id: no-env\n    absent: .env\n  - id: readme\n    exists: README.md\n");
   const result = await lawbook("check", dir());
