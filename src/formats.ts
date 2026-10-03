@@ -1,5 +1,12 @@
 import { formatGithub } from "./github.ts";
-import { type Formatter, formatJson, formatText } from "./report.ts";
+import type { Plan } from "./plan.ts";
+import {
+  type Formatter,
+  formatJson,
+  formatPlanJson,
+  formatPlanText,
+  formatText,
+} from "./report.ts";
 import { formatSarif } from "./sarif.ts";
 
 /** Every `--format` value and the formatter behind it. */
@@ -13,3 +20,9 @@ export const FORMATTERS = {
 export type Format = keyof typeof FORMATTERS;
 
 export const FORMATS = Object.keys(FORMATTERS) as Format[];
+
+/** The formats a `--dry-run` plan can take; the annotation formats have nothing to annotate. */
+export const PLAN_FORMATTERS: Partial<Record<Format, (plan: Plan) => string>> = {
+  text: formatPlanText,
+  json: formatPlanJson,
+};

@@ -2,6 +2,7 @@
  * Library behind the `lawbook` binary. `src/bin.ts` starts the CLI; the
  * logic lives in modules here.
  */
+export { type CandidateSource, candidatesFor } from "./candidates.ts";
 export { check, type CheckOptions } from "./check.ts";
 export {
   type Config,
@@ -33,9 +34,17 @@ export {
   type Verdict,
 } from "./judge/judge.ts";
 export { messagesJudge, type ParseFn } from "./judge/messages.ts";
-export { type Format, FORMATS, FORMATTERS } from "./formats.ts";
+export { type Plan, plan, type PlanOptions, type PlanRule } from "./plan.ts";
+export { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
 export { formatGithub } from "./github.ts";
-export { type Formatter, formatJson, formatText, type ReportMeta } from "./report.ts";
+export {
+  type Formatter,
+  formatJson,
+  formatPlanJson,
+  formatPlanText,
+  formatText,
+  type ReportMeta,
+} from "./report.ts";
 export {
   exitCodeFor,
   type Finding,

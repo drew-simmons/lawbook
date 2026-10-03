@@ -91,7 +91,8 @@ findings print without failing the run (see
 - Name the exemptions. Without them the model has to guess.
 - Keep `files` narrow, and use `exclude` for fixtures and generated code.
   Every selected file is one model request, so a `**/*` glob on a large
-  repository is slow and costly.
+  repository is slow and costly. `lawbook check --dry-run` lists the files
+  and counts the requests before you pay for them.
 - Run `lawbook check --only <id>` while you refine the wording, and pin the
   rest of the suite with `--no-llm`.
 
