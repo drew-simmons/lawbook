@@ -2,41 +2,15 @@ import { z } from "zod";
 import type { LlmConfig, Provider } from "../config.ts";
 
 /**
- * Decisions follow the Jev decision schema (TypeSafe's System One API), so a
- * report reads the same whether a rule asks a yes/no, pick-one, or scored
- * question. Only `noul` is produced today.
+ * A decision in the Jev decision schema (TypeSafe's System One API). A
+ * `standard` rule asks a yes/no question, which Jev calls a noul: the
+ * probability, 0..1, that the file meets the standard.
  */
-
-/** Jev's yes/no answer: the probability, 0..1, that the statement is true. */
-export const noulDecisionSchema = z.object({
+export const decisionSchema = z.object({
   type: z.literal("noul"),
   noul: z.number().min(0).max(1),
 });
 
-/** Jev's pick-one answer. No rule produces it yet. */
-export const choiceDecisionSchema = z.object({
-  type: z.literal("choice"),
-  choice: z.string(),
-  probabilities: z.record(z.string(), z.number()),
-  confidence: z.number(),
-});
-
-/** Jev's answer on an ordered scale. No rule produces it yet. */
-export const scoreDecisionSchema = z.object({
-  type: z.literal("score"),
-  score: z.number(),
-  legend: z.record(z.string(), z.string()),
-  probabilities: z.record(z.string(), z.number()),
-  confidence: z.number(),
-});
-
-export const decisionSchema = z.discriminatedUnion("type", [
-  noulDecisionSchema,
-  choiceDecisionSchema,
-  scoreDecisionSchema,
-]);
-
-export type NoulDecision = z.infer<typeof noulDecisionSchema>;
 export type Decision = z.infer<typeof decisionSchema>;
 
 /**
@@ -51,9 +25,9 @@ export const answerSchema = z.object({
 
 export type Answer = z.infer<typeof answerSchema>;
 
-/** A `standard` rule is a noul question. `reason` is lawbook's evidence; Jev has none. */
+/** The decision on one file. `reason` is lawbook's evidence; Jev has none. */
 export interface Verdict {
-  decision: NoulDecision;
+  decision: Decision;
   reason: string;
 }
 

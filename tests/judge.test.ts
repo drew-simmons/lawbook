@@ -8,7 +8,7 @@ import {
 import { expect, test } from "vitest";
 import { CliError } from "../src/errors.ts";
 import { bedrockRegion } from "../src/judge/bedrock.ts";
-import { type Answer, decisionSchema, noulDecisionSchema } from "../src/judge/judge.ts";
+import { type Answer, decisionSchema } from "../src/judge/judge.ts";
 import {
   type AnswerParams,
   messagesJudge,
@@ -86,28 +86,11 @@ test("messagesJudge returns the answer as a noul decision with its reason", asyn
   expect(verdict).toEqual({ decision: { type: "noul", noul: 0.2 }, reason: "no next step" });
 });
 
-test("decisionSchema accepts every Jev answer shape", () => {
+test("decisionSchema is a Jev noul with a probability within 0 and 1", () => {
   expect(decisionSchema.parse({ type: "noul", noul: 0.98 })).toEqual({ type: "noul", noul: 0.98 });
-  const choice = {
-    type: "choice",
-    choice: "billing",
-    probabilities: { billing: 0.88, technical: 0.12, sales: 0 },
-    confidence: 0.81,
-  };
-  expect(decisionSchema.parse(choice)).toEqual(choice);
-  const score = {
-    type: "score",
-    score: 1.05,
-    legend: { "0": "Calm", "1": "Frustrated", "2": "Very angry" },
-    probabilities: { "0": 0, "1": 0.95, "2": 0.05 },
-    confidence: 0.92,
-  };
-  expect(decisionSchema.parse(score)).toEqual(score);
-});
-
-test("a noul decision stays within 0 and 1", () => {
-  expect(noulDecisionSchema.safeParse({ type: "noul", noul: 1.2 }).success).toBe(false);
-  expect(noulDecisionSchema.safeParse({ type: "noul", noul: -0.1 }).success).toBe(false);
+  expect(decisionSchema.safeParse({ type: "noul", noul: 1.2 }).success).toBe(false);
+  expect(decisionSchema.safeParse({ type: "noul", noul: -0.1 }).success).toBe(false);
+  expect(decisionSchema.safeParse({ type: "choice", choice: "x" }).success).toBe(false);
 });
 
 test("a missing verdict becomes a CliError naming the stop reason", async () => {

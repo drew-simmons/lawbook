@@ -46,9 +46,8 @@ files. Write standards that one file can satisfy on its own.
 ## Decisions
 
 lawbook records each answer as a decision in the
-[Jev decision schema](https://docs.typesafe.ai/api), so a report reads the
-same whether a rule asks a yes/no, pick-one, or scored question. A `standard`
-rule is a yes/no question, which Jev calls a *noul*:
+[Jev decision schema](https://docs.typesafe.ai/api). A `standard` rule is a
+yes/no question, which Jev calls a *noul*:
 
 ```json
 { "type": "noul", "noul": 0.12 }
@@ -56,9 +55,7 @@ rule is a yes/no question, which Jev calls a *noul*:
 
 `noul` is the probability, from `0` to `1`, that the file meets the standard.
 There is no separate confidence: the probability already says how sure the
-model is, and `0.5` means it cannot tell. The schema also defines `choice`
-and `score` decisions, which carry a probability distribution and a
-confidence; no rule produces them yet.
+model is, and `0.5` means it cannot tell.
 
 JSON output lists every judged file's decision under `decisions`, and each
 failing finding carries its own `decision`. See

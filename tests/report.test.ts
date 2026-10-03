@@ -28,19 +28,6 @@ test("text output appends the probability to a finding with a noul decision", ()
   );
 });
 
-test("text output prints nothing extra for a decision that is not noul", () => {
-  const decision = { type: "choice" as const, choice: "x", probabilities: { x: 1 }, confidence: 1 };
-  const report = summarize([
-    {
-      id: "s",
-      kind: "standard",
-      status: "fail",
-      findings: [{ path: "a.ts", message: "r", decision }],
-    },
-  ]);
-  expect(formatText(report)).toBe("FAIL s\n  a.ts: r\n\n0 passed, 1 failed, 0 skipped\n");
-});
-
 test("json output has no decisions key for a deterministic result", () => {
   const report = summarize([
     { id: "a", kind: "exists", status: "fail", findings: [{ message: "missing" }] },

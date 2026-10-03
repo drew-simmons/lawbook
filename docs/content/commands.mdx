@@ -79,7 +79,7 @@ or `path: exists`; under `standard`, `path: <the model's reason> (noul
 `findings` carry `path` and, for `forbid`, a 1-based `line`.
 
 A judged `standard` rule adds `decisions`, every judged file's decision keyed
-by path, and each of its findings carries its own `decision`. Decisions
-follow the Jev decision schema; today every decision is
-`{ "type": "noul", "noul": <0..1> }`, the probability that the file meets the
-standard. See [LLM rules](/llm-rules#decisions).
+by path, and each of its findings carries its own `decision`. A decision
+follows the Jev decision schema: `{ "type": "noul", "noul": <0..1> }`, the
+probability that the file meets the standard. See
+[LLM rules](/llm-rules#decisions).

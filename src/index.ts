@@ -21,16 +21,12 @@ export { defaultJudges } from "./judge/index.ts";
 export {
   type Answer,
   answerSchema,
-  choiceDecisionSchema,
   type Decision,
   decisionSchema,
   type Judge,
   type JudgeFactory,
   type JudgeRequest,
   type Judges,
-  type NoulDecision,
-  noulDecisionSchema,
-  scoreDecisionSchema,
   type Verdict,
 } from "./judge/judge.ts";
 export { messagesJudge, type ParseFn } from "./judge/messages.ts";
