@@ -9,6 +9,7 @@ import {
   type SourceFile,
 } from "../files.ts";
 import { type Finding, type RuleResult, ruleResult } from "../result.ts";
+import { parseSuppressions, suppressed } from "../suppress.ts";
 
 /** What every rule needs to know about the directory under check. */
 export interface RuleContext {
@@ -39,12 +40,15 @@ export async function readSelected(rule: FileSelection, ctx: RuleContext): Promi
   return read.filter((file) => file !== undefined);
 }
 
-/** One finding per line that matches, carrying the trimmed line. */
-function lineFindings(file: SourceFile, pattern: RegExp): Finding[] {
+/** One finding per matching line the file's markers do not suppress for `id`, carrying the trimmed line. */
+function lineFindings(file: SourceFile, pattern: RegExp, id: string): Finding[] {
+  const marks = parseSuppressions(file.content);
   return file.content
     .split("\n")
     .flatMap((line, index) =>
-      pattern.test(line) ? [{ path: file.path, line: index + 1, message: line.trim() }] : [],
+      pattern.test(line) && !suppressed(marks, id, index + 1)
+        ? [{ path: file.path, line: index + 1, message: line.trim() }]
+        : [],
     );
 }
 
@@ -53,7 +57,7 @@ export async function checkForbid(rule: RuleOf<"forbid">, ctx: RuleContext): Pro
   const files = await readSelected(rule, ctx);
   return ruleResult(
     rule,
-    files.flatMap((file) => lineFindings(file, pattern)),
+    files.flatMap((file) => lineFindings(file, pattern, rule.id)),
   );
 }
 
@@ -61,7 +65,10 @@ export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): P
   const pattern = compilePattern(rule.require);
   const files = await readSelected(rule, ctx);
   const findings = files
-    .filter((file) => !pattern.test(file.content))
+    .filter(
+      (file) =>
+        !pattern.test(file.content) && !suppressed(parseSuppressions(file.content), rule.id),
+    )
     .map((file) => ({ path: file.path, message: `does not match /${rule.require}/` }));
   return ruleResult(rule, findings);
 }
