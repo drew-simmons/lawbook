@@ -2,11 +2,12 @@ import { Command, CommanderError, Option } from "commander";
 import pkg from "../package.json" with { type: "json" };
 import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
-import { errorMessage } from "./errors.ts";
+import { CliError, errorMessage } from "./errors.ts";
 import { init } from "./init.ts";
 import { defaultJudges } from "./judge/index.ts";
+import { plan, type PlanOptions } from "./plan.ts";
 import type { Judges } from "./judge/judge.ts";
-import { type Format, FORMATS, FORMATTERS } from "./formats.ts";
+import { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
 import { exitCodeFor } from "./result.ts";
 
 /** Where the CLI writes. Tests pass their own to capture output. */
@@ -37,11 +38,22 @@ interface CheckFlags {
   since?: string;
   cache: boolean;
   cacheDir?: string;
+  dryRun?: boolean;
 }
 
 /** Commander actions return nothing, so the exit code travels in here. */
 interface Exit {
   code: number;
+}
+
+/** Lists what `check` would look at. Only text and JSON apply, since there are no findings yet. */
+async function runPlan(options: PlanOptions, format: Format, output: Output): Promise<number> {
+  const formatter = PLAN_FORMATTERS[format];
+  if (formatter === undefined) {
+    throw new CliError(`--dry-run prints text or json, not ${format}`);
+  }
+  output.stdout(formatter(await plan(options)));
+  return 0;
 }
 
 async function runCheck(
@@ -52,7 +64,7 @@ async function runCheck(
 ): Promise<number> {
   const file = flags.config ?? (await findConfigFile(root));
   const config = await loadConfig(file);
-  const report = await check({
+  const options: PlanOptions = {
     root,
     config,
     only: flags.only,
@@ -60,6 +72,12 @@ async function runCheck(
     files: flags.files,
     changed: flags.changed,
     since: flags.since,
+  };
+  if (flags.dryRun === true) {
+    return runPlan(options, flags.format, output);
+  }
+  const report = await check({
+    ...options,
     cache: flags.cache,
     cacheDir: flags.cacheDir,
     judges: deps.judges,
@@ -91,6 +109,7 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
       "check only files changed in the working tree: staged, unstaged, untracked",
     )
     .option("--since <ref>", "check only files committed since the merge base with ref")
+    .option("--dry-run", "list the files each rule would check and exit without reading them")
     .option("--no-cache", "ask the model even when a cached verdict exists")
     .option(
       "--cache-dir <dir>",

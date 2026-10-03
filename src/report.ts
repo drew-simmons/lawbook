@@ -1,3 +1,4 @@
+import type { Plan, PlanRule } from "./plan.ts";
 import type {
   Count,
   Finding,
@@ -74,4 +75,20 @@ export function formatText(report: Report): string {
 
 export function formatJson(report: Report): string {
   return `${JSON.stringify(report, null, 2)}\n`;
+}
+
+function planLines(rule: PlanRule): string[] {
+  const heading = `PLAN ${rule.id} (${rule.kind}, ${count(rule.files.length, "file")})`;
+  return [heading, ...rule.files.map((file) => `  ${file}`)];
+}
+
+/** Every rule's files, then how many distinct files and model requests the run would take. */
+export function formatPlanText(plan: Plan): string {
+  const distinct = new Set(plan.rules.flatMap((rule) => rule.files)).size;
+  const total = `${count(distinct, "file")}, ${count(plan.requests, "model request")}`;
+  return [...plan.rules.flatMap(planLines), "", total, ""].join("\n");
+}
+
+export function formatPlanJson(plan: Plan): string {
+  return `${JSON.stringify(plan, null, 2)}\n`;
 }

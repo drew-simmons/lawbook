@@ -29,6 +29,7 @@ line per rule followed by a summary.
 | `--files <paths...>`    | Check only these files. Paths are relative to the current directory, or absolute, like `root` itself. |
 | `--changed`             | Check only files changed in the working tree against `HEAD`: staged, unstaged, and untracked. |
 | `--since <ref>`         | Check only files committed since the merge base with `ref`, as `git diff <ref>...HEAD` lists them. |
+| `--dry-run`             | List the files each rule would check and how many model requests the run would make, then exit `0` without reading a file or building a client. Text or JSON only. |
 | `--no-cache`            | Ask the model for every file even when a cached verdict exists. See [LLM rules](/llm-rules#verdict-cache). |
 | `--cache-dir <dir>`     | Where verdicts are cached. Relative to the current directory; default `node_modules/.cache/lawbook` under `root`. |
 
@@ -65,6 +66,33 @@ A CI job on a pull request checks only what the branch changed:
     fetch-depth: 0
 - run: npx lawbook check --since origin/${{ github.base_ref }}
 ```
+
+### Dry run
+
+`--dry-run` shows what a run would look at before it looks. Each rule lists
+the files its globs select, after `ignore`, `exclude`, `.gitignore`, and any
+`--files`, `--changed`, or `--since` selector; `exists` and `absent` list
+their one path. The last line counts the distinct files and the model
+requests: one per selected file of a `standard` rule, or none under
+`--no-llm`. Nothing is read, so binary and oversize files still appear, and
+no provider client is built.
+
+```txt
+PLAN no-console (forbid, 2 files)
+  src/cli.ts
+  src/init.ts
+PLAN has-readme (exists, 1 file)
+  README.md
+PLAN errors-are-actionable (standard, 2 files)
+  src/cli.ts
+  src/init.ts
+
+3 files, 2 model requests
+```
+
+`--format json` prints `{ "rules": [{ "id", "kind", "level", "files" }],
+"requests" }`. The `github` and `sarif` formats have nothing to annotate and
+are rejected with exit code `2`.
 
 ### Text output
 

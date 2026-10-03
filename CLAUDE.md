@@ -57,6 +57,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   adds a `kind` so `src/check.ts` can dispatch through a lookup table instead
   of a chain of `if`s. New rule kinds add a schema, a runner in `src/rules/`,
   and a table entry.
+- `src/candidates.ts` turns `--files`, `--changed`, `--since`, and the
+  `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
+  which selects files the way `check` does but reads nothing and builds no
+  judge.
 - `src/files.ts` globs the files a rule selects and, when `check` was given
   `--files`, `--changed`, or `--since`, keeps only the candidates in
   `RuleContext.candidates`; with none given, inside a git work tree, the

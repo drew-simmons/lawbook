@@ -1,8 +1,7 @@
 import path from "node:path";
+import { candidatesFor } from "./candidates.ts";
 import type { Config, Rule, RuleKind, RuleOf } from "./config.ts";
 import { CliError } from "./errors.ts";
-import { underRoot } from "./files.ts";
-import { changedFiles, listedFiles } from "./git.ts";
 import { cachedJudge, DEFAULT_CACHE_DIR } from "./judge/cache.ts";
 import type { Judge, Judges } from "./judge/judge.ts";
 import { type Report, type RuleResult, summarize } from "./result.ts";
@@ -73,40 +72,6 @@ async function judgeFor(rules: Rule[], options: CheckOptions): Promise<Judge | u
   const wanted = options.llm !== false && rules.some((rule) => rule.kind === "standard");
   const { llm } = options.config;
   return wanted ? withCache(await options.judges[llm.provider](llm), options) : undefined;
-}
-
-/** The root-relative paths `files` names; those outside the root are dropped. */
-function namedFiles(root: string, files: string[] | undefined): string[] | undefined {
-  return files === undefined ? undefined : files.flatMap((file) => underRoot(root, file) ?? []);
-}
-
-function workingTreeFiles(options: CheckOptions): Promise<string[] | undefined> {
-  return options.changed === true ? changedFiles(options.root) : Promise.resolve(undefined);
-}
-
-function committedFiles(options: CheckOptions): Promise<string[] | undefined> {
-  const { root, since } = options;
-  return since === undefined ? Promise.resolve(undefined) : changedFiles(root, since);
-}
-
-/** What git tracks or does not ignore, when the config respects `.gitignore` and git knows the root. */
-async function gitCandidates(options: CheckOptions): Promise<Set<string> | undefined> {
-  const listed = options.config.gitignore ? await listedFiles(options.root) : undefined;
-  return listed === undefined ? undefined : new Set(listed);
-}
-
-/**
- * The files `files` rules may select: the union of every selector given;
- * else what `.gitignore` leaves, in a git work tree; else undefined, so
- * every file may be.
- */
-async function candidatesFor(options: CheckOptions): Promise<Set<string> | undefined> {
-  const selected = [
-    namedFiles(options.root, options.files),
-    await workingTreeFiles(options),
-    await committedFiles(options),
-  ].filter((paths) => paths !== undefined);
-  return selected.length === 0 ? gitCandidates(options) : new Set(selected.flat());
 }
 
 /** Runs the rules in config order and reports every result. */
