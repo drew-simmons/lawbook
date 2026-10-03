@@ -27,12 +27,15 @@ const base = {
 const selection = { files: z.array(text).min(1), exclude: z.array(text).default([]) };
 const probability = z.number().min(0).max(1);
 
+/** What a `forbid` or `require` finding says instead of the matched line or the pattern. */
+const message = { message: text.optional() };
+
 const forbidRule = z
-  .object({ ...base, ...selection, forbid: text })
+  .object({ ...base, ...selection, ...message, forbid: text })
   .strict()
   .transform((rule) => ({ kind: "forbid" as const, ...rule }));
 const requireRule = z
-  .object({ ...base, ...selection, require: text })
+  .object({ ...base, ...selection, ...message, require: text })
   .strict()
   .transform((rule) => ({ kind: "require" as const, ...rule }));
 const existsRule = z
