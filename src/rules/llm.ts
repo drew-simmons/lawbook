@@ -24,6 +24,8 @@ export interface JudgeContext extends RuleContext {
   concurrency: number;
   /** The largest file, in bytes, the judge is sent. */
   maxBytes: number;
+  /** Whether passing files keep the model's reason on the result. */
+  explain?: boolean;
 }
 
 interface Partition {
@@ -173,6 +175,24 @@ const FINISH: Record<Scope, (judged: Judged[]) => Partial<RuleResult>> = {
   set: (judged) => ({ decision: judged[0]?.verdict.decision }),
 };
 
+/** How passing outcomes explain themselves under `--explain`: reasons by path, or the set's one reason. */
+const EXPLAIN: Record<Scope, (passing: Judged[]) => Partial<RuleResult>> = {
+  file: (passing) => ({
+    reasons: Object.fromEntries(passing.map(({ path, verdict }) => [path ?? "", verdict.reason])),
+  }),
+  set: (passing) => (passing[0] === undefined ? {} : { reason: passing[0].verdict.reason }),
+};
+
+/** The passing outcomes' reasons when asked for; failing files already carry theirs in the findings. */
+function explanation(
+  rule: RuleOf<"standard">,
+  judged: Judged[],
+  ctx: JudgeContext,
+): Partial<RuleResult> {
+  const passing = judged.filter((outcome) => outcome.verdict.decision.noul >= rule.threshold);
+  return ctx.explain === true ? EXPLAIN[rule.scope](passing) : {};
+}
+
 /** The error as a finding, or a finding when the probability falls below the threshold. */
 function outcomeFindings(outcome: Outcome, threshold: number): Finding[] {
   if ("error" in outcome) {
@@ -193,6 +213,7 @@ function judgedResult(
   rule: RuleOf<"standard">,
   outcomes: Outcome[],
   skipped: Skipped[],
+  ctx: JudgeContext,
 ): RuleResult {
   const findings = outcomes.flatMap((outcome) => outcomeFindings(outcome, rule.threshold));
   const judged = outcomes.flatMap((outcome) => ("verdict" in outcome ? [outcome] : []));
@@ -200,7 +221,12 @@ function judgedResult(
     (total, outcome) => addTotals(total, usageOf(outcome.verdict)),
     NO_TOTALS,
   );
-  const shaped = { ...ruleResult(rule, findings), ...FINISH[rule.scope](judged), usage };
+  const shaped = {
+    ...ruleResult(rule, findings),
+    ...FINISH[rule.scope](judged),
+    ...explanation(rule, judged, ctx),
+    usage,
+  };
   const result = withSkipped(shaped, skipped);
   return judged.length === outcomes.length ? result : { ...result, status: "error" };
 }
@@ -215,7 +241,7 @@ async function judgeFiles(
   const { judged, skipped } = partition(await readSelected(rule, ctx), rule, ctx);
   const halt: Halt = { stopped: false };
   const outcomes = await RUN[rule.scope](ask, judge, judged, ctx, halt);
-  return judgedResult(rule, outcomes, skipped);
+  return judgedResult(rule, outcomes, skipped, ctx);
 }
 
 export async function checkStandard(

@@ -42,12 +42,28 @@ export function probability(finding: Finding): string {
   return decision === undefined ? "" : ` (noul ${decision.noul.toFixed(2)})`;
 }
 
+/** ` (noul 0.93)` for the decision a passing path or set got, else nothing. */
+function passedProbability(result: RuleResult, path?: string): string {
+  const decision = path === undefined ? result.decision : result.decisions?.[path];
+  return probability({ message: "", decision });
+}
+
+/** `  path: passed, <reason> (noul 0.93)` per explained file, or one line for an explained set. */
+function reasonLines(result: RuleResult): string[] {
+  const files = Object.entries(result.reasons ?? {}).map(
+    ([path, reason]) => `  ${path}: passed, ${reason}${passedProbability(result, path)}`,
+  );
+  const set =
+    result.reason === undefined ? [] : [`  passed, ${result.reason}${passedProbability(result)}`];
+  return [...files, ...set];
+}
+
 function resultLines(result: RuleResult): string[] {
   const findings = result.findings.map(
     (finding) => `  ${location(finding)}${finding.message}${probability(finding)}`,
   );
   const skipped = (result.skipped ?? []).map((entry) => `  ${entry.path}: ${entry.message}`);
-  return [`${LABELS[result.status]} ${result.id}`, ...findings, ...skipped];
+  return [`${LABELS[result.status]} ${result.id}`, ...findings, ...reasonLines(result), ...skipped];
 }
 
 export function summaryLine(summary: Summary): string {

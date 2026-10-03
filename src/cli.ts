@@ -39,6 +39,7 @@ interface CheckFlags {
   cache: boolean;
   cacheDir?: string;
   dryRun?: boolean;
+  explain?: boolean;
 }
 
 /** Commander actions return nothing, so the exit code travels in here. */
@@ -81,6 +82,7 @@ async function runCheck(
     cache: flags.cache,
     cacheDir: flags.cacheDir,
     judges: deps.judges,
+    explain: flags.explain,
   });
   output.stdout(FORMATTERS[flags.format](report, { version: pkg.version, root }));
   return exitCodeFor(report);
@@ -110,6 +112,7 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
     )
     .option("--since <ref>", "check only files committed since the merge base with ref")
     .option("--dry-run", "list the files each rule would check and exit without reading them")
+    .option("--explain", "print the model's reason for files that pass, not only for findings")
     .option("--no-cache", "ask the model even when a cached verdict exists")
     .option(
       "--cache-dir <dir>",

@@ -146,3 +146,22 @@ test("rules that differ only in model cache their verdicts apart", async () => {
   expect((await readdir(cacheDir())).length).toBe(2);
   expect((await run()).requests).toEqual([]);
 });
+
+test("--explain shows a cached verdict's reason", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "fine();\n");
+  const fake = fakeJudge({ "a.ts": noul(0.9, "clear next steps") });
+  await lawbookWith(fake.deps, "check", dir(), "--cache-dir", cacheDir());
+  const second = await lawbookWith(
+    fake.deps,
+    "check",
+    dir(),
+    "--cache-dir",
+    cacheDir(),
+    "--explain",
+  );
+  expect(second.stdout).toContain(
+    "PASS actionable-errors\n  a.ts: passed, clear next steps (noul 0.90)\n",
+  );
+  expect(second.stdout).toContain(usageLine(0, 1));
+});
