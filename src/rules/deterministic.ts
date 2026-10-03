@@ -90,15 +90,15 @@ function missingFindings(patterns: string[]): Finding[] {
 
 /** Passes when any of the paths or globs matches something. */
 export async function checkExists(rule: RuleOf<"exists">, ctx: RuleContext): Promise<RuleResult> {
-  const matches = await matchPaths(ctx.root, rule.exists, ctx.ignore);
-  return ruleResult(rule, matches.length === 0 ? missingFindings(rule.exists) : []);
+  const found = await matchPaths(ctx.root, rule.exists, ctx.ignore);
+  return ruleResult(rule, found.length === 0 ? missingFindings(rule.exists) : []);
 }
 
 /** Fails for every path or glob match that is present. */
 export async function checkAbsent(rule: RuleOf<"absent">, ctx: RuleContext): Promise<RuleResult> {
-  const matches = await matchPaths(ctx.root, rule.absent, ctx.ignore);
+  const found = await matchPaths(ctx.root, rule.absent, ctx.ignore);
   return ruleResult(
     rule,
-    matches.map((file) => ({ path: file, message: "exists" })),
+    found.map((file) => ({ path: file, message: "exists" })),
   );
 }
