@@ -24,8 +24,8 @@ export async function lawbookWith(deps: Deps, ...args: string[]) {
   for (const name of ["NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE"]) {
     vi.stubEnv(name, undefined);
   }
-  vi.stubEnv("GIT_CONFIG_GLOBAL", os.devNull);
-  vi.stubEnv("GIT_CONFIG_SYSTEM", os.devNull);
+  vi.stubEnv("GIT_CONFIG_GLOBAL", "/dev/null");
+  vi.stubEnv("GIT_CONFIG_SYSTEM", "/dev/null");
   let stdout = "";
   let stderr = "";
   const code = await run(
@@ -78,8 +78,8 @@ function gitEnv(dir: string): NodeJS.ProcessEnv {
   return {
     ...process.env,
     HOME: dir,
-    GIT_CONFIG_GLOBAL: os.devNull,
-    GIT_CONFIG_SYSTEM: os.devNull,
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_SYSTEM: "/dev/null",
     GIT_AUTHOR_NAME: "Test",
     GIT_AUTHOR_EMAIL: "test@example.com",
     GIT_COMMITTER_NAME: "Test",
