@@ -18,6 +18,10 @@ publishes each release tag to npm.
    Release builds do not need this token.
 3. In **Settings → Actions → General**, enable **Allow GitHub Actions to create
    and approve pull requests**. The `GITHUB_TOKEN` fallback requires it.
+   Without it the `Release Please` workflow fails after pushing its branch.
+   Re-run the failed workflow once the setting is on, or let the next push to
+   `main` run it; it reuses the branch and re-plans the version from the
+   configuration on every run.
 4. On npmjs.com, add a trusted publisher for the `lawbook` package: repository
    `drew-simmons/lawbook`, workflow `release.yml`. The workflow then publishes
    without a stored token. npm needs the package to exist first, so publish
@@ -75,8 +79,10 @@ keeps implementation-only commit types out of the public changelog.
    tests the package and publishes it to npm with provenance.
 6. The workflow then publishes the draft release.
 
-The repository starts at version `0.0.0`. Use `feat: initial release` for the
-first project commit so the first Release PR proposes `v0.1.0`.
+The repository starts at version `0.0.0`. `initial-version` in
+`release-please-config.json` fixes the first release at `0.1.0`; without it,
+Release Please proposes `1.0.0` for a first release even with
+`bump-minor-pre-major`.
 
 > [!IMPORTANT]
 > Do not bump the package version, edit generated changelog entries, or create
