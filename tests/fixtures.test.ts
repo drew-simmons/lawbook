@@ -105,6 +105,8 @@ test("honours the rule's threshold", async () => {
 
 test("with a missing fixture exits two naming the rule", async () => {
   await config(`rules:\n${RULE}`);
+  await write(dir(), "fixtures/bad.ts", "throw new Error('bad');\n");
+  await write(dir(), "fixtures/worse.ts", "throw new Error('worse');\n");
   const result = await lawbookWith(fakeJudge().deps, "test", dir());
   expect(result.code).toBe(2);
   expect(result.stderr).toBe(
