@@ -78,6 +78,7 @@ can turn a rule off for one line or the whole file; see
 | ----------- | -------- | ----------------------------------------------------------------------- |
 | `standard`  | yes      | The standard in prose.                                                  |
 | `threshold` | no       | The probability, `0` to `1`, a file must reach to pass. Defaults to `0.5`. |
+| `scope`     | no       | `file` (default) judges each selected file in its own request. `set` sends every selected file in one request and gets one verdict for the set. See [LLM rules](/llm-rules#judging-files-together). |
 
 ### Patterns
 

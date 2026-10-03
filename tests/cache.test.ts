@@ -3,7 +3,15 @@ import path from "node:path";
 import { expect, test } from "vitest";
 import { DEFAULT_MODELS } from "../src/config.ts";
 import { cacheKey, DEFAULT_CACHE_DIR } from "../src/judge/cache.ts";
-import { fakeJudge, lawbookWith, noul, usageLine, useTempDir, write } from "./helpers.ts";
+import {
+  fakeJudge,
+  requestKey,
+  lawbookWith,
+  noul,
+  usageLine,
+  useTempDir,
+  write,
+} from "./helpers.ts";
 
 const dir = useTempDir();
 
@@ -22,7 +30,7 @@ const cacheDir = () => path.join(dir(), "cache");
 async function run(...args: string[]) {
   const fake = fakeJudge({ "a.ts": noul(0.1, "'bad' names no next step") });
   const result = await lawbookWith(fake.deps, "check", dir(), "--cache-dir", cacheDir(), ...args);
-  return { ...result, requests: fake.requests.map((request) => request.path) };
+  return { ...result, requests: fake.requests.map(requestKey) };
 }
 
 test("a second run answers from the cache without a request", async () => {
@@ -82,8 +90,7 @@ test("a corrupt cache entry is a miss and is rewritten", async () => {
   await write(dir(), "a.ts", "throw new Error('bad');\n");
   const key = cacheKey(DEFAULT_MODELS.bedrock, {
     standard: "Errors say what to do next",
-    path: "a.ts",
-    content: "throw new Error('bad');\n",
+    files: [{ path: "a.ts", content: "throw new Error('bad');\n" }],
   });
   const file = path.join(cacheDir(), `${key}.json`);
   await write(dir(), "cache/placeholder", "");
@@ -115,12 +122,15 @@ test("a cache dir that cannot be created reports the file as an error", async ()
 });
 
 test("cacheKey is stable and changes with every field", () => {
-  const request = { standard: "s", path: "p", content: "c" };
+  const a = { path: "a", content: "ca" };
+  const b = { path: "b", content: "cb" };
+  const request = { standard: "s", files: [a, b] };
   const key = cacheKey("m", request);
   expect(key).toMatch(/^[0-9a-f]{64}$/u);
   expect(cacheKey("m", request)).toBe(key);
   expect(cacheKey("m2", request)).not.toBe(key);
   expect(cacheKey("m", { ...request, standard: "s2" })).not.toBe(key);
-  expect(cacheKey("m", { ...request, path: "p2" })).not.toBe(key);
-  expect(cacheKey("m", { ...request, content: "c2" })).not.toBe(key);
+  expect(cacheKey("m", { standard: "s", files: [{ ...a, path: "a2" }, b] })).not.toBe(key);
+  expect(cacheKey("m", { standard: "s", files: [a, { ...b, content: "x" }] })).not.toBe(key);
+  expect(cacheKey("m", { standard: "s", files: [b, a] })).not.toBe(key);
 });

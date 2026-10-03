@@ -106,6 +106,34 @@ regular expression can express the standard, prefer `forbid` or `require`.
 Reserve `standard` for judgment calls, and treat a failure as a prompt for a
 human to look at the file.
 
+## Judging files together
+
+By default a `standard` rule judges each file in its own request, with no
+context from other files. A rule with `scope: set` sends every selected file
+in one request, each as a `File: <path>` block, and asks whether they meet
+the standard together, which fits standards about consistency across a
+module:
+
+```yaml
+rules:
+  - id: consistent-naming
+    files: ["src/models/*.ts"]
+    scope: set
+    standard: Every model exports one class named after its file, in PascalCase.
+```
+
+```txt
+FAIL consistent-naming
+  src/models/user.ts exports `UserModel` while the others match their file names. (noul 0.20)
+```
+
+A set has one verdict: the finding names no file, and the JSON result
+carries it as `decision` instead of the per-file `decisions`. Suppressed
+files are left out of the set and listed as skipped. The set is sized as a
+whole against `llm.maxBytes`; a set that does not fit is reported as an
+`ERROR` without a request, since nothing was judged. A set with no files
+passes without a request. `--dry-run` counts one request for the rule.
+
 ## Prompt caching
 
 The request marks the standard for the provider's prompt cache, so after the
@@ -121,7 +149,10 @@ Lawbook also caches verdicts itself. Every verdict is stored under
 the model, the system prompt, the standard, the file's path, and its
 content. A later run answers from the cache for any file whose key is
 unchanged, without a request, and prints it as cached in the usage line.
-So a rerun on an unchanged tree is free and gives the same verdicts.
+So a rerun on an unchanged tree is free and gives the same verdicts. For a
+`scope: set` rule the key covers every file in the set, in order. A lawbook
+release that changes the system prompt invalidates every entry; the next run
+simply asks again.
 
 - `--no-cache` asks the model again for every file. The answers are still
   stored.

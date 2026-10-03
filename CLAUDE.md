@@ -81,7 +81,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   `Judge`, and skips when the context has none (`--no-llm`). It judges up
   to `llm.concurrency` files at once through `mapLimit` in `src/pool.ts`,
   which keeps results in input order, and lists files over `llm.maxBytes`
-  under `RuleResult.skipped` instead of sending them.
+  under `RuleResult.skipped` instead of sending them. A `scope: set` rule
+  sends every file in one request and gets one `decision`; the scope picks
+  the runner, the guards, and the result shape through lookup tables. A
+  `JudgeRequest` always carries `files`, one for `scope: file`.
 - `src/judge/` holds the `Judge` interface, the provider-neutral
   `messagesJudge` core (fully tested with a stub `parse`), the Bedrock
   and Anthropic adapters, which only build a client, and `cache.ts`, a

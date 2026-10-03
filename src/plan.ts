@@ -1,6 +1,6 @@
 import { candidatesFor } from "./candidates.ts";
 import { filterOnly } from "./check.ts";
-import type { Config, Level, Rule, RuleKind, RuleOf } from "./config.ts";
+import type { Config, Level, Rule, RuleKind, RuleOf, Scope } from "./config.ts";
 import { type RuleContext, selectRuleFiles } from "./rules/deterministic.ts";
 
 /** What `check` would look at for one rule, without reading anything. */
@@ -9,6 +9,8 @@ export interface PlanRule {
   kind: RuleKind;
   level: Level;
   files: string[];
+  /** Model requests this rule would make: one per file, or one for a set. Zero for other kinds. */
+  requests: number;
 }
 
 export interface Plan {
@@ -38,16 +40,26 @@ const PATHS: { [K in RuleKind]: Paths<K> } = {
   absent: async (rule) => [rule.absent],
 };
 
+/** Requests by scope: one per file, or one for the whole set when it has any files. */
+const REQUESTS: Record<Scope, (files: number) => number> = {
+  file: (files) => files,
+  set: (files) => Math.min(files, 1),
+};
+
+function requestsOf(rule: Rule, files: number): number {
+  return rule.kind === "standard" ? REQUESTS[rule.scope](files) : 0;
+}
+
 async function planRule(rule: Rule, ctx: RuleContext): Promise<PlanRule> {
   // Each lister takes its own rule kind; `kind` has already picked the right one.
   const files = await PATHS[rule.kind](rule as never, ctx);
-  return { id: rule.id, kind: rule.kind, level: rule.level, files };
+  const requests = requestsOf(rule, files.length);
+  return { id: rule.id, kind: rule.kind, level: rule.level, files, requests };
 }
 
-/** One request per selected file of a `standard` rule, or none when the run skips models. */
+/** Every rule's requests, or none when the run skips models. */
 function requestsFor(rules: PlanRule[], llm: boolean | undefined): number {
-  const standard = rules.filter((rule) => rule.kind === "standard");
-  return llm === false ? 0 : standard.reduce((total, rule) => total + rule.files.length, 0);
+  return llm === false ? 0 : rules.reduce((total, rule) => total + rule.requests, 0);
 }
 
 /** The files each selected rule would look at, found the way `check` finds them. */

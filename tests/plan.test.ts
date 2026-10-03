@@ -46,8 +46,14 @@ test("--dry-run --format json prints the plan", async () => {
   );
   expect(JSON.parse(result.stdout)).toEqual({
     rules: [
-      { id: "no-todo", kind: "forbid", level: "error", files: ["src/a.ts", "src/b.ts"] },
-      { id: "readme", kind: "exists", level: "error", files: ["README.md"] },
+      {
+        id: "no-todo",
+        kind: "forbid",
+        level: "error",
+        files: ["src/a.ts", "src/b.ts"],
+        requests: 0,
+      },
+      { id: "readme", kind: "exists", level: "error", files: ["README.md"], requests: 0 },
     ],
     requests: 0,
   });
