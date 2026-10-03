@@ -35,6 +35,21 @@ rules:
     standard: Every error message says what went wrong and what to do next.
 ```
 
+## Editor support
+
+The repository publishes a JSON Schema for the config file, and `lawbook init`
+writes the comment that points an editor at it, so keys autocomplete and a
+typo is underlined before the run rejects it:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/drew-simmons/lawbook/main/lawbook.schema.json
+version: 1
+```
+
+The comment works with the YAML language server that VS Code's YAML
+extension and most other editors use. The same file ships in the package as
+`node_modules/lawbook/lawbook.schema.json`, and `lawbook schema` prints it.
+
 ## Top level
 
 | Key       | Required | Meaning                                                                                      |

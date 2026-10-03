@@ -59,6 +59,7 @@ export {
   toChatVerdict,
 } from "./judge/chat.ts";
 export { type Plan, plan, type PlanOptions, type PlanRule } from "./plan.ts";
+export { configJsonSchema, formatSchema, SCHEMA_URL } from "./schema.ts";
 export {
   FIXTURE_FORMATS,
   FIXTURE_FORMATTERS,

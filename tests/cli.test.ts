@@ -21,6 +21,7 @@ test("help lists init, check, and test", async () => {
   expect(result.stdout).toContain("init");
   expect(result.stdout).toContain("check");
   expect(result.stdout).toContain("test");
+  expect(result.stdout).toContain("schema");
 });
 
 test("unknown flag exits two", async () => {

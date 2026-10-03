@@ -17,7 +17,8 @@
     "lawbook": "dist/bin.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "lawbook.schema.json"
   ],
   "type": "module",
   "exports": {
@@ -28,6 +29,7 @@
   },
   "scripts": {
     "build": "tsdown",
+    "schema": "tsdown && node dist/bin.mjs schema > lawbook.schema.json",
     "prepack": "tsdown",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --deny-warnings && oxfmt --check",

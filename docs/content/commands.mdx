@@ -312,3 +312,11 @@ with every fixture, not only the misclassified ones.
 
 The exit code is `1` when any fixture is misclassified, `2` when a fixture
 is missing or binary or the provider fails, and `0` otherwise.
+
+## `lawbook schema`
+
+Prints the JSON Schema for `lawbook.yaml`, drawn from the same definitions
+`check` validates with, so it always matches the version installed. The
+schema is also published at
+`https://raw.githubusercontent.com/drew-simmons/lawbook/main/lawbook.schema.json`
+for editors; see [Configuration](/configuration#editor-support).

@@ -20,6 +20,7 @@ import {
   PLAN_FORMATTERS,
 } from "./formats.ts";
 import { exitCodeFor, type Report } from "./result.ts";
+import { formatSchema } from "./schema.ts";
 
 /** Where the CLI writes. Tests pass their own to capture output. */
 export interface Output {
@@ -180,6 +181,12 @@ function testCommand(output: Output, deps: Deps, exit: Exit): Command {
     });
 }
 
+function schemaCommand(output: Output): Command {
+  return new Command("schema").description("print the JSON Schema for lawbook.yaml").action(() => {
+    output.stdout(formatSchema());
+  });
+}
+
 function initCommand(output: Output): Command {
   return new Command("init")
     .description("write a starter lawbook.yaml")
@@ -236,6 +243,7 @@ function program(output: Output, deps: Deps, exit: Exit): Command {
   root.addCommand(initCommand(output).copyInheritedSettings(root));
   root.addCommand(checkCommand(output, deps, exit).copyInheritedSettings(root));
   root.addCommand(testCommand(output, deps, exit).copyInheritedSettings(root));
+  root.addCommand(schemaCommand(output).copyInheritedSettings(root));
   return root;
 }
 
