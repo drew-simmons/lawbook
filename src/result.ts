@@ -10,6 +10,12 @@ export interface Finding {
   decision?: Decision;
 }
 
+/** A file a rule selected but left out, and why. It does not affect the status. */
+export interface Skipped {
+  path: string;
+  message: string;
+}
+
 /** `error` means at least one file could not be judged; its findings say why. */
 export type RuleStatus = "pass" | "fail" | "warn" | "error" | "skip";
 
@@ -23,6 +29,8 @@ export interface RuleResult {
   findings: Finding[];
   /** Every judged file's decision, keyed by path. Only judged `standard` rules set it. */
   decisions?: Record<string, Decision>;
+  /** Files left out and why. Present only when there are any. */
+  skipped?: Skipped[];
 }
 
 export interface Summary {
@@ -50,6 +58,11 @@ function base(rule: Rule): Pick<RuleResult, "id" | "kind" | "level" | "descripti
 export function ruleResult(rule: Rule, findings: Finding[]): RuleResult {
   const status = findings.length === 0 ? "pass" : FINDINGS_STATUS[rule.level];
   return { ...base(rule), status, findings };
+}
+
+/** `skipped` only when there is something to list, so other results keep their shape. */
+export function withSkipped(result: RuleResult, skipped: Skipped[]): RuleResult {
+  return skipped.length === 0 ? result : { ...result, skipped };
 }
 
 /** A rule the run did not evaluate, such as a `standard` rule under `--no-llm`. */

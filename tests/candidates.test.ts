@@ -134,3 +134,53 @@ test("--since with an unknown ref exits two naming the ref", async () => {
   expect(result.stderr).toMatch(/^error: git diff: /u);
   expect(result.stderr).toContain("nope");
 });
+
+const BOTH =
+  "FAIL no-todo\n  src/a.ts:1: // TODO a\n  vendor/x.ts:1: // TODO x\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n";
+
+async function ignoredVendor(): Promise<void> {
+  await config(NO_TODO);
+  await write(dir(), ".gitignore", "vendor/\n");
+  await write(dir(), "src/a.ts", "// TODO a\n");
+  await write(dir(), "vendor/x.ts", "// TODO x\n");
+}
+
+test("files .gitignore covers are not checked inside a repository", async () => {
+  await ignoredVendor();
+  await gitRepo(dir());
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toBe(
+    "FAIL no-todo\n  src/a.ts:1: // TODO a\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("gitignore: false checks ignored files too", async () => {
+  await ignoredVendor();
+  await write(dir(), "lawbook.yaml", `version: 1\ngitignore: false\nrules:\n${NO_TODO}`);
+  await gitRepo(dir());
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toBe(BOTH);
+});
+
+test("--files checks a gitignored file when named", async () => {
+  await ignoredVendor();
+  await gitRepo(dir());
+  const result = await lawbook("check", dir(), "--files", abs("vendor/x.ts"));
+  expect(result.stdout).toContain("  vendor/x.ts:1: // TODO x\n");
+  expect(result.stdout).not.toContain("src/a.ts");
+});
+
+test("a tracked file in an ignored directory is still checked", async () => {
+  await ignoredVendor();
+  await gitRepo(dir());
+  await gitIn(dir(), "add", "-f", "vendor/x.ts");
+  await gitIn(dir(), "commit", "-q", "-m", "force");
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toBe(BOTH);
+});
+
+test("outside a repository a .gitignore file has no effect", async () => {
+  await ignoredVendor();
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toBe(BOTH);
+});

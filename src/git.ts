@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { CliError, errorMessage } from "./errors.ts";
+import { CliError, cliErrorMessage, errorMessage } from "./errors.ts";
 
 const run = promisify(execFile);
 
@@ -65,4 +65,26 @@ export async function changedFiles(root: string, ref?: string): Promise<string[]
   const files =
     ref === undefined ? await workingTreeChanges(root) : await committedSince(root, ref);
   return files.flatMap((file) => underPrefix(prefix, file)).toSorted();
+}
+
+/**
+ * Tracked files, plus untracked files `.gitignore` does not cover, under
+ * `root` and relative to it, sorted; undefined when `root` is not inside a
+ * git work tree. One git call decides both questions.
+ */
+export async function listedFiles(root: string): Promise<string[] | undefined> {
+  try {
+    const output = await git(root, [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+    ]);
+    return splitPaths(output).toSorted();
+  } catch (error) {
+    // Git refusing the directory is the "not a repository" answer; a bug still propagates.
+    cliErrorMessage(error);
+    return undefined;
+  }
 }

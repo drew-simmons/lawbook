@@ -41,6 +41,7 @@ rules:
 | --------- | -------- | -------------------------------------------------------------------------------------------- |
 | `version` | yes      | Always `1`.                                                                                  |
 | `ignore`  | no       | Globs no rule looks at. Defaults to `**/node_modules/**` and `**/.git/**`; setting it replaces the defaults. |
+| `gitignore` | no     | Whether files `.gitignore` covers are left out when the checked directory is inside a git work tree. Defaults to `true`. |
 | `llm`     | no       | The model that judges `standard` rules. See [Providers](/providers).                         |
 | `rules`   | yes      | The rules, run in order.                                                                     |
 
@@ -89,8 +90,26 @@ usual conventions: `*` matches within a path segment, `**` crosses directories,
 and `{a,b}` lists alternatives. Dotfiles and dot directories are included, so
 `.github/**/*.yml` works; the default `ignore` keeps `.git` out.
 
+`exclude` is an optional list of globs a `files` rule leaves out, on top of
+the top-level `ignore`:
+
+```yaml
+  - id: no-console
+    files: ["src/**/*.ts"]
+    exclude: ["src/**/*.test.ts", "src/generated/**"]
+    forbid: 'console\.(log|debug)\('
+```
+
 A rule whose globs select no files passes. Selected files are read as UTF-8
-text.
+text. A file with a NUL byte in its first 8 KiB is treated as binary and
+skipped without a finding, so a glob that catches an image or an archive
+costs nothing.
+
+Inside a git work tree, files that `.gitignore` covers are left out as well:
+one `git ls-files` call lists the tracked files and the untracked files git
+does not ignore, and `files` rules select only from those. Set `gitignore:
+false` to look at ignored files too. Outside a repository, or when `--files`,
+`--changed`, or `--since` names the files, this listing is not used.
 
 `lawbook check --files`, `--changed`, and `--since` narrow every `files`
 rule to the files they name, so a pre-commit hook or a pull request check

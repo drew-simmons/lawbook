@@ -1,7 +1,13 @@
 import path from "node:path";
 import type { RuleOf } from "../config.ts";
 import { CliError, errorMessage } from "../errors.ts";
-import { pathExists, readSourceFile, selectFiles, type SourceFile } from "../files.ts";
+import {
+  type FileSelection,
+  pathExists,
+  readSourceFile,
+  selectFiles,
+  type SourceFile,
+} from "../files.ts";
 import { type Finding, type RuleResult, ruleResult } from "../result.ts";
 
 /** What every rule needs to know about the directory under check. */
@@ -21,9 +27,16 @@ export function compilePattern(source: string): RegExp {
   }
 }
 
-export async function readSelected(patterns: string[], ctx: RuleContext): Promise<SourceFile[]> {
-  const files = await selectFiles(ctx.root, patterns, ctx.ignore, ctx.candidates);
-  return Promise.all(files.map((file) => readSourceFile(ctx.root, file)));
+/** The paths a `files` rule selects: its globs minus the run's `ignore` and its own `exclude`. */
+export function selectRuleFiles(rule: FileSelection, ctx: RuleContext): Promise<string[]> {
+  return selectFiles(ctx.root, rule.files, [...ctx.ignore, ...rule.exclude], ctx.candidates);
+}
+
+/** The selected files as text; binary files are left out. */
+export async function readSelected(rule: FileSelection, ctx: RuleContext): Promise<SourceFile[]> {
+  const files = await selectRuleFiles(rule, ctx);
+  const read = await Promise.all(files.map((file) => readSourceFile(ctx.root, file)));
+  return read.filter((file) => file !== undefined);
 }
 
 /** One finding per line that matches, carrying the trimmed line. */
@@ -37,7 +50,7 @@ function lineFindings(file: SourceFile, pattern: RegExp): Finding[] {
 
 export async function checkForbid(rule: RuleOf<"forbid">, ctx: RuleContext): Promise<RuleResult> {
   const pattern = compilePattern(rule.forbid);
-  const files = await readSelected(rule.files, ctx);
+  const files = await readSelected(rule, ctx);
   return ruleResult(
     rule,
     files.flatMap((file) => lineFindings(file, pattern)),
@@ -46,7 +59,7 @@ export async function checkForbid(rule: RuleOf<"forbid">, ctx: RuleContext): Pro
 
 export async function checkRequire(rule: RuleOf<"require">, ctx: RuleContext): Promise<RuleResult> {
   const pattern = compilePattern(rule.require);
-  const files = await readSelected(rule.files, ctx);
+  const files = await readSelected(rule, ctx);
   const findings = files
     .filter((file) => !pattern.test(file.content))
     .map((file) => ({ path: file.path, message: `does not match /${rule.require}/` }));

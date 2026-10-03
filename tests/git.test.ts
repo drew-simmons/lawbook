@@ -2,7 +2,7 @@ import path from "node:path";
 import { expect, test } from "vitest";
 import { CliError } from "../src/errors.ts";
 import { underRoot } from "../src/files.ts";
-import { changedFiles, git } from "../src/git.ts";
+import { changedFiles, git, listedFiles } from "../src/git.ts";
 import { gitIn, gitRepo, useTempDir, write } from "./helpers.ts";
 
 const dir = useTempDir();
@@ -24,6 +24,21 @@ test("changedFiles with a ref lists commits since the merge base only", async ()
   await gitIn(dir(), "commit", "-q", "-m", "b");
   await write(dir(), "untracked.ts", "const u = 1;\n");
   expect(await changedFiles(dir(), "main")).toEqual(["b.ts"]);
+});
+
+test("listedFiles is undefined outside a repository", async () => {
+  expect(await listedFiles(dir())).toBeUndefined();
+});
+
+test("listedFiles lists tracked and untracked files under the root but not ignored ones", async () => {
+  await write(dir(), ".gitignore", "*.log\n");
+  await write(dir(), "pkg/a.ts", "");
+  await gitRepo(dir());
+  await write(dir(), "pkg/b.ts", "");
+  await write(dir(), "pkg/c.log", "");
+  await write(dir(), "top.ts", "");
+  expect(await listedFiles(path.join(dir(), "pkg"))).toEqual(["a.ts", "b.ts"]);
+  expect(await listedFiles(dir())).toEqual([".gitignore", "pkg/a.ts", "pkg/b.ts", "top.ts"]);
 });
 
 test("git wraps a failure in a CliError naming the command", async () => {

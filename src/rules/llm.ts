@@ -3,7 +3,14 @@ import { cliErrorMessage } from "../errors.ts";
 import type { SourceFile } from "../files.ts";
 import type { Judge, Verdict } from "../judge/judge.ts";
 import { mapLimit } from "../pool.ts";
-import { type Finding, type RuleResult, ruleResult, skipResult } from "../result.ts";
+import {
+  type Finding,
+  type RuleResult,
+  ruleResult,
+  type Skipped,
+  skipResult,
+  withSkipped,
+} from "../result.ts";
 import { readSelected, type RuleContext } from "./deterministic.ts";
 
 /** `judge` is absent when the run skips LLM rules. */
@@ -11,6 +18,13 @@ export interface JudgeContext extends RuleContext {
   judge?: Judge;
   /** How many files the judge sees at once. */
   concurrency: number;
+  /** The largest file, in bytes, the judge is sent. */
+  maxBytes: number;
+}
+
+interface Partition {
+  judged: SourceFile[];
+  skipped: Skipped[];
 }
 
 /** What judging one file produced: a verdict, or why there is none. */
@@ -22,6 +36,23 @@ export const NOT_JUDGED = "not judged after an earlier error";
 /** Set once a file fails, so the rest of the rule stops asking the provider. */
 interface Halt {
   stopped: boolean;
+}
+
+/** The skip entry for a file too large to send, else nothing. */
+export function sizeSkip(file: SourceFile, maxBytes: number): Skipped[] {
+  const bytes = Buffer.byteLength(file.content);
+  return bytes > maxBytes
+    ? [{ path: file.path, message: `skipped, ${bytes} bytes over llm.maxBytes ${maxBytes}` }]
+    : [];
+}
+
+/** Splits the files into those the judge sees and those left out, with the reason. */
+function partition(files: SourceFile[], ctx: JudgeContext): Partition {
+  const sized = files.map((file) => ({ file, skipped: sizeSkip(file, ctx.maxBytes) }));
+  return {
+    judged: sized.filter((entry) => entry.skipped.length === 0).map((entry) => entry.file),
+    skipped: sized.flatMap((entry) => entry.skipped),
+  };
 }
 
 /** A finding when the probability falls below the rule's threshold, else nothing. */
@@ -60,13 +91,17 @@ function outcomeFindings(outcome: Outcome, threshold: number): Finding[] {
 }
 
 /** `error` when any file has no verdict; else the findings decide, as for any rule. */
-function judgedResult(rule: RuleOf<"standard">, outcomes: Outcome[]): RuleResult {
+function judgedResult(
+  rule: RuleOf<"standard">,
+  outcomes: Outcome[],
+  skipped: Skipped[],
+): RuleResult {
   const findings = outcomes.flatMap((outcome) => outcomeFindings(outcome, rule.threshold));
   const judged = outcomes.flatMap((outcome) => ("verdict" in outcome ? [outcome] : []));
   const decisions = Object.fromEntries(
     judged.map(({ file, verdict }) => [file.path, verdict.decision]),
   );
-  const result = { ...ruleResult(rule, findings), decisions };
+  const result = withSkipped({ ...ruleResult(rule, findings), decisions }, skipped);
   return judged.length === outcomes.length ? result : { ...result, status: "error" };
 }
 
@@ -76,12 +111,12 @@ async function judgeFiles(
   judge: Judge,
   ctx: JudgeContext,
 ): Promise<RuleResult> {
-  const files = await readSelected(rule.files, ctx);
+  const { judged, skipped } = partition(await readSelected(rule, ctx), ctx);
   const halt: Halt = { stopped: false };
-  const outcomes = await mapLimit(files, ctx.concurrency, (file) =>
+  const outcomes = await mapLimit(judged, ctx.concurrency, (file) =>
     judgeOne(rule, judge, file, halt),
   );
-  return judgedResult(rule, outcomes);
+  return judgedResult(rule, outcomes, skipped);
 }
 
 export async function checkStandard(

@@ -75,6 +75,21 @@ test.each([
   expect(result.stderr).toContain("llm.concurrency");
 });
 
+test.each([
+  ["zero", "0"],
+  ["a fraction", "1.5"],
+  ["a word", "big"],
+])("check rejects an llm.maxBytes that is %s", async (_name, maxBytes) => {
+  await write(
+    dir(),
+    "lawbook.yaml",
+    `version: 1\nllm:\n  maxBytes: ${maxBytes}\nrules:\n${STANDARD}`,
+  );
+  const result = await lawbook("check", dir(), "--no-llm");
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("llm.maxBytes");
+});
+
 test("check rejects threshold on a deterministic rule", async () => {
   await write(
     dir(),
