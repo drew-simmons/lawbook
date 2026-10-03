@@ -64,6 +64,8 @@ rules:
   #   standard: |
   #     Every error message shown to a user says what went wrong and what
   #     to do next.
+  #   # Reference files the model reads but does not judge.
+  #   context: ["docs/style.md"]
   #   # A cheaper model for this rule alone; provider, region, and baseUrl work too.
   #   llm: { model: anthropic.claude-sonnet-5-5 }
 `;

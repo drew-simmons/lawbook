@@ -130,6 +130,8 @@ test("cacheKey is stable and changes with every field", () => {
   expect(cacheKey("m2", request)).not.toBe(key);
   expect(cacheKey("m", { ...request, standard: "s2" })).not.toBe(key);
   expect(cacheKey("m", { standard: "s", files: [{ ...a, path: "a2" }, b] })).not.toBe(key);
+  expect(cacheKey("m", { ...request, context: [] })).toBe(key);
+  expect(cacheKey("m", { ...request, context: [a] })).not.toBe(key);
   expect(cacheKey("m", { standard: "s", files: [a, { ...b, content: "x" }] })).not.toBe(key);
   expect(cacheKey("m", { standard: "s", files: [b, a] })).not.toBe(key);
 });

@@ -11,6 +11,7 @@ import { bedrockRegion } from "../src/judge/bedrock.ts";
 import { type Answer, decisionSchema } from "../src/judge/judge.ts";
 import {
   type AnswerParams,
+  buildRequest,
   messagesJudge,
   type ParseFn,
   requestLabel,
@@ -233,4 +234,24 @@ test("a verdictless answer for a set names the file count", async () => {
   await expect(messagesJudge(stub.parse, "m", "bedrock").judge(request)).rejects.toThrow(
     "the judge gave no verdict for 2 files (stop reason: max_tokens)",
   );
+});
+
+test("buildRequest puts the cache marker on the context block when there is one", () => {
+  const params = buildRequest(
+    { ...REQUEST, context: [{ path: "docs/style.md", content: "# Style\n" }] },
+    "m",
+  );
+  expect(params.system).toEqual([
+    { type: "text", text: SYSTEM_PROMPT },
+    { type: "text", text: "Standard:\nErrors are actionable" },
+    {
+      type: "text",
+      text: "Reference material. Use it to understand the standard; judge only the files in the message, not these.\n\nFile: docs/style.md\n\n# Style\n",
+      cache_control: { type: "ephemeral" },
+    },
+  ]);
+});
+
+test("buildRequest treats an empty context like none", () => {
+  expect(buildRequest({ ...REQUEST, context: [] }, "m").system).toHaveLength(2);
 });

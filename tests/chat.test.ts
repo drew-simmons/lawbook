@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { CliError } from "../src/errors.ts";
 import { chatJudge, type ChatParams, type ChatParseFn, toChatUsage } from "../src/judge/chat.ts";
 import type { Answer } from "../src/judge/judge.ts";
-import { SYSTEM_PROMPT } from "../src/judge/messages.ts";
+import { contextBlock, SYSTEM_PROMPT } from "../src/judge/messages.ts";
 
 const REQUEST = {
   standard: "Errors are actionable",
@@ -142,4 +142,14 @@ test("SDK errors become CliErrors naming openai and other errors pass through", 
   );
   const bug = stubParse(new TypeError("boom"));
   await expect(chatJudge(bug.parse, "gpt-x").judge(REQUEST)).rejects.toThrow(TypeError);
+});
+
+test("chatJudge appends the context block to the system message", async () => {
+  const context = [{ path: "docs/style.md", content: "# Style\n" }];
+  const stub = stubParse(completion([{ parsed: { noul: 0.9, reason: "ok" } }]));
+  await chatJudge(stub.parse, "gpt-x").judge({ ...REQUEST, context });
+  expect(stub.calls[0]?.messages[0]).toEqual({
+    role: "system",
+    content: `${SYSTEM_PROMPT}\n\nStandard:\nErrors are actionable\n\n${contextBlock(context)[0]}`,
+  });
 });

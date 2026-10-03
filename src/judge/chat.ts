@@ -16,7 +16,7 @@ import {
   type Usage,
   type Verdict,
 } from "./judge.ts";
-import { decisionOf, fileBlocks, requestLabel, SYSTEM_PROMPT } from "./messages.ts";
+import { decisionOf, fileBlocks, requestLabel, systemTexts } from "./messages.ts";
 
 /** A Chat Completions request whose answer parses into an `Answer`. */
 export type ChatParams = ChatCompletionCreateParamsNonStreaming & {
@@ -35,7 +35,7 @@ export function buildChatRequest(request: JudgeRequest, model: string): ChatPara
     model,
     max_completion_tokens: 1024,
     messages: [
-      { role: "system", content: `${SYSTEM_PROMPT}\n\nStandard:\n${request.standard}` },
+      { role: "system", content: systemTexts(request).join("\n\n") },
       { role: "user", content: fileBlocks(request.files) },
     ],
     response_format: zodResponseFormat(answerSchema, "answer"),
