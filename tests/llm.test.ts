@@ -274,13 +274,18 @@ test("check builds the judge once with the default provider and model", async ()
 
 test("check passes the configured provider, model, and region to the factory", async () => {
   await config(
-    `llm:\n  provider: anthropic\n  model: claude-sonnet-5-5\n  region: eu-west-1\nrules:\n${STANDARD}`,
+    `llm:\n  provider: bedrock\n  model: anthropic.claude-sonnet-5-5\n  region: eu-west-1\nrules:\n${STANDARD}`,
   );
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
   expect(fake.built).toEqual([
-    { provider: "anthropic", model: "claude-sonnet-5-5", region: "eu-west-1", concurrency: 4 },
+    {
+      provider: "bedrock",
+      model: "anthropic.claude-sonnet-5-5",
+      region: "eu-west-1",
+      concurrency: 4,
+    },
   ]);
 });
 
@@ -292,6 +297,14 @@ test("check fills in the default model for the configured provider", async () =>
   expect(fake.built).toEqual([
     { provider: "anthropic", model: DEFAULT_MODELS.anthropic, concurrency: 4 },
   ]);
+});
+
+test("check rejects region with the anthropic provider", async () => {
+  await config(`llm:\n  provider: anthropic\n  region: eu-west-1\nrules:\n${STANDARD}`);
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("llm.region");
+  expect(result.stderr).toContain("region applies to the bedrock provider only");
 });
 
 test("check rejects an unknown provider", async () => {

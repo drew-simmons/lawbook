@@ -78,6 +78,16 @@ const llmSchema = z
     concurrency: z.int().min(1).default(4),
   })
   .strict()
+  .check((ctx) => {
+    if (ctx.value.provider === "anthropic" && ctx.value.region !== undefined) {
+      ctx.issues.push({
+        code: "custom",
+        input: ctx.value,
+        path: ["region"],
+        message: "region applies to the bedrock provider only",
+      });
+    }
+  })
   .transform((llm) => ({ ...llm, model: llm.model ?? DEFAULT_MODELS[llm.provider] }));
 
 export type LlmConfig = z.infer<typeof llmSchema>;
