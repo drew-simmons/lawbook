@@ -344,7 +344,7 @@ test("check rejects region with the anthropic provider", async () => {
 });
 
 test("check rejects an unknown provider", async () => {
-  await config(`llm:\n  provider: openai\nrules:\n${STANDARD}`);
+  await config(`llm:\n  provider: vertex\nrules:\n${STANDARD}`);
   const result = await lawbook("check", dir());
   expect(result.code).toBe(2);
   expect(result.stderr).toContain("llm.provider");
@@ -456,5 +456,33 @@ test("a non-CliError from the judge still aborts the run", async () => {
 });
 
 test("default judges cover every provider", () => {
-  expect(Object.keys(defaultJudges).toSorted()).toEqual(["anthropic", "bedrock"]);
+  expect(Object.keys(defaultJudges).toSorted()).toEqual(["anthropic", "bedrock", "openai"]);
+});
+
+test("check rejects baseUrl with the bedrock provider", async () => {
+  await config(`llm:\n  baseUrl: http://localhost:11434/v1\nrules:\n${STANDARD}`);
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("llm.baseUrl");
+  expect(result.stderr).toContain("baseUrl applies to the openai provider only");
+});
+
+test("check requires a model for the openai provider", async () => {
+  await config(`llm:\n  provider: openai\nrules:\n${STANDARD}`);
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("llm.model");
+  expect(result.stderr).toContain("set llm.model; the openai provider has no default");
+});
+
+test("check passes the openai model and baseUrl to the factory", async () => {
+  await config(
+    `llm:\n  provider: openai\n  model: gpt-x\n  baseUrl: http://localhost:11434/v1\nrules:\n${STANDARD}`,
+  );
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const fake = fakeJudge();
+  await lawbookWith(fake.deps, "check", dir());
+  expect(fake.built).toMatchObject([
+    { provider: "openai", model: "gpt-x", baseUrl: "http://localhost:11434/v1" },
+  ]);
 });

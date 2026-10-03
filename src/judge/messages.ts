@@ -7,6 +7,7 @@ import type { SourceFile } from "../files.ts";
 import {
   type Answer,
   answerSchema,
+  type Decision,
   decisionSchema,
   type Judge,
   type JudgeRequest,
@@ -39,7 +40,7 @@ export type AnswerParams = MessageCreateParamsNonStreaming & {
 export type ParseFn = (params: AnswerParams) => Promise<ParsedMessage<Answer>>;
 
 /** `File: <path>` and the content, one block per file, blank-line separated. */
-function fileBlocks(files: SourceFile[]): string {
+export function fileBlocks(files: SourceFile[]): string {
   return files.map((file) => `File: ${file.path}\n\n${file.content}`).join("\n\n");
 }
 
@@ -77,6 +78,15 @@ export function toUsage(usage: ParsedMessage<Answer>["usage"]): Usage {
   };
 }
 
+/** The model's probability as a noul decision, or an error when it is out of range. */
+export function decisionOf(noul: number, path: string): Decision {
+  const decision = decisionSchema.safeParse({ type: "noul", noul });
+  if (!decision.success) {
+    throw new CliError(`the judge gave an out-of-range probability ${noul} for ${path}`);
+  }
+  return decision.data;
+}
+
 /** The parsed answer as a noul decision, or an error naming why the model gave no usable one. */
 export function toVerdict(message: ParsedMessage<Answer>, path: string): Verdict {
   const answer = message.parsed_output;
@@ -85,11 +95,11 @@ export function toVerdict(message: ParsedMessage<Answer>, path: string): Verdict
       `the judge gave no verdict for ${path} (stop reason: ${message.stop_reason})`,
     );
   }
-  const decision = decisionSchema.safeParse({ type: "noul", noul: answer.noul });
-  if (!decision.success) {
-    throw new CliError(`the judge gave an out-of-range probability ${answer.noul} for ${path}`);
-  }
-  return { decision: decision.data, reason: answer.reason, usage: toUsage(message.usage) };
+  return {
+    decision: decisionOf(answer.noul, path),
+    reason: answer.reason,
+    usage: toUsage(message.usage),
+  };
 }
 
 /** SDK errors become one-line `CliError`s naming the provider; anything else is a bug. */

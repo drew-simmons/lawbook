@@ -22,9 +22,10 @@ version: 1
 
 # The model that judges \`standard\` rules. These are the defaults.
 # llm:
-#   provider: bedrock           # bedrock | anthropic
-#   model: anthropic.claude-opus-5-5
+#   provider: bedrock           # bedrock | anthropic | openai
+#   model: anthropic.claude-opus-5-5   # required for openai
 #   region: us-west-2           # bedrock only; else AWS_REGION
+#   baseUrl: http://localhost:11434/v1 # openai only: a compatible server
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
 #   cache: true                 # reuse verdicts for unchanged files

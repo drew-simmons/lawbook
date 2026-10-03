@@ -38,6 +38,14 @@ export {
   type Verdict,
 } from "./judge/judge.ts";
 export { messagesJudge, type ParseFn, requestLabel } from "./judge/messages.ts";
+export {
+  buildChatRequest,
+  chatJudge,
+  type ChatParams,
+  type ChatParseFn,
+  toChatUsage,
+  toChatVerdict,
+} from "./judge/chat.ts";
 export { type Plan, plan, type PlanOptions, type PlanRule } from "./plan.ts";
 export { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
 export { formatGithub } from "./github.ts";
