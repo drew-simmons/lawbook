@@ -13,6 +13,12 @@ version: 1
 #   - "**/node_modules/**"
 #   - "**/.git/**"
 
+# The model that judges \`standard\` rules. These are the defaults.
+# llm:
+#   provider: bedrock           # bedrock | anthropic
+#   model: anthropic.claude-opus-5-5
+#   region: us-west-2           # bedrock only; else AWS_REGION
+
 rules:
   # \`absent\` fails when the path exists.
   - id: no-env-file
@@ -33,6 +39,13 @@ rules:
   # \`exists\` fails when the path is missing.
   # - id: has-readme
   #   exists: README.md
+
+  # \`standard\` asks the model whether each selected file meets the prose.
+  # - id: errors-are-actionable
+  #   files: ["src/**/*.ts"]
+  #   standard: |
+  #     Every error message shown to a user says what went wrong and what
+  #     to do next.
 `;
 
 /** Writes `lawbook.yaml` into `root` and returns its path. */

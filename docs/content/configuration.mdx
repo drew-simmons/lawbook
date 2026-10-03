@@ -14,6 +14,8 @@ version: 1
 ignore:
   - "**/node_modules/**"
   - "**/.git/**"
+llm:
+  provider: bedrock
 rules:
   - id: no-console
     description: Production code logs through the logger
@@ -26,6 +28,9 @@ rules:
     exists: README.md
   - id: no-env-file
     absent: .env
+  - id: errors-are-actionable
+    files: ["src/**/*.ts"]
+    standard: Every error message says what went wrong and what to do next.
 ```
 
 ## Top level
@@ -34,6 +39,7 @@ rules:
 | --------- | -------- | -------------------------------------------------------------------------------------------- |
 | `version` | yes      | Always `1`.                                                                                  |
 | `ignore`  | no       | Globs no rule looks at. Defaults to `**/node_modules/**` and `**/.git/**`; setting it replaces the defaults. |
+| `llm`     | no       | The model that judges `standard` rules. See [Providers](/providers).                         |
 | `rules`   | yes      | The rules, run in order.                                                                     |
 
 Unknown keys anywhere in the file are errors, so a typo cannot silently
@@ -50,6 +56,7 @@ The rule's kind is the one remaining key.
 | `require` | yes           | A selected file does not match the pattern anywhere. One finding per file. |
 | `exists`  | no            | The path is missing.                                              |
 | `absent`  | no            | The path is present.                                              |
+| `standard` | yes          | A model judges that a selected file does not meet the prose. One finding per file, carrying the model's reason. See [LLM rules](/llm-rules). |
 
 `exists` and `absent` take a single path relative to the checked directory.
 

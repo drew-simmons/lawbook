@@ -5,10 +5,11 @@ sidebar:
   order: 0
 ---
 
-Lawbook checks a directory against the rules in its `lawbook.yaml`. The rules
+Lawbook checks a directory against the rules in its `lawbook.yaml`. Most rules
 are repeatable: the same files always give the same result, and a failing
-rule names the file and line that broke it. It ships as an npm package and
-needs Node.js 22.12 or newer.
+rule names the file and line that broke it. A `standard` rule states a
+standard in prose and lets a model judge each file against it. Lawbook ships
+as an npm package and needs Node.js 22.12 or newer.
 
 ```sh
 npm install --global lawbook
@@ -18,11 +19,10 @@ lawbook check
 
 - [Getting started](/getting-started) walks through the first run.
 - [Configuration](/configuration) describes the rule kinds and the config file.
+- [LLM rules](/llm-rules) explains `standard` rules and how to write one.
+- [Providers](/providers) configures Amazon Bedrock, the default, or the Anthropic API.
 - [Commands](/commands) lists every command and flag.
 - [Exit codes](/exit-codes) says what `0`, `1`, and `2` mean.
-
-LLM-judged rules, where a standard written in prose is applied by a model,
-are the next step for the project and are not available yet.
 
 ## Build from source
 

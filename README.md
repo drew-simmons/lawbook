@@ -6,10 +6,10 @@
 [![License](https://img.shields.io/github/license/drew-simmons/lawbook)](LICENSE)
 
 Lawbook checks a directory against the rules in its `lawbook.yaml`: regular
-expressions that files must or must not match, and paths that must or must
-not exist. A failing rule names the file and line, and the exit code says
-whether the check passed. Rules judged by an LLM against a standard written in
-prose are the next step and are not available yet.
+expressions that files must or must not match, paths that must or must not
+exist, and standards written in prose that a model judges file by file. A
+failing rule names the file and the reason, and the exit code says whether
+the check passed.
 
 ```sh
 npm install --global lawbook
@@ -25,11 +25,18 @@ rules:
     forbid: 'console\.(log|debug)\('
   - id: has-readme
     exists: README.md
+  - id: errors-are-actionable
+    files: ["src/**/*.ts"]
+    standard: Every error message says what went wrong and what to do next.
 ```
 
-The [docs](https://drew-simmons.github.io/lawbook/) describe the
+`standard` rules use Amazon Bedrock by default, with credentials from the AWS
+environment, or the Anthropic API when the config says so. `check --no-llm`
+skips them. The [docs](https://drew-simmons.github.io/lawbook/) describe the
 [configuration format](https://drew-simmons.github.io/lawbook/configuration),
-the [commands](https://drew-simmons.github.io/lawbook/commands), and the
+[LLM rules](https://drew-simmons.github.io/lawbook/llm-rules),
+[providers](https://drew-simmons.github.io/lawbook/providers), the
+[commands](https://drew-simmons.github.io/lawbook/commands), and the
 [exit codes](https://drew-simmons.github.io/lawbook/exit-codes).
 
 ## Install

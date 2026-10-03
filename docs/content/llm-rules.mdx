@@ -1,0 +1,70 @@
+---
+title: LLM rules
+description: Rules written in prose and judged by a model, one file at a time.
+sidebar:
+  order: 3
+---
+
+A `standard` rule states a standard in prose. `lawbook check` sends each
+selected file to a model with that text and asks for a verdict: does the file
+meet the standard, and why. A file that does not is a finding.
+
+```yaml
+version: 1
+llm:
+  provider: bedrock
+rules:
+  - id: errors-are-actionable
+    description: Users can act on every error
+    files: ["src/**/*.ts"]
+    standard: |
+      Every error message shown to a user says what went wrong and what to
+      do next. Internal assertions that users never see are exempt.
+```
+
+```txt
+FAIL errors-are-actionable
+  src/cli.ts: "unexpected state" on line 41 says what broke but not what to do.
+
+0 passed, 1 failed, 0 skipped
+```
+
+## What the model sees
+
+For each file, one request carries a fixed system prompt, the standard, the
+file's path, and its full content. The model answers with structured JSON,
+`{ "pass": boolean, "reason": string }`, so there is nothing to parse from
+prose. The system prompt tells the model to judge only what the standard
+says, to pass files the standard does not apply to, and to cite its evidence.
+
+Files are judged one at a time, in path order, with no context from other
+files. Write standards that one file can satisfy on its own.
+
+## Writing a good standard
+
+- Say what the file must do, not what reviewers dislike. "Every exported
+  function has a doc comment that states what it returns" is checkable;
+  "code is well documented" is not.
+- Name the exemptions. Without them the model has to guess.
+- Keep `files` narrow. Every selected file is one model request, so a
+  `**/*` glob on a large repository is slow and costly.
+- Run `lawbook check --only <id>` while you refine the wording, and pin the
+  rest of the suite with `--no-llm`.
+
+## Repeatability
+
+Models can give different verdicts for the same file on different runs, so a
+`standard` rule is not as repeatable as a `forbid` rule. Where a regular
+expression can express the standard, prefer `forbid` or `require`. Reserve
+`standard` for judgment calls, and treat a failure as a prompt for a human to
+look at the file.
+
+## Skipping
+
+`lawbook check --no-llm` reports every `standard` rule as `SKIP` without
+building a provider client, so a run with no credentials still checks the
+deterministic rules and exits on their result alone. A config with no
+`standard` rule never touches a provider either.
+
+Which provider answers, and how it is configured, is described in
+[Providers](/providers).

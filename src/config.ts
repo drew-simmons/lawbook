@@ -31,8 +31,12 @@ const absentRule = z
   .object({ ...base, absent: text })
   .strict()
   .transform((rule) => ({ kind: "absent" as const, ...rule }));
+const standardRule = z
+  .object({ ...base, files, standard: text })
+  .strict()
+  .transform((rule) => ({ kind: "standard" as const, ...rule }));
 
-export const ruleSchema = z.union([forbidRule, requireRule, existsRule, absentRule]);
+export const ruleSchema = z.union([forbidRule, requireRule, existsRule, absentRule, standardRule]);
 
 export type Rule = z.infer<typeof ruleSchema>;
 export type RuleKind = Rule["kind"];
@@ -44,10 +48,33 @@ function duplicateIds(rules: { id: string }[]): string[] {
   return rules.map((rule) => rule.id).filter((id) => seen.size === seen.add(id).size);
 }
 
+export const PROVIDERS = ["bedrock", "anthropic"] as const;
+
+export type Provider = (typeof PROVIDERS)[number];
+
+/** The model each provider uses when the config names none. */
+export const DEFAULT_MODELS: Record<Provider, string> = {
+  bedrock: "anthropic.claude-opus-5-5",
+  anthropic: "claude-opus-5-5",
+};
+
+const llmSchema = z
+  .object({
+    provider: z.enum(PROVIDERS).default("bedrock"),
+    model: text.optional(),
+    region: text.optional(),
+  })
+  .strict()
+  .transform((llm) => ({ ...llm, model: llm.model ?? DEFAULT_MODELS[llm.provider] }));
+
+export type LlmConfig = z.infer<typeof llmSchema>;
+
 export const configSchema = z
   .object({
     version: z.literal(1),
     ignore: z.array(z.string()).default(DEFAULT_IGNORE),
+    // `prefault` runs the defaults through the schema, so `model` gets filled in.
+    llm: llmSchema.prefault({}),
     rules: z.array(ruleSchema),
   })
   .strict()

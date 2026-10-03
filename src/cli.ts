@@ -4,6 +4,8 @@ import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
 import { errorMessage } from "./errors.ts";
 import { init } from "./init.ts";
+import { defaultJudges } from "./judge/index.ts";
+import type { Judges } from "./judge/judge.ts";
 import { type Format, FORMATTERS } from "./report.ts";
 import { exitCodeFor } from "./result.ts";
 
@@ -13,15 +15,23 @@ export interface Output {
   stderr: (text: string) => void;
 }
 
+/** What reaches outside the process. Tests pass fakes so nothing does. */
+export interface Deps {
+  judges: Judges;
+}
+
 const processOutput: Output = {
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
 };
 
+const defaultDeps: Deps = { judges: defaultJudges };
+
 interface CheckFlags {
   config?: string;
   format: Format;
   only?: string[];
+  llm: boolean;
 }
 
 /** Commander actions return nothing, so the exit code travels in here. */
@@ -29,10 +39,21 @@ interface Exit {
   code: number;
 }
 
-async function runCheck(root: string, flags: CheckFlags, output: Output): Promise<number> {
+async function runCheck(
+  root: string,
+  flags: CheckFlags,
+  output: Output,
+  deps: Deps,
+): Promise<number> {
   const file = flags.config ?? (await findConfigFile(root));
   const config = await loadConfig(file);
-  const report = await check({ root, config, only: flags.only });
+  const report = await check({
+    root,
+    config,
+    only: flags.only,
+    llm: flags.llm,
+    judges: deps.judges,
+  });
   output.stdout(FORMATTERS[flags.format](report));
   return exitCodeFor(report);
 }
@@ -46,7 +67,7 @@ function initCommand(output: Output): Command {
     });
 }
 
-function checkCommand(output: Output, exit: Exit): Command {
+function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
   return new Command("check")
     .description("run the rules in lawbook.yaml against a directory")
     .argument("[root]", "directory to check", ".")
@@ -55,13 +76,14 @@ function checkCommand(output: Output, exit: Exit): Command {
       new Option("--format <format>", "output format").choices(["text", "json"]).default("text"),
     )
     .option("--only <ids...>", "run only the rules with these ids")
+    .option("--no-llm", "skip rules judged by a model and report them as skipped")
     .action(async (root: string, flags: CheckFlags) => {
-      exit.code = await runCheck(root, flags, output);
+      exit.code = await runCheck(root, flags, output, deps);
     });
 }
 
 /** Subcommands added with `addCommand` inherit output and exit handling only when asked. */
-function program(output: Output, exit: Exit): Command {
+function program(output: Output, deps: Deps, exit: Exit): Command {
   const root = new Command()
     .name("lawbook")
     .description(pkg.description)
@@ -69,7 +91,7 @@ function program(output: Output, exit: Exit): Command {
     .exitOverride()
     .configureOutput({ writeOut: output.stdout, writeErr: output.stderr });
   root.addCommand(initCommand(output).copyInheritedSettings(root));
-  root.addCommand(checkCommand(output, exit).copyInheritedSettings(root));
+  root.addCommand(checkCommand(output, deps, exit).copyInheritedSettings(root));
   return root;
 }
 
@@ -90,10 +112,11 @@ function exitCode(error: unknown, output: Output): number {
 export async function run(
   args: readonly string[],
   output: Output = processOutput,
+  deps: Deps = defaultDeps,
 ): Promise<number> {
   const exit: Exit = { code: 0 };
   try {
-    await program(output, exit).parseAsync(args, { from: "user" });
+    await program(output, deps, exit).parseAsync(args, { from: "user" });
     return exit.code;
   } catch (error) {
     return exitCode(error, output);
