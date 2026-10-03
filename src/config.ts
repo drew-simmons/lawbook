@@ -69,21 +69,33 @@ export type Rule = z.infer<typeof ruleSchema>;
 export type RuleKind = Rule["kind"];
 export type RuleOf<K extends RuleKind> = Extract<Rule, { kind: K }>;
 
-export const PROVIDERS = ["bedrock", "anthropic"] as const;
+export const PROVIDERS = ["bedrock", "anthropic", "openai"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
 
-/** The model each provider uses when the config names none. */
-export const DEFAULT_MODELS: Record<Provider, string> = {
+/** The model each provider uses when the config names none; `openai` has none, so `model` is required. */
+export const DEFAULT_MODELS: Record<Provider, string | undefined> = {
   bedrock: "anthropic.claude-opus-5-5",
   anthropic: "claude-opus-5-5",
+  openai: undefined,
 };
+
+/** The `llm` keys that belong to one provider, and which. */
+const PROVIDER_KEYS = { region: "bedrock", baseUrl: "openai" } as const satisfies Record<
+  string,
+  Provider
+>;
+
+type ProviderKey = keyof typeof PROVIDER_KEYS;
 
 const llmSchema = z
   .object({
     provider: z.enum(PROVIDERS).default("bedrock"),
     model: text.optional(),
+    /** Bedrock only: the AWS region. */
     region: text.optional(),
+    /** OpenAI only: a server that speaks Chat Completions, in place of api.openai.com. */
+    baseUrl: z.url().optional(),
     /** How many files a `standard` rule judges at once. */
     concurrency: z.int().min(1).default(4),
     /** The largest file, in bytes, a `standard` rule sends to the model. */
@@ -93,16 +105,30 @@ const llmSchema = z
   })
   .strict()
   .check((ctx) => {
-    if (ctx.value.provider === "anthropic" && ctx.value.region !== undefined) {
-      ctx.issues.push({
-        code: "custom",
-        input: ctx.value,
-        path: ["region"],
-        message: "region applies to the bedrock provider only",
-      });
+    for (const key of Object.keys(PROVIDER_KEYS) as ProviderKey[]) {
+      if (ctx.value[key] !== undefined && ctx.value.provider !== PROVIDER_KEYS[key]) {
+        ctx.issues.push({
+          code: "custom",
+          input: ctx.value,
+          path: [key],
+          message: `${key} applies to the ${PROVIDER_KEYS[key]} provider only`,
+        });
+      }
     }
   })
-  .transform((llm) => ({ ...llm, model: llm.model ?? DEFAULT_MODELS[llm.provider] }));
+  .transform((llm, ctx) => {
+    const model = llm.model ?? DEFAULT_MODELS[llm.provider];
+    if (model === undefined) {
+      ctx.issues.push({
+        code: "custom",
+        input: llm,
+        path: ["model"],
+        message: `set llm.model; the ${llm.provider} provider has no default`,
+      });
+      return z.NEVER;
+    }
+    return { ...llm, model };
+  });
 
 export type LlmConfig = z.infer<typeof llmSchema>;
 
