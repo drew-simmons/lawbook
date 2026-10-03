@@ -53,17 +53,32 @@ in `src/cli.ts`, which parses the CLI; logic belongs in library modules
 under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 `src/index.ts` into `dist/`.
 
+- `src/config.ts` holds the zod schema for `lawbook.yaml`. Each rule schema
+  adds a `kind` so `src/check.ts` can dispatch through a lookup table instead
+  of a chain of `if`s. New rule kinds add a schema, a runner in `src/rules/`,
+  and a table entry.
+- `src/rules/deterministic.ts` implements `forbid`, `require`, `exists`, and
+  `absent`. Runners take a rule and a `RuleContext` and return a `RuleResult`
+  from `src/result.ts`.
+- `src/report.ts` formats a `Report` as text or JSON.
+- `src/errors.ts` has `CliError` for problems the user can act on; the CLI
+  prints its message without a stack and exits 2.
+
 **Exit codes carry meaning.** 0 success, 1 a requested check failed, 2
-anything wrong with usage, input, or output. `src/cli.ts` maps these.
+anything wrong with usage, input, or output. `src/cli.ts` maps these: a
+`CommanderError` with code 0 is help or version, any other error is 2, and
+`check` returns 1 through `exitCodeFor`.
 
 ## Conventions
 
 - CI fails the build when any function scores above CRAP 5. Keep functions
   short and test them.
 - No test may need network access, credentials, or machine state.
-- The tests in `tests/cli.test.ts` call every command through the
-  `lawbook()` helper, which runs the CLI in process, captures its output,
-  and scrubs `NO_COLOR`, `CLICOLOR`, and `CLICOLOR_FORCE`.
+- Tests call every command through the `lawbook()` helper in
+  `tests/helpers.ts`, which runs the CLI in process, captures its output,
+  and scrubs `NO_COLOR`, `CLICOLOR`, and `CLICOLOR_FORCE`. `useTempDir()`
+  gives each test an empty directory to pass as the root; never
+  `process.chdir`.
 - Conventional Commit subjects. The project squash-merges, so the PR title
   becomes the commit on `main` and drives release-please.
 - Never add `Co-Authored-By` or AI attribution to commits.

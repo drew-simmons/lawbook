@@ -1,31 +1,11 @@
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import pkg from "../package.json" with { type: "json" };
-import { run } from "../src/cli.ts";
+import { lawbook } from "./helpers.ts";
 
-/**
- * Runs the CLI with the color environment scrubbed, so a developer's
- * `CLICOLOR_FORCE` or `NO_COLOR` cannot change what a test sees.
- */
-async function lawbook(...args: string[]) {
-  for (const name of ["NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE"]) {
-    vi.stubEnv(name, undefined);
-  }
-  let stdout = "";
-  let stderr = "";
-  const code = await run(args, {
-    stdout: (text) => {
-      stdout += text;
-    },
-    stderr: (text) => {
-      stderr += text;
-    },
-  });
-  vi.unstubAllEnvs();
-  return { code, stdout, stderr };
-}
-
-test("no arguments succeeds", async () => {
-  expect((await lawbook()).code).toBe(0);
+test("no arguments prints help and exits two", async () => {
+  const result = await lawbook();
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("Usage: lawbook");
 });
 
 test("version prints package version", async () => {
@@ -34,10 +14,12 @@ test("version prints package version", async () => {
   expect(result.stdout).toContain(pkg.version);
 });
 
-test("help names the binary", async () => {
+test("help lists init and check", async () => {
   const result = await lawbook("--help");
   expect(result.code).toBe(0);
   expect(result.stdout).toContain("Usage: lawbook");
+  expect(result.stdout).toContain("init");
+  expect(result.stdout).toContain("check");
 });
 
 test("unknown flag exits two", async () => {

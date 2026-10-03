@@ -5,23 +5,47 @@
 [![Docs](https://img.shields.io/badge/docs-drew--simmons.github.io-blue)](https://drew-simmons.github.io/lawbook/)
 [![License](https://img.shields.io/github/license/drew-simmons/lawbook)](LICENSE)
 
-Lawbook checks code standards with repeatable rules and LLM decisions. It is
-at an early stage and has no commands yet.
+Lawbook checks a directory against the rules in its `lawbook.yaml`: regular
+expressions that files must or must not match, and paths that must or must
+not exist. A failing rule names the file and line, and the exit code says
+whether the check passed. Rules judged by an LLM against a standard written in
+prose are the next step and are not available yet.
+
+```sh
+npm install --global lawbook
+lawbook init      # writes a starter lawbook.yaml
+lawbook check     # exit 0 pass, 1 a rule failed, 2 could not run
+```
+
+```yaml
+version: 1
+rules:
+  - id: no-console
+    files: ["src/**/*.ts"]
+    forbid: 'console\.(log|debug)\('
+  - id: has-readme
+    exists: README.md
+```
+
+The [docs](https://drew-simmons.github.io/lawbook/) describe the
+[configuration format](https://drew-simmons.github.io/lawbook/configuration),
+the [commands](https://drew-simmons.github.io/lawbook/commands), and the
+[exit codes](https://drew-simmons.github.io/lawbook/exit-codes).
 
 ## Install
 
-Lawbook needs Node.js 22.12 or newer. From a clone:
+Lawbook needs Node.js 22.12 or newer.
+
+```sh
+npm install --global lawbook
+```
+
+Or from a clone:
 
 ```sh
 pnpm install
 pnpm run build
 npm install --global .
-```
-
-Once a release exists, install it from npm:
-
-```sh
-npm install --global lawbook
 ```
 
 ## Development

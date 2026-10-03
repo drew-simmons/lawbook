@@ -1,13 +1,28 @@
 ---
 title: Introduction
 description: Lawbook checks code standards with repeatable rules and LLM decisions.
+sidebar:
+  order: 0
 ---
 
-Lawbook checks code standards with repeatable rules and LLM decisions. It
-ships as an npm package and needs Node.js 22.12 or newer.
+Lawbook checks a directory against the rules in its `lawbook.yaml`. The rules
+are repeatable: the same files always give the same result, and a failing
+rule names the file and line that broke it. It ships as an npm package and
+needs Node.js 22.12 or newer.
 
-The tool is at an early stage and has no commands yet. This site will grow
-with it.
+```sh
+npm install --global lawbook
+lawbook init
+lawbook check
+```
+
+- [Getting started](/getting-started) walks through the first run.
+- [Configuration](/configuration) describes the rule kinds and the config file.
+- [Commands](/commands) lists every command and flag.
+- [Exit codes](/exit-codes) says what `0`, `1`, and `2` mean.
+
+LLM-judged rules, where a standard written in prose is applied by a model,
+are the next step for the project and are not available yet.
 
 ## Build from source
 

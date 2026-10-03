@@ -1,0 +1,61 @@
+---
+title: Commands
+description: Every lawbook command and flag.
+sidebar:
+  order: 3
+---
+
+Running `lawbook` with no command prints the usage and exits `2`.
+`lawbook --help` and `lawbook --version` exit `0`.
+
+## `lawbook init [root]`
+
+Writes a starter `lawbook.yaml` into `root` (default: the current directory)
+and prints its path. Fails with exit code `2` when `lawbook.yaml`,
+`lawbook.yml`, or `lawbook.json` already exists there, or when `root` does not
+exist.
+
+## `lawbook check [root]`
+
+Runs the rules against `root` (default: the current directory) and prints one
+line per rule followed by a summary.
+
+| Flag                    | Meaning                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| `-c, --config <file>`   | Read this config instead of looking for `lawbook.yaml`, `lawbook.yml`, or `lawbook.json` in `root`. Paths in the config stay relative to `root`. |
+| `--format <format>`     | `text` (default) or `json`.                                                                  |
+| `--only <ids...>`       | Run only the rules with these ids, in config order. An unknown id is an error.                |
+
+### Text output
+
+```txt
+PASS no-console
+FAIL spdx-header
+  src/cli.ts: does not match /^// SPDX-License-Identifier: /
+PASS has-readme
+
+2 passed, 1 failed, 0 skipped
+```
+
+Findings under a `forbid` rule read `path:line: <the line>`; under `require`,
+`path: does not match /pattern/`; under `exists` and `absent`, `path: missing`
+or `path: exists`.
+
+### JSON output
+
+```json
+{
+  "results": [
+    {
+      "id": "spdx-header",
+      "kind": "require",
+      "status": "fail",
+      "findings": [{ "path": "src/cli.ts", "message": "does not match /^// SPDX-License-Identifier: /" }]
+    }
+  ],
+  "summary": { "passed": 0, "failed": 1, "skipped": 0 }
+}
+```
+
+`status` is `pass`, `fail`, or `skip`. `findings` carry `path` and, for
+`forbid`, a 1-based `line`.

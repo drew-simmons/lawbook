@@ -1,0 +1,74 @@
+---
+title: Getting started
+description: Install lawbook, write a first lawbook.yaml, and run it in CI.
+sidebar:
+  order: 1
+---
+
+Lawbook needs Node.js 22.12 or newer.
+
+```sh
+npm install --global lawbook
+```
+
+## Write the first rules
+
+From the directory you want to check, create a starter config:
+
+```sh
+lawbook init
+```
+
+This writes `lawbook.yaml` with two rules that pass in an empty directory, plus
+commented examples of the other rule kinds. `init` never overwrites an existing
+`lawbook.yaml`, `lawbook.yml`, or `lawbook.json`.
+
+Open the file and describe your standards. Each rule has an `id`, an optional
+`description`, and exactly one of the rule kinds from
+[Configuration](/configuration):
+
+```yaml
+version: 1
+rules:
+  - id: no-console
+    description: Production code logs through the logger
+    files: ["src/**/*.ts"]
+    forbid: 'console\.(log|debug)\('
+  - id: has-readme
+    exists: README.md
+```
+
+## Run the check
+
+```sh
+lawbook check
+```
+
+```txt
+FAIL no-console
+  src/cli.ts:12: console.log("starting");
+PASS has-readme
+
+1 passed, 1 failed, 0 skipped
+```
+
+`check` exits `0` when every rule passes, `1` when any rule fails, and `2` when
+it could not run at all, so it works as a CI step without extra scripting:
+
+```yaml
+- run: npx lawbook check
+```
+
+Point it at another directory, or at a config kept elsewhere:
+
+```sh
+lawbook check path/to/project
+lawbook check --config standards/lawbook.yaml
+```
+
+Pass `--format json` to feed the results to another tool, or `--only` to run a
+subset of rules while you write them:
+
+```sh
+lawbook check --only no-console
+```
