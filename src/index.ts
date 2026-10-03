@@ -13,7 +13,7 @@ export {
   writeBaseline,
 } from "./baseline.ts";
 export { type CandidateSource, candidatesFor } from "./candidates.ts";
-export { check, type CheckOptions } from "./check.ts";
+export { check, type CheckOptions, judgesFor } from "./check.ts";
 export {
   type Config,
   type ConfigFile,
@@ -24,6 +24,7 @@ export {
   loadConfig,
   type Provider,
   resolveConfig,
+  ruleLlm,
   type Rule,
   type RuleKind,
   type Scope,

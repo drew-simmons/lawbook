@@ -17,9 +17,9 @@ import {
 import { parseSuppressions, suppressed } from "../suppress.ts";
 import { readSelected, type RuleContext } from "./deterministic.ts";
 
-/** `judge` is absent when the run skips LLM rules. */
+/** `judges` is absent when the run skips LLM rules; else it holds every `standard` rule's judge by id. */
 export interface JudgeContext extends RuleContext {
-  judge?: Judge;
+  judges?: ReadonlyMap<string, Judge>;
   /** How many files the judge sees at once. */
   concurrency: number;
   /** The largest file, in bytes, the judge is sent. */
@@ -195,5 +195,6 @@ export async function checkStandard(
   rule: RuleOf<"standard">,
   ctx: JudgeContext,
 ): Promise<RuleResult> {
-  return ctx.judge === undefined ? skipResult(rule) : judgeFiles(rule, ctx.judge, ctx);
+  const judge = ctx.judges?.get(rule.id);
+  return judge === undefined ? skipResult(rule) : judgeFiles(rule, judge, ctx);
 }

@@ -1,6 +1,13 @@
 import path from "node:path";
 import { candidatesFor } from "./candidates.ts";
-import type { Config, Rule, RuleKind, RuleOf } from "./config.ts";
+import {
+  type Config,
+  type LlmConfig,
+  type Rule,
+  type RuleKind,
+  type RuleOf,
+  ruleLlm,
+} from "./config.ts";
 import { CliError } from "./errors.ts";
 import { cachedJudge, DEFAULT_CACHE_DIR } from "./judge/cache.ts";
 import type { Judge, Judges } from "./judge/judge.ts";
@@ -62,16 +69,51 @@ function cacheDirFor(options: CheckOptions): string {
 }
 
 /** The judge behind the verdict cache, unless the flag or the config turns it off. */
-function withCache(judge: Judge, options: CheckOptions): Judge {
-  const on = options.cache !== false && options.config.llm.cache;
-  return on ? cachedJudge(judge, cacheDirFor(options), options.config.llm.model) : judge;
+function withCache(judge: Judge, llm: LlmConfig, options: CheckOptions): Judge {
+  const on = options.cache !== false && llm.cache;
+  return on ? cachedJudge(judge, cacheDirFor(options), llm.model) : judge;
 }
 
-/** A judge only when a selected rule needs one, so other runs never touch a provider. */
-async function judgeFor(rules: Rule[], options: CheckOptions): Promise<Judge | undefined> {
-  const wanted = options.llm !== false && rules.some((rule) => rule.kind === "standard");
-  const { llm } = options.config;
-  return wanted ? withCache(await options.judges[llm.provider](llm), options) : undefined;
+/** What makes two rules share a judge: the same provider, model, and endpoint. */
+function llmKey(llm: LlmConfig): string {
+  return JSON.stringify([llm.provider, llm.model, llm.region ?? null, llm.baseUrl ?? null]);
+}
+
+/** One judge per distinct `llm`, reused across the rules that share it. */
+async function judgeOf(
+  llm: LlmConfig,
+  built: Map<string, Judge>,
+  options: CheckOptions,
+): Promise<Judge> {
+  const key = llmKey(llm);
+  const judge = built.get(key) ?? withCache(await options.judges[llm.provider](llm), llm, options);
+  built.set(key, judge);
+  return judge;
+}
+
+function isStandard(rule: Rule): rule is RuleOf<"standard"> {
+  return rule.kind === "standard";
+}
+
+/**
+ * A judge for every selected `standard` rule, keyed by rule id, built before
+ * any rule runs so a client problem stops the run first. Nothing is built
+ * when no rule needs one, so other runs never touch a provider.
+ */
+export async function judgesFor(
+  rules: Rule[],
+  options: CheckOptions,
+): Promise<Map<string, Judge> | undefined> {
+  const standards = options.llm === false ? [] : rules.filter(isStandard);
+  if (standards.length === 0) {
+    return undefined;
+  }
+  const built = new Map<string, Judge>();
+  const judges = new Map<string, Judge>();
+  for (const rule of standards) {
+    judges.set(rule.id, await judgeOf(ruleLlm(options.config.llm, rule), built, options));
+  }
+  return judges;
 }
 
 /** Runs the rules in config order and reports every result. */
@@ -81,7 +123,7 @@ export async function check(options: CheckOptions): Promise<Report> {
     root: options.root,
     ignore: options.config.ignore,
     candidates: await candidatesFor(options),
-    judge: await judgeFor(rules, options),
+    judges: await judgesFor(rules, options),
     concurrency: options.config.llm.concurrency,
     maxBytes: options.config.llm.maxBytes,
   };

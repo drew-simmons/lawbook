@@ -64,6 +64,8 @@ rules:
   #   standard: |
   #     Every error message shown to a user says what went wrong and what
   #     to do next.
+  #   # A cheaper model for this rule alone; provider, region, and baseUrl work too.
+  #   llm: { model: anthropic.claude-sonnet-5-5 }
 `;
 
 /** Writes `lawbook.yaml` into `root` and returns its path. */
