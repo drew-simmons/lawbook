@@ -6,12 +6,14 @@ export { type CandidateSource, candidatesFor } from "./candidates.ts";
 export { check, type CheckOptions } from "./check.ts";
 export {
   type Config,
+  type ConfigFile,
   configSchema,
   DEFAULT_MODELS,
   findConfigFile,
   type LlmConfig,
   loadConfig,
   type Provider,
+  resolveConfig,
   type Rule,
   type RuleKind,
 } from "./config.ts";

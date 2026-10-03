@@ -8,6 +8,10 @@ export const TEMPLATE = `# Lawbook checks this directory against the rules below
 # Format reference: https://drew-simmons.github.io/lawbook/configuration
 version: 1
 
+# Config files whose rules run before the ones below: a path relative to this
+# file, or a package installed under node_modules.
+# extends: ["./rules/base.yaml", "@acme/lawbook-rules"]
+
 # Paths no rule looks at. These are the defaults.
 # ignore:
 #   - "**/node_modules/**"
