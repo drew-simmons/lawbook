@@ -51,9 +51,10 @@ rules:
   #   files: ["src/**/*.ts"]
   #   require: '^// SPDX-License-Identifier: '
 
-  # \`exists\` fails when the path is missing.
+  # \`exists\` fails when none of the paths or globs matches; \`absent\` fails
+  # for every match. Either takes one entry or a list.
   # - id: has-readme
-  #   exists: README.md
+  #   exists: ["README.md", "docs/**/*.md"]
 
   # \`standard\` asks the model for the probability that each selected file
   # meets the prose, and fails a file below \`threshold\` (default 0.5).

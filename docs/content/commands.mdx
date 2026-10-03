@@ -89,7 +89,7 @@ A CI job on a pull request checks only what the branch changed:
 `--dry-run` shows what a run would look at before it looks. Each rule lists
 the files its globs select, after `ignore`, `exclude`, `.gitignore`, and any
 `--files`, `--changed`, or `--since` selector; `exists` and `absent` list
-their one path. The last line counts the distinct files and the model
+their paths and globs as written, since nothing is read. The last line counts the distinct files and the model
 requests: one per selected file of a `standard` rule, one for a `scope: set`
 rule with any files, or none under `--no-llm`. Nothing is read, so binary and oversize files still appear, and
 no provider client is built.

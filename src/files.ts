@@ -1,6 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
-import { glob } from "tinyglobby";
+import { glob, isDynamicPattern } from "tinyglobby";
 
 /** A file a rule looks at, with its path relative to the root. */
 export interface SourceFile {
@@ -64,6 +64,31 @@ export async function readSourceFile(root: string, file: string): Promise<Source
 export interface FileSelection {
   files: string[];
   exclude: string[];
+}
+
+/** The literal paths that exist under `root`, as written; a directory counts. */
+async function existingLiterals(root: string, literals: string[]): Promise<string[]> {
+  const found = await Promise.all(literals.map((file) => pathExists(path.join(root, file))));
+  return literals.filter((_file, index) => found[index] === true);
+}
+
+/**
+ * The root-relative paths `patterns` name: a literal path when it exists,
+ * file or directory, plus every file a glob selects outside `ignore`.
+ * Sorted, without duplicates.
+ */
+export async function matchPaths(
+  root: string,
+  patterns: string[],
+  ignore: string[],
+): Promise<string[]> {
+  const globs = patterns.filter((pattern) => isDynamicPattern(pattern));
+  const literals = patterns.filter((pattern) => !isDynamicPattern(pattern));
+  const [found, selected] = await Promise.all([
+    existingLiterals(root, literals),
+    globs.length === 0 ? [] : selectFiles(root, globs, ignore),
+  ]);
+  return [...new Set([...found, ...selected])].toSorted();
 }
 
 export async function pathExists(file: string): Promise<boolean> {
