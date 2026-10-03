@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: The lawbook.yaml format, the four rule kinds, and how files are selected.
+description: The lawbook.yaml format, the five rule kinds, and how files are selected.
 sidebar:
   order: 2
 ---
@@ -22,6 +22,7 @@ rules:
     files: ["src/**/*.ts"]
     forbid: 'console\.(log|debug)\('
   - id: spdx-header
+    level: warn
     files: ["src/**/*.ts"]
     require: '^// SPDX-License-Identifier: '
   - id: has-readme
@@ -48,8 +49,14 @@ disable a rule.
 
 ## Rules
 
-Every rule has an `id`, which must be unique, and may have a `description`.
-The rule's kind is the one remaining key.
+Every rule has an `id`, which must be unique, and may have a `description`
+and a `level`. The rule's kind is the one remaining key.
+
+| Key           | Required | Meaning                                                                 |
+| ------------- | -------- | ----------------------------------------------------------------------- |
+| `id`          | yes      | Names the rule in the output and in `--only`.                           |
+| `description` | no       | A note for readers of the config. Not printed.                          |
+| `level`       | no       | `error` (default) fails the run when the rule has findings. `warn` prints them as `WARN` and leaves the exit code alone, so a new rule can run in CI while its wording settles. |
 
 | Kind      | Needs `files` | Fails when                                                        |
 | --------- | ------------- | ----------------------------------------------------------------- |

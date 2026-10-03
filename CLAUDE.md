@@ -69,6 +69,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   returns a `Verdict`: a noul decision in the Jev decision schema plus a
   reason; `src/rules/llm.ts` compares the probability to the rule's
   `threshold`.
+- `src/result.ts` turns findings into a `RuleResult`: a rule's `level`
+  decides whether findings make it `fail` or `warn`, and only `fail` counts
+  toward the exit code.
 - `src/report.ts` formats a `Report` as text or JSON.
 - `src/errors.ts` has `CliError` for problems the user can act on; the CLI
   prints its message without a stack and exits 2.

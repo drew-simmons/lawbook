@@ -10,7 +10,7 @@ export interface JudgeContext extends RuleContext {
 }
 
 export function skipResult(rule: Rule): RuleResult {
-  return { id: rule.id, kind: rule.kind, status: "skip", findings: [] };
+  return { id: rule.id, kind: rule.kind, level: rule.level, status: "skip", findings: [] };
 }
 
 /** A finding when the probability falls below the rule's threshold, else nothing. */

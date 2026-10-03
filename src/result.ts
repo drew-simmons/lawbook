@@ -1,4 +1,4 @@
-import type { Rule, RuleKind } from "./config.ts";
+import type { Level, Rule, RuleKind } from "./config.ts";
 import type { Decision } from "./judge/judge.ts";
 
 /** One place a rule found wrong. `path` and `line` are relative to the root. */
@@ -10,11 +10,12 @@ export interface Finding {
   decision?: Decision;
 }
 
-export type RuleStatus = "pass" | "fail" | "skip";
+export type RuleStatus = "pass" | "fail" | "warn" | "skip";
 
 export interface RuleResult {
   id: string;
   kind: RuleKind;
+  level: Level;
   status: RuleStatus;
   findings: Finding[];
   /** Every judged file's decision, keyed by path. Only judged `standard` rules set it. */
@@ -24,6 +25,7 @@ export interface RuleResult {
 export interface Summary {
   passed: number;
   failed: number;
+  warned: number;
   skipped: number;
 }
 
@@ -32,27 +34,31 @@ export interface Report {
   summary: Summary;
 }
 
+/** What a rule with findings reports: its level decides. */
+const FINDINGS_STATUS: Record<Level, RuleStatus> = { error: "fail", warn: "warn" };
+
 /** A rule passes when it has no findings. */
 export function ruleResult(rule: Rule, findings: Finding[]): RuleResult {
-  const status = findings.length === 0 ? "pass" : "fail";
-  return { id: rule.id, kind: rule.kind, status, findings };
+  const status = findings.length === 0 ? "pass" : FINDINGS_STATUS[rule.level];
+  return { id: rule.id, kind: rule.kind, level: rule.level, status, findings };
 }
 
 const COUNTERS: Record<RuleStatus, keyof Summary> = {
   pass: "passed",
   fail: "failed",
+  warn: "warned",
   skip: "skipped",
 };
 
 export function summarize(results: RuleResult[]): Report {
-  const summary: Summary = { passed: 0, failed: 0, skipped: 0 };
+  const summary: Summary = { passed: 0, failed: 0, warned: 0, skipped: 0 };
   for (const result of results) {
     summary[COUNTERS[result.status]] += 1;
   }
   return { results, summary };
 }
 
-/** Exit code 1 means a requested check failed. */
+/** Exit code 1 means a requested check failed. `warn` rules never set it. */
 export function exitCodeFor(report: Report): 0 | 1 {
   return report.summary.failed === 0 ? 0 : 1;
 }

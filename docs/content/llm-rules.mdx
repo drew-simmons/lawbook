@@ -27,7 +27,7 @@ rules:
 FAIL errors-are-actionable
   src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
 
-0 passed, 1 failed, 0 skipped
+0 passed, 1 failed, 0 warned, 0 skipped
 ```
 
 ## What the model sees
@@ -77,6 +77,9 @@ rules:
 
 Raise it for standards that must be met beyond doubt; lower it to flag only
 clear violations. A `threshold` of `1` fails anything but a certain pass.
+While the wording and threshold settle, give the rule `level: warn` so its
+findings print without failing the run (see
+[Configuration](/configuration#rules)).
 
 ## Writing a good standard
 
