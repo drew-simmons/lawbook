@@ -67,6 +67,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
   which selects files the way `check` does but reads nothing and builds no
   judge.
+- `src/budget.ts` enforces `llm.maxRequests` and `--max-requests`: `check`
+  runs the plan first and stops with a `CliError` before a client is built
+  when the request count is over the cap.
 - `src/files.ts` globs the files a rule selects and, when `check` was given
   `--files`, `--changed`, or `--since`, keeps only the candidates in
   `RuleContext.candidates`; with none given, inside a git work tree, the

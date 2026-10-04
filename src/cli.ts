@@ -1,6 +1,7 @@
 import path from "node:path";
 import { Command, CommanderError, Option } from "commander";
 import pkg from "../package.json" with { type: "json" };
+import { assertWithinBudget, parseCount, requestLimit } from "./budget.ts";
 import { applyBaseline, buildBaseline, readBaseline, writeBaseline } from "./baseline.ts";
 import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
@@ -44,6 +45,7 @@ interface CheckFlags {
   cacheDir?: string;
   dryRun?: boolean;
   explain?: boolean;
+  maxRequests?: number;
   baseline?: string;
   updateBaseline?: boolean;
 }
@@ -83,6 +85,7 @@ async function runCheck(
   if (flags.dryRun === true) {
     return runPlan(options, flags.format, output);
   }
+  await checkBudget(options, flags);
   const report = await check({
     ...options,
     cache: flags.cache,
@@ -116,6 +119,14 @@ async function withBaseline(report: Report, flags: CheckFlags): Promise<Report> 
   return applyBaseline(report, baseline);
 }
 
+/** Under a request cap, counts the plan first; `--no-llm` makes no requests, so it never trips. */
+async function checkBudget(options: PlanOptions, flags: CheckFlags): Promise<void> {
+  const limit = requestLimit(options.config, flags.maxRequests);
+  if (limit !== undefined && flags.llm) {
+    await assertWithinBudget(options, limit);
+  }
+}
+
 /** The config file relative to the root, or just its name when it lies outside. */
 function reportMeta(root: string, file: string): ReportMeta {
   return { version: pkg.version, root, config: underRoot(root, file) ?? path.basename(file) };
@@ -146,6 +157,11 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
     .option("--since <ref>", "check only files committed since the merge base with ref")
     .option("--dry-run", "list the files each rule would check and exit without reading them")
     .option("--explain", "print the model's reason for files that pass, not only for findings")
+    .option(
+      "--max-requests <n>",
+      "stop before asking the model when the run would make more requests than this (default: llm.maxRequests)",
+      (value: string) => parseCount("--max-requests", value),
+    )
     .option(
       "--baseline <file>",
       "hide the findings this file records, relative to the current directory",

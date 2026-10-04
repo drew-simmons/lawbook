@@ -26,6 +26,7 @@ llm:
 | `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
 | `cache`       | Whether verdicts are cached on disk and reused for unchanged files. Defaults to `true`; `--no-cache` overrides one run. See [LLM rules](/llm-rules#verdict-cache). |
 | `maxBytes`    | The largest file, in bytes, a `standard` rule sends. A whole number, at least `1`; defaults to `131072` (128 KiB). Larger files are listed as skipped and never judged. See [LLM rules](/llm-rules#large-files). |
+| `maxRequests` | The most model requests one run may make. A whole number; no limit by default. A run whose plan exceeds it stops with exit code `2` before any request. `--max-requests` overrides it. See [LLM rules](/llm-rules#budget). |
 
 Unknown keys are errors. A problem building the client, such as a missing
 Bedrock region, stops the run with exit code `2` and a one-line message

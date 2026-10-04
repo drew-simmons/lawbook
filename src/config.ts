@@ -92,6 +92,8 @@ const llmSchema = z
     maxBytes: z.int().min(1).default(131072),
     /** Whether verdicts are cached on disk and reused for unchanged files. */
     cache: z.boolean().default(true),
+    /** The most model requests one run may make; the run stops before the first when the plan exceeds it. */
+    maxRequests: z.int().min(0).optional(),
   })
   .strict()
   .check((ctx) => {
@@ -170,6 +172,7 @@ function mergeLlm(top: LlmConfig, rule: RuleOf<"standard">): z.input<typeof llmS
     concurrency: top.concurrency,
     maxBytes: top.maxBytes,
     cache: top.cache,
+    maxRequests: top.maxRequests,
   };
 }
 
