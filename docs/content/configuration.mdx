@@ -76,6 +76,8 @@ can turn a rule off for one line or the whole file; see
 | `id`          | yes      | Names the rule in the output and in `--only`.                           |
 | `description` | no       | A note for readers of the config. JSON output carries it, and SARIF output uses it as the rule's short description. |
 | `level`       | no       | `error` (default) fails the run when the rule has findings. `warn` prints them as `WARN` and leaves the exit code alone, so a new rule can run in CI while its wording settles. |
+| `files`       | for `forbid`, `require`, and `standard` | Globs, relative to the checked directory, that select the files the rule reads. See [Selecting files](#selecting-files). |
+| `exclude`     | no       | `forbid`, `require`, and `standard` only. Globs the rule leaves out of its selection, on top of the top-level `ignore`. |
 | `message`     | no       | `forbid` and `require` only. What each finding says instead of the matched line or `does not match /pattern/`, such as what to do instead. |
 
 | Kind      | Needs `files` | Fails when                                                        |
@@ -110,6 +112,7 @@ reports every match.
 | `scope`     | no       | `file` (default) judges each selected file in its own request. `set` sends every selected file in one request and gets one verdict for the set. See [LLM rules](/llm-rules#judging-files-together). |
 | `llm`       | no       | Overrides for this rule: `provider`, `model`, `region`, `baseUrl`. See [LLM rules](/llm-rules#per-rule-model). |
 | `context`   | no       | Files, relative to the checked directory, sent with every request as reference material and never judged. See [LLM rules](/llm-rules#reference-files). |
+| `fixtures`  | no       | Example files for `lawbook test`, relative to the checked directory: `pass`, ones that must meet the standard, and `fail`, ones that must not. See [LLM rules](/llm-rules#testing-a-standard). |
 
 ### Patterns
 

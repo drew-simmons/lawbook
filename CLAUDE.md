@@ -113,11 +113,13 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   Completions twin `chatJudge` in `chat.ts`, the Bedrock, Anthropic, and
   OpenAI adapters, which only build a client, and `cache.ts`, a
   `Judge` wrapper that answers from `node_modules/.cache/lawbook` when the
-  hash of model, prompt, standard, path, and content matches. The request
+  hash of model, prompt, standard, context, path, and content matches. The request
   marks the standard block for the provider's prompt cache, and every
   `Verdict` carries the provider's token `usage`, summed per rule and in
   the summary. The adapters import
-  their SDK lazily and stay at complexity 1, since no test covers them. `run`
+  their SDK client lazily, though `messages.ts` and `chat.ts` load the
+  SDKs' error classes and schema helpers up front, and stay at complexity
+  1, since no test covers them. `run`
   takes the factories as its `deps` argument; tests inject fakes. The judge
   returns a `Verdict`: a noul decision in the Jev decision schema plus a
   reason; `src/rules/llm.ts` compares the probability to the rule's
@@ -125,17 +127,19 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 - `src/result.ts` turns findings into a `RuleResult`: a rule's `level`
   decides whether findings make it `fail` or `warn`, and only `fail` counts
   toward the exit code.
-- `src/report.ts` formats a `Report` as text or JSON; `src/github.ts` and
-  `src/sarif.ts` add GitHub workflow commands and SARIF. `src/formats.ts`
+- `src/report.ts` formats a `Report` as text or JSON; `src/github.ts`,
+  `src/sarif.ts`, and `src/gitlab.ts` add GitHub workflow commands, SARIF,
+  and a GitLab code quality report. `src/formats.ts`
   is the `--format` table, and every formatter takes the report plus a
-  `ReportMeta` (version and root) even if it ignores it.
+  `ReportMeta` (version, root, and config) even if it ignores it.
 - `src/errors.ts` has `CliError` for problems the user can act on; the CLI
   prints its message without a stack and exits 2.
 
 **Exit codes carry meaning.** 0 success, 1 a requested check failed, 2
 anything wrong with usage, input, or output. `src/cli.ts` maps these: a
 `CommanderError` with code 0 is help or version, any other error is 2, and
-`check` returns 1 or 2 through `exitCodeFor`. A provider error on a file is
+`check` returns 1 or 2 through `exitCodeFor`, and `test` 1 through
+`exitCodeForFixtures`. A provider error on a file is
 not thrown: `src/rules/llm.ts` records it as that file's finding, halts the
 rest of the rule, and gives the rule status `error`, so the report still
 prints before the run exits 2.

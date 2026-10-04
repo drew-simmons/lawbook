@@ -14,7 +14,7 @@ lawbook check --baseline lawbook-baseline.json --update-baseline
 ```
 
 `--update-baseline` runs the check, writes every finding to the file, then
-reports the run with those findings hidden, so it exits `0`. Commit the file.
+reports the run with those findings hidden, so it exits `0` unless a `standard` rule errored. Commit the file.
 From then on, run with `--baseline` alone:
 
 ```sh

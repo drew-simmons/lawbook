@@ -86,6 +86,9 @@ A CI job on a pull request checks only what the branch changed:
 - run: npx lawbook check --since origin/${{ github.base_ref }}
 ```
 
+`github.base_ref` is set on `pull_request` events only; a job that also
+runs on `push` needs another ref there.
+
 ### Dry run
 
 `--dry-run` shows what a run would look at before it looks. Each rule lists
@@ -110,8 +113,8 @@ PLAN errors-are-actionable (standard, 2 files)
 ```
 
 `--format json` prints `{ "rules": [{ "id", "kind", "level", "files",
-"requests" }], "requests" }`, with each rule's own request count. The `github` and `sarif` formats have nothing to annotate and
-are rejected with exit code `2`.
+"requests" }], "requests" }`, with each rule's own request count. The `github`, `sarif`, and `gitlab` formats have nothing to annotate
+and are rejected with exit code `2`.
 
 ### Text output
 
@@ -175,6 +178,14 @@ the model read, including what the provider served from its own cache.
       "decisions": {
         "src/cli.ts": { "type": "noul", "noul": 0.12 },
         "src/init.ts": { "type": "noul", "noul": 0.97 }
+      },
+      "usage": {
+        "inputTokens": 310,
+        "outputTokens": 48,
+        "cacheReadInputTokens": 1200,
+        "cacheCreationInputTokens": 400,
+        "requests": 2,
+        "cached": 0
       }
     }
   ],
@@ -231,7 +242,7 @@ carries the rule id.
 ```txt
 ::error file=src/cli.ts,line=12,title=no-console::console.log("starting");
 ::warning file=src/cli.ts,title=spdx-header::does not match /^// SPDX-License-Identifier: /
-::error title=has-readme::missing
+::error file=README.md,title=has-readme::missing
 ::notice title=lawbook::0 passed, 2 failed, 1 warned, 0 errored, 0 skipped
 ```
 
@@ -291,8 +302,8 @@ directory as a file URL. Upload it to GitHub code scanning:
 ```
 
 `level` is `warning` for findings under a `warn` rule and `error` otherwise.
-A finding without a path, such as a missing file under `exists`, has no
-`locations`.
+A finding without a path, such as an `exists` rule with several patterns
+or a `scope: set` finding, has no `locations`.
 
 ### GitLab output
 
@@ -315,7 +326,7 @@ lawbook:
   {
     "description": "console.log(\"starting\");",
     "check_name": "no-console",
-    "fingerprint": "3f786850e387550fdab836ed7e6dc881de23001b",
+    "fingerprint": "3f786850e387550fdab836ed7e6dc881de23001b4a0f3c7bd2e6a1c95f0e8a4d",
     "severity": "major",
     "location": { "path": "src/cli.ts", "lines": { "begin": 12 } }
   }
@@ -326,7 +337,8 @@ lawbook:
 `warn` rule, and `critical` for a provider error. The `fingerprint` hashes
 the rule id, the path, and the message but not the line, so a finding keeps
 its identity when the code above it moves. A finding without a path, such as
-a missing file under `exists`, is located at the config file, line 1.
+an `exists` rule with several patterns or a `scope: set` finding, is
+located at the config file, line 1.
 
 ## `lawbook test [root]`
 

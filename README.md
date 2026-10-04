@@ -7,7 +7,7 @@
 
 Lawbook checks a directory against the rules in its `lawbook.yaml`: regular
 expressions that files must or must not match, paths that must or must not
-exist, and standards written in prose that a model judges file by file. A
+exist, and standards written in prose that a model judges file by file or as a set. A
 failing rule names the file and the reason, and the exit code says whether
 the check passed.
 
