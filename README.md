@@ -43,6 +43,13 @@ skips them. The [docs](https://drew-simmons.github.io/lawbook/) describe the
 `examples/clean-code.lawbook.yaml`, is a drop-in config built from ten
 software engineering books.
 
+## Agent skill
+
+`skills/lawbook/SKILL.md` teaches a coding agent such as Claude Code to run
+lawbook, read its findings, and write or tune a `lawbook.yaml`. Copy the
+`skills/lawbook` directory into `.claude/skills/` in a project, or into
+`~/.claude/skills/` for every project, and the agent picks it up.
+
 ## Install
 
 Lawbook needs Node.js 22.12 or newer.
