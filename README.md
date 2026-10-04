@@ -38,7 +38,10 @@ skips them. The [docs](https://drew-simmons.github.io/lawbook/) describe the
 [LLM rules](https://drew-simmons.github.io/lawbook/llm-rules),
 [providers](https://drew-simmons.github.io/lawbook/providers), the
 [commands](https://drew-simmons.github.io/lawbook/commands), and the
-[exit codes](https://drew-simmons.github.io/lawbook/exit-codes).
+[exit codes](https://drew-simmons.github.io/lawbook/exit-codes). The
+[clean-code example](https://drew-simmons.github.io/lawbook/examples), also at
+`examples/clean-code.lawbook.yaml`, is a drop-in config built from ten
+software engineering books.
 
 ## Install
 
