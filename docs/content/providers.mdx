@@ -99,7 +99,7 @@ its own, and lawbook reports the tokens it served from that cache under
 
 ## No network in tests
 
-Both providers sit behind one `Judge` interface, and `run` accepts the
+All three providers sit behind one `Judge` interface, and `run` accepts the
 factories that build them, so a test or an embedding program can pass its own
 judge and never reach a network. The package exports `messagesJudge`, the
 provider-neutral core the Bedrock and Anthropic adapters wrap, and

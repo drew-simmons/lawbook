@@ -61,8 +61,8 @@ pnpm --dir docs run dev
 ```
 
 Before you open a pull request that touches `docs/`, run
-`pnpm --dir docs run build` and `pnpm --dir docs run validate`. The `Docs`
-workflow runs the same two commands and deploys `main` to GitHub Pages.
+`pnpm --dir docs run build` and `pnpm --dir docs run validate --strict`. The
+`Docs` workflow runs the same two commands and deploys `main` to GitHub Pages.
 
 ## Commit messages
 

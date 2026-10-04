@@ -1,6 +1,6 @@
 ---
 title: LLM rules
-description: Rules written in prose and judged by a model, one file at a time.
+description: Rules written in prose and judged by a model, file by file or as a set.
 sidebar:
   order: 3
 ---
@@ -290,8 +290,8 @@ A `standard` rule never sends a file larger than `llm.maxBytes` (default
 `131072`, see [Providers](/providers)). Such a file is listed under the rule
 as `path: skipped, <bytes> bytes over llm.maxBytes <limit>`, in text and in
 JSON under `skipped`, and does not affect the rule's status, since nothing
-was judged. Raise the limit for a rule that must see a large file, or narrow
-`files` so the file is not selected. Binary files are skipped by every rule
+was judged. Raise `llm.maxBytes`, which applies to every rule, when one
+must see a large file, or narrow `files` so the file is not selected. Binary files are skipped by every rule
 without being listed; see [Configuration](/configuration#selecting-files).
 
 ## Provider errors
