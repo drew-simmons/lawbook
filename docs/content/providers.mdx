@@ -73,7 +73,8 @@ llm:
   model: gpt-5
 ```
 
-The key comes from `OPENAI_API_KEY` in the environment. Lawbook sends the
+The key comes from `OPENAI_API_KEY` in the environment; without one, `check`
+exits `2` before any request. Lawbook sends the
 same prompt as to the other providers through the Chat Completions API with
 a JSON schema response format, so `model` must be one that supports
 structured outputs. There is no default model; name one.
@@ -90,7 +91,9 @@ llm:
 ```
 
 The server must support `response_format` with `json_schema`; one that does
-not answers with a provider error. OpenAI caches shared prompt prefixes on
+not answers with a provider error. When `OPENAI_API_KEY` is unset, such a
+server gets a placeholder key, since most expect a bearer token and check
+none. OpenAI caches shared prompt prefixes on
 its own, and lawbook reports the tokens it served from that cache under
 `cacheReadInputTokens`, as it does for the Anthropic providers.
 

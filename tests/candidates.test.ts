@@ -184,3 +184,51 @@ test("outside a repository a .gitignore file has no effect", async () => {
   const result = await lawbook("check", dir());
   expect(result.stdout).toBe(BOTH);
 });
+
+const TREE_RULES =
+  "  - id: no-env\n    absent: .env\n  - id: has-src\n    exists: src\n  - id: has-notes\n    exists: '**/*.md'\n";
+
+/** A tree where git ignores `.env` and `notes/` but tracks `src/`. */
+async function ignoredEnv(): Promise<void> {
+  await config(TREE_RULES);
+  await write(dir(), ".gitignore", ".env\nnotes/\n");
+  await write(dir(), ".env", "SECRET=1\n");
+  await write(dir(), "src/a.ts", "export {};\n");
+  await write(dir(), "notes/todo.md", "later\n");
+}
+
+test("exists and absent skip what .gitignore covers inside a repository", async () => {
+  await ignoredEnv();
+  await gitRepo(dir());
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toBe(
+    "PASS no-env\nPASS has-src\nFAIL has-notes\n  **/*.md: missing\n\n2 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n",
+  );
+});
+
+test("exists and absent see ignored paths under gitignore: false and outside a repository", async () => {
+  await ignoredEnv();
+  const outside = await lawbook("check", dir());
+  expect(outside.stdout).toContain("FAIL no-env\n  .env: exists\n");
+  expect(outside.stdout).toContain("PASS has-notes\n");
+  await write(dir(), "lawbook.yaml", `version: 1\ngitignore: false\nrules:\n${TREE_RULES}`);
+  await gitRepo(dir());
+  const inside = await lawbook("check", dir());
+  expect(inside.stdout).toBe(outside.stdout);
+});
+
+test("absent fails for a tracked file even when .gitignore names it", async () => {
+  await ignoredEnv();
+  await gitRepo(dir());
+  await gitIn(dir(), "add", "-f", ".env");
+  await gitIn(dir(), "commit", "-q", "-m", "force");
+  const result = await lawbook("check", dir());
+  expect(result.stdout).toContain("FAIL no-env\n  .env: exists\n");
+});
+
+test("--files leaves exists and absent on the git listing, not the named files", async () => {
+  await ignoredEnv();
+  await gitRepo(dir());
+  const result = await lawbook("check", dir(), "--files", abs("notes/todo.md"));
+  expect(result.stdout).toContain("PASS no-env\nPASS has-src\nFAIL has-notes\n");
+});

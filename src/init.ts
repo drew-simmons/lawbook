@@ -22,19 +22,21 @@ version: 1
 # Inside a git work tree, files .gitignore covers are left out. This is the default.
 # gitignore: true
 
-# The model that judges \`standard\` rules. These are the defaults.
+# The model that judges \`standard\` rules, with its defaults. The keys below
+# them have no default and apply to one provider.
 # llm:
 #   provider: bedrock           # bedrock | anthropic | openai
-#   model: anthropic.claude-opus-5-5   # required for openai
-#   region: us-west-2           # bedrock only; else AWS_REGION
-#   baseUrl: http://localhost:11434/v1 # openai only: a compatible server
+#   model: anthropic.claude-opus-5-5   # the bedrock default; openai has none
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
 #   cache: true                 # reuse verdicts for unchanged files
-#   maxRequests: 200            # stop before the first request when a run would exceed this
+#   # region: us-west-2         # bedrock only; else AWS_REGION
+#   # baseUrl: http://localhost:11434/v1   # openai only: a compatible server
+#   # maxRequests: 200          # stop before the first request when a run would exceed this
 
 rules:
-  # \`absent\` fails when the path exists.
+  # \`absent\` fails when the path exists. Inside a git work tree, a file
+  # .gitignore covers does not count, so a local .env is fine.
   - id: no-env-file
     description: Secrets stay out of the repository
     absent: .env

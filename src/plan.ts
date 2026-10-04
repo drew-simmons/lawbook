@@ -1,4 +1,4 @@
-import { candidatesFor } from "./candidates.ts";
+import { selectionFor } from "./candidates.ts";
 import { filterOnly } from "./check.ts";
 import type { Config, Level, Rule, RuleKind, RuleOf, Scope } from "./config.ts";
 import { type RuleContext, selectRuleFiles } from "./rules/deterministic.ts";
@@ -68,7 +68,7 @@ export async function plan(options: PlanOptions): Promise<Plan> {
   const ctx: RuleContext = {
     root: options.root,
     ignore: options.config.ignore,
-    candidates: await candidatesFor(options),
+    ...(await selectionFor(options)),
   };
   const planned = await Promise.all(rules.map((rule) => planRule(rule, ctx)));
   return { rules: planned, requests: requestsFor(planned, options.llm) };

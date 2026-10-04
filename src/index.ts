@@ -12,7 +12,7 @@ export {
   readBaseline,
   writeBaseline,
 } from "./baseline.ts";
-export { type CandidateSource, candidatesFor } from "./candidates.ts";
+export { type CandidateSource, candidatesFor, type Selection, selectionFor } from "./candidates.ts";
 export { assertWithinBudget, parseCount, requestLimit } from "./budget.ts";
 export { check, type CheckOptions, judgesFor } from "./check.ts";
 export {

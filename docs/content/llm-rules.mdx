@@ -250,8 +250,9 @@ So a rerun on an unchanged tree is free and gives the same verdicts. For a
 release that changes the system prompt invalidates every entry; the next run
 simply asks again.
 
-- `--no-cache` asks the model again for every file. The answers are still
-  stored.
+- `--no-cache` asks the model again for every file and stores nothing, so
+  it also serves when the cache directory cannot be written. To forget the
+  stored verdicts, delete the cache directory; the next run fills it again.
 - `--cache-dir <dir>` keeps the cache elsewhere; the path is relative to the
   current directory, like `--config`.
 - `llm.cache: false` in the config turns the cache off for every run.

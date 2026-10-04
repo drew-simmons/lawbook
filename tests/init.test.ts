@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { expect, test } from "vitest";
 import { TEMPLATE } from "../src/init.ts";
-import { lawbook, useTempDir, write } from "./helpers.ts";
+import { gitRepo, lawbook, useTempDir, write } from "./helpers.ts";
 
 const dir = useTempDir();
 
@@ -41,4 +41,14 @@ test("init output passes check", async () => {
   expect(result.stdout).toContain("PASS no-env-file\n");
   expect(result.stdout).toContain("PASS no-merge-markers\n");
   expect(result.stdout).toContain("2 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n");
+});
+
+test("init output passes check in a repository with a gitignored .env", async () => {
+  expect((await lawbook("init", dir())).code).toBe(0);
+  await write(dir(), ".gitignore", ".env\n");
+  await write(dir(), ".env", "SECRET=1\n");
+  await gitRepo(dir());
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("PASS no-env-file\n");
 });

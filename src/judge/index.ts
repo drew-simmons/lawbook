@@ -7,5 +7,5 @@ import { openaiJudge } from "./openai.ts";
 export const defaultJudges: Judges = {
   bedrock: (llm) => bedrockJudge(llm, process.env),
   anthropic: anthropicJudge,
-  openai: openaiJudge,
+  openai: (llm) => openaiJudge(llm, process.env),
 };

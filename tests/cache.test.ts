@@ -44,10 +44,11 @@ test("a second run answers from the cache without a request", async () => {
   expect(second.stdout).toBe(`${FAIL}${usageLine(0, 1)}`);
 });
 
-test("--no-cache asks the model again and still stores the verdict", async () => {
+test("--no-cache asks the model again and stores nothing", async () => {
   await config(`rules:\n${STANDARD}`);
   await write(dir(), "a.ts", "throw new Error('bad');\n");
-  await run();
+  expect((await run("--no-cache")).requests).toEqual(["a.ts"]);
+  expect((await run()).requests).toEqual(["a.ts"]);
   expect((await run("--no-cache")).requests).toEqual(["a.ts"]);
   expect((await run()).requests).toEqual([]);
 });
