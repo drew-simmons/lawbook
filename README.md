@@ -15,6 +15,7 @@ the check passed.
 npm install --global lawbook
 lawbook init      # writes a starter lawbook.yaml
 lawbook check     # exit 0 pass, 1 a rule failed, 2 could not run
+lawbook test      # judges each standard rule's example files
 ```
 
 ```yaml

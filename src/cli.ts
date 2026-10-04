@@ -7,11 +7,20 @@ import { check } from "./check.ts";
 import { findConfigFile, loadConfig } from "./config.ts";
 import { CliError, errorMessage } from "./errors.ts";
 import { underRoot } from "./files.ts";
+import { exitCodeForFixtures, testFixtures } from "./fixtures.ts";
 import { init } from "./init.ts";
 import { defaultJudges } from "./judge/index.ts";
 import { plan, type PlanOptions } from "./plan.ts";
 import type { Judges } from "./judge/judge.ts";
-import { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
+import {
+  FIXTURE_FORMATS,
+  FIXTURE_FORMATTERS,
+  type FixtureFormat,
+  type Format,
+  FORMATS,
+  FORMATTERS,
+  PLAN_FORMATTERS,
+} from "./formats.ts";
 import type { ReportMeta } from "./report.ts";
 import { exitCodeFor, type Report } from "./result.ts";
 
@@ -132,6 +141,53 @@ function reportMeta(root: string, file: string): ReportMeta {
   return { version: pkg.version, root, config: underRoot(root, file) ?? path.basename(file) };
 }
 
+interface TestFlags {
+  config?: string;
+  format: FixtureFormat;
+  only?: string[];
+  cache: boolean;
+  cacheDir?: string;
+}
+
+/** Judges every rule's fixtures and reports the ones on the wrong side of the threshold. */
+async function runTest(
+  root: string,
+  flags: TestFlags,
+  output: Output,
+  deps: Deps,
+): Promise<number> {
+  const config = await loadConfig(flags.config ?? (await findConfigFile(root)));
+  const report = await testFixtures({
+    root,
+    config,
+    only: flags.only,
+    cache: flags.cache,
+    cacheDir: flags.cacheDir,
+    judges: deps.judges,
+  });
+  output.stdout(FIXTURE_FORMATTERS[flags.format](report));
+  return exitCodeForFixtures(report);
+}
+
+function testCommand(output: Output, deps: Deps, exit: Exit): Command {
+  return new Command("test")
+    .description("judge each standard rule's fixtures and report the ones on the wrong side")
+    .argument("[root]", "directory the config and fixtures are relative to", ".")
+    .option("-c, --config <file>", "config file (default: lawbook.yaml in root)")
+    .addOption(
+      new Option("--format <format>", "output format").choices(FIXTURE_FORMATS).default("text"),
+    )
+    .option("--only <ids...>", "test only the rules with these ids")
+    .option("--no-cache", "ask the model even when a cached verdict exists")
+    .option(
+      "--cache-dir <dir>",
+      "where verdicts are cached (default: node_modules/.cache/lawbook under root)",
+    )
+    .action(async (root: string, flags: TestFlags) => {
+      exit.code = await runTest(root, flags, output, deps);
+    });
+}
+
 function initCommand(output: Output): Command {
   return new Command("init")
     .description("write a starter lawbook.yaml")
@@ -187,6 +243,7 @@ function program(output: Output, deps: Deps, exit: Exit): Command {
     .configureOutput({ writeOut: output.stdout, writeErr: output.stderr });
   root.addCommand(initCommand(output).copyInheritedSettings(root));
   root.addCommand(checkCommand(output, deps, exit).copyInheritedSettings(root));
+  root.addCommand(testCommand(output, deps, exit).copyInheritedSettings(root));
   return root;
 }
 

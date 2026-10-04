@@ -48,18 +48,18 @@ interface Halt {
 }
 
 /** What every request of a rule carries besides the files: the standard and its reference material. */
-interface Ask {
+export interface Ask {
   standard: string;
   context: SourceFile[];
 }
 
 /** The request for these files; `context` is left out when the rule has none, so requests stay small. */
-function requestFor(ask: Ask, files: SourceFile[]): JudgeRequest {
+export function requestFor(ask: Ask, files: SourceFile[]): JudgeRequest {
   return ask.context.length === 0 ? { standard: ask.standard, files } : { ...ask, files };
 }
 
 /** A context file that cannot be read or is binary stops the run; a reference the model never sees is a config error. */
-async function readContextFile(rule: RuleOf<"standard">, ctx: JudgeContext, file: string) {
+async function readContextFile(rule: RuleOf<"standard">, ctx: RuleContext, file: string) {
   const read = await readSourceFile(ctx.root, file).catch(() => undefined);
   if (read === undefined) {
     throw new CliError(`rule "${rule.id}": context file ${file} is missing or binary`);
@@ -68,7 +68,7 @@ async function readContextFile(rule: RuleOf<"standard">, ctx: JudgeContext, file
 }
 
 /** The rule's reference files, read once per rule and sent with every request. */
-async function askFor(rule: RuleOf<"standard">, ctx: JudgeContext): Promise<Ask> {
+export async function askFor(rule: RuleOf<"standard">, ctx: RuleContext): Promise<Ask> {
   const context = await Promise.all(rule.context.map((file) => readContextFile(rule, ctx, file)));
   return { standard: rule.standard, context };
 }

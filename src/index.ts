@@ -59,7 +59,24 @@ export {
   toChatVerdict,
 } from "./judge/chat.ts";
 export { type Plan, plan, type PlanOptions, type PlanRule } from "./plan.ts";
-export { type Format, FORMATS, FORMATTERS, PLAN_FORMATTERS } from "./formats.ts";
+export {
+  FIXTURE_FORMATS,
+  FIXTURE_FORMATTERS,
+  type FixtureFormat,
+  type Format,
+  FORMATS,
+  FORMATTERS,
+  PLAN_FORMATTERS,
+} from "./formats.ts";
+export {
+  exitCodeForFixtures,
+  type Expected,
+  type FixtureCase,
+  type FixtureOptions,
+  type FixtureReport,
+  type FixtureRule,
+  testFixtures,
+} from "./fixtures.ts";
 export { formatGithub } from "./github.ts";
 export { formatGitlab, type GitlabIssue } from "./gitlab.ts";
 export {
