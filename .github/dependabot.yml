@@ -5,6 +5,8 @@ updates:
     schedule:
       interval: weekly
     labels: [dependencies]
+    commit-message:
+      prefix: "chore(deps)"
     ignore:
       # The types track the lowest Node.js major in `engines`.
       - dependency-name: "@types/node"
@@ -14,8 +16,12 @@ updates:
     schedule:
       interval: weekly
     labels: [dependencies]
+    commit-message:
+      prefix: "chore(deps)"
   - package-ecosystem: npm
     directory: /docs
     schedule:
       interval: weekly
     labels: [dependencies]
+    commit-message:
+      prefix: "chore(deps)"
