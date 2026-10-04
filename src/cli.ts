@@ -43,6 +43,7 @@ interface CheckFlags {
   cache: boolean;
   cacheDir?: string;
   dryRun?: boolean;
+  explain?: boolean;
   baseline?: string;
   updateBaseline?: boolean;
 }
@@ -87,6 +88,7 @@ async function runCheck(
     cache: flags.cache,
     cacheDir: flags.cacheDir,
     judges: deps.judges,
+    explain: flags.explain,
   });
   const shown = await withBaseline(report, flags);
   output.stdout(FORMATTERS[flags.format](shown, reportMeta(root, file)));
@@ -143,6 +145,7 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
     )
     .option("--since <ref>", "check only files committed since the merge base with ref")
     .option("--dry-run", "list the files each rule would check and exit without reading them")
+    .option("--explain", "print the model's reason for files that pass, not only for findings")
     .option(
       "--baseline <file>",
       "hide the findings this file records, relative to the current directory",

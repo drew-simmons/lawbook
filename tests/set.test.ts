@@ -156,3 +156,40 @@ test("a set request carries the rule's context", async () => {
   expect(fake.requests[0]?.context).toEqual([{ path: "docs/style.md", content: "# Style\n" }]);
   expect(fake.requests[0]?.files.map((file) => file.path)).toEqual(["a.ts", "b.ts"]);
 });
+
+test("--explain on a passing set prints its one reason", async () => {
+  await config(`rules:\n${SET}`);
+  await twoFiles();
+  const fake = fakeJudge({ "a.ts,b.ts": noul(0.9, "the names line up") });
+  const result = await lawbookWith(fake.deps, "check", dir(), "--no-cache", "--explain");
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain(
+    "PASS consistent-naming\n  passed, the names line up (noul 0.90)\n",
+  );
+  const json = await lawbookWith(
+    fake.deps,
+    "check",
+    dir(),
+    "--no-cache",
+    "--explain",
+    "--format",
+    "json",
+  );
+  expect(JSON.parse(json.stdout).results[0].reason).toBe("the names line up");
+});
+
+test("--explain on a failing set adds no reason, since the finding carries it", async () => {
+  await config(`rules:\n${SET}`);
+  await twoFiles();
+  const fake = fakeJudge({ "a.ts,b.ts": noul(0.2, "they differ") });
+  const result = await lawbookWith(
+    fake.deps,
+    "check",
+    dir(),
+    "--no-cache",
+    "--explain",
+    "--format",
+    "json",
+  );
+  expect(JSON.parse(result.stdout).results[0]).not.toHaveProperty("reason");
+});

@@ -35,6 +35,8 @@ export interface CheckOptions {
   cacheDir?: string;
   /** The provider factories; the config's `llm.provider` picks one. */
   judges: Judges;
+  /** Keep the model's reason for files that pass, not only for findings. */
+  explain?: boolean;
 }
 
 type Runner<K extends RuleKind> = (rule: RuleOf<K>, ctx: JudgeContext) => Promise<RuleResult>;
@@ -126,6 +128,7 @@ export async function check(options: CheckOptions): Promise<Report> {
     judges: await judgesFor(rules, options),
     concurrency: options.config.llm.concurrency,
     maxBytes: options.config.llm.maxBytes,
+    explain: options.explain === true,
   };
   const results: RuleResult[] = [];
   for (const rule of rules) {

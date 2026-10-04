@@ -32,6 +32,7 @@ line per rule followed by a summary.
 | `--baseline <file>`     | Hide the findings this file records; see [Baseline](/baseline). Relative to the current directory. |
 | `--update-baseline`     | Write this run's findings to the `--baseline` file, then report with them hidden. |
 | `--dry-run`             | List the files each rule would check and how many model requests the run would make, then exit `0` without reading a file or building a client. Text or JSON only. |
+| `--explain`             | Print the model's reason for files that pass a `standard` rule, not only for findings. JSON carries them as `reasons` by path, or `reason` for a set. |
 | `--no-cache`            | Ask the model for every file even when a cached verdict exists. See [LLM rules](/llm-rules#verdict-cache). |
 | `--cache-dir <dir>`     | Where verdicts are cached. Relative to the current directory; default `node_modules/.cache/lawbook` under `root`. |
 
@@ -133,7 +134,10 @@ hides are counted on one line, `  2 findings in baseline`, after the rule's
 findings. A `standard` rule the provider
 could not finish prints `ERROR <id>`, with the model's findings for the files
 it did judge and a `path: <error>` line for each file it did not, and the run
-exits `2` after the report. A `standard` rule lists files it left out, such
+exits `2` after the report. With `--explain`, a `standard` rule also prints
+`path: passed, <the model's reason> (noul <probability>)` for each file that
+passed, or one `passed, <reason>` line for a passing set, so a standard's
+wording can be tuned against what the model actually saw. A `standard` rule lists files it left out, such
 as one over `llm.maxBytes`, as `path: skipped, <why>` after its findings;
 those lines do not change the rule's status. A skipped rule prints
 `SKIP <id>` with no findings. The summary line always lists all five counts
@@ -200,8 +204,11 @@ and reasons), or `skip` (a `standard` rule under `--no-llm`). `findings`
 carry `path` and, for `forbid`, a 1-based `line`.
 
 A judged `standard` rule adds `decisions`, every judged file's decision keyed
-by path, and each of its findings carries its own `decision`. A `scope: set` rule carries
-one `decision` for the set instead, and its finding has no `path`. When it
+by path, and each of its findings carries its own `decision`. Under
+`--explain` it also adds `reasons`, the model's reason for each passing file
+keyed by path; failing files already carry theirs in `findings[].message`. A `scope: set` rule carries
+one `decision` for the set instead, and its finding has no `path`; under
+`--explain` a passing set carries one `reason`. When it
 left files out, `skipped` lists each as `{ "path", "message" }`. Its `usage`, and
 the summary's, count `requests` sent to the provider, verdicts served
 `cached` from lawbook's cache, and the provider's token counts, with

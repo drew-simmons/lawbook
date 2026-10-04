@@ -53,6 +53,10 @@ export interface RuleResult {
   decisions?: Record<string, Decision>;
   /** The one decision on the whole set. Only judged `scope: set` rules set it. */
   decision?: Decision;
+  /** Why each passing file passed, keyed by path. Only `--explain` on a judged `scope: file` rule sets it. */
+  reasons?: Record<string, string>;
+  /** Why the set passed. Only `--explain` on a passing `scope: set` rule sets it. */
+  reason?: string;
   /** Files left out and why. Present only when there are any. */
   skipped?: Skipped[];
   /** What the rule's requests cost. Only judged `standard` rules set it. */

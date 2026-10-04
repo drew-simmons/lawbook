@@ -607,3 +607,39 @@ test("a binary context file is an error too", async () => {
   expect(result.code).toBe(2);
   expect(result.stderr).toContain("context file logo.png is missing or binary");
 });
+
+test("--explain prints why each passing file passed and leaves findings as they are", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  await write(dir(), "b.ts", "const b = 2;\n");
+  const fake = fakeJudge({
+    "a.ts": noul(0.1, "no next step"),
+    "b.ts": noul(0.93, "every error names a fix"),
+  });
+  const result = await lawbookWith(fake.deps, "check", dir(), "--explain");
+  expect(result.code).toBe(1);
+  expect(result.stdout).toBe(
+    `FAIL actionable-errors\n  a.ts: no next step (noul 0.10)\n  b.ts: passed, every error names a fix (noul 0.93)\n\n0 passed, 1 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(2)}`,
+  );
+});
+
+test("--explain --format json carries reasons for passing files only", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  await write(dir(), "b.ts", "const b = 2;\n");
+  const fake = fakeJudge({ "a.ts": noul(0.1, "no next step") });
+  const result = await lawbookWith(fake.deps, "check", dir(), "--explain", "--format", "json");
+  const [rule] = JSON.parse(result.stdout).results;
+  expect(rule.reasons).toEqual({ "b.ts": "fine" });
+  expect(rule.findings).toEqual([
+    { path: "a.ts", message: "no next step", decision: { type: "noul", noul: 0.1 } },
+  ]);
+});
+
+test("without --explain the result carries no reasons", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const result = await lawbookWith(fakeJudge().deps, "check", dir(), "--format", "json");
+  expect(JSON.parse(result.stdout).results[0]).not.toHaveProperty("reasons");
+  expect(JSON.parse(result.stdout).results[0]).not.toHaveProperty("reason");
+});
