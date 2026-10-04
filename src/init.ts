@@ -2,9 +2,11 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { existingConfigFiles } from "./config.ts";
 import { CliError } from "./errors.ts";
+import { SCHEMA_URL } from "./schema.ts";
 
 /** The starter config. Its rules pass in an empty directory. */
-export const TEMPLATE = `# Lawbook checks this directory against the rules below.
+export const TEMPLATE = `# yaml-language-server: $schema=${SCHEMA_URL}
+# Lawbook checks this directory against the rules below.
 # Format reference: https://drew-simmons.github.io/lawbook/configuration
 version: 1
 

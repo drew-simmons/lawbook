@@ -12,6 +12,9 @@ pnpm test
 pnpm pack --dry-run
 ```
 
+`pnpm run schema` rewrites `lawbook.schema.json` after a change to
+`src/config.ts`.
+
 `pnpm run lint` runs oxlint and checks formatting with oxfmt;
 `pnpm run format` applies both tools' fixes. `pnpm test` builds `dist/` first,
 because one test runs the built binary.
@@ -67,6 +70,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
   which selects files the way `check` does but reads nothing and builds no
   judge.
+- `src/schema.ts` turns `configSchema` into the JSON Schema `lawbook schema`
+  prints. `lawbook.schema.json` at the repo root is that output, committed
+  for editors and shipped in the package; `pnpm run schema` regenerates it
+  and a test fails when it is stale.
 - `src/fixtures.ts` is `lawbook test`: it judges each `standard` rule's
   `fixtures` one file per request through `judgesFor`, the rule's `context`,
   and the cache, and reports the fixtures on the wrong side of `threshold`.
