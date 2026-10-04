@@ -27,10 +27,10 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      # Dispatched whatever token created the tag: `release.yml` has no tag
+      # trigger of its own, so this is the only thing that starts it.
       - name: Run artifact release
-        if: >-
-          steps.release.outputs.release_created == 'true' &&
-          env.RELEASE_PLEASE_TOKEN == ''
+        if: steps.release.outputs.release_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
