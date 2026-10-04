@@ -17,6 +17,8 @@ export interface RuleContext {
   ignore: string[];
   /** When set, `files` rules select only these root-relative paths. */
   candidates?: ReadonlySet<string>;
+  /** When set, `exists` and `absent` count only these root-relative paths and what contains them. */
+  listed?: ReadonlySet<string>;
 }
 
 /** Patterns use the `m` and `u` flags, so `^` and `$` match at line ends. */
@@ -88,15 +90,15 @@ function missingFindings(patterns: string[]): Finding[] {
     : [{ message: `none of ${patterns.join(", ")} exists` }];
 }
 
-/** Passes when any of the paths or globs matches something. */
+/** Passes when any of the paths or globs matches something git does not ignore. */
 export async function checkExists(rule: RuleOf<"exists">, ctx: RuleContext): Promise<RuleResult> {
-  const found = await matchPaths(ctx.root, rule.exists, ctx.ignore);
+  const found = await matchPaths(ctx.root, rule.exists, ctx.ignore, ctx.listed);
   return ruleResult(rule, found.length === 0 ? missingFindings(rule.exists) : []);
 }
 
-/** Fails for every path or glob match that is present. */
+/** Fails for every path or glob match that is present and not ignored by git. */
 export async function checkAbsent(rule: RuleOf<"absent">, ctx: RuleContext): Promise<RuleResult> {
-  const found = await matchPaths(ctx.root, rule.absent, ctx.ignore);
+  const found = await matchPaths(ctx.root, rule.absent, ctx.ignore, ctx.listed);
   return ruleResult(
     rule,
     found.map((file) => ({ path: file, message: "exists" })),

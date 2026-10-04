@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import { CliError } from "../src/errors.ts";
 import { chatJudge, type ChatParams, type ChatParseFn, toChatUsage } from "../src/judge/chat.ts";
 import type { Answer } from "../src/judge/judge.ts";
+import { openaiKey, PLACEHOLDER_KEY } from "../src/judge/openai.ts";
 import { contextBlock, SYSTEM_PROMPT } from "../src/judge/messages.ts";
 
 const REQUEST = {
@@ -152,4 +153,22 @@ test("chatJudge appends the context block to the system message", async () => {
     role: "system",
     content: `${SYSTEM_PROMPT}\n\nStandard:\nErrors are actionable\n\n${contextBlock(context)[0]}`,
   });
+});
+
+const OPENAI_LLM = {
+  provider: "openai" as const,
+  model: "gpt-x",
+  concurrency: 4,
+  maxBytes: 131072,
+  cache: true,
+};
+
+test("openaiKey takes the environment, else a placeholder for a baseUrl server, else errors", () => {
+  const local = { ...OPENAI_LLM, baseUrl: "http://localhost:11434/v1" };
+  expect(openaiKey(OPENAI_LLM, { OPENAI_API_KEY: "sk-1" })).toBe("sk-1");
+  expect(openaiKey(local, { OPENAI_API_KEY: "sk-1" })).toBe("sk-1");
+  expect(openaiKey(local, {})).toBe(PLACEHOLDER_KEY);
+  expect(() => openaiKey(OPENAI_LLM, {})).toThrow(
+    new CliError("openai: set OPENAI_API_KEY in the environment"),
+  );
 });

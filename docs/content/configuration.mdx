@@ -89,10 +89,12 @@ can turn a rule off for one line or the whole file; see
 `exists` and `absent` take a path or glob relative to the checked directory,
 or a list of them. A plain path matches a file or a directory with that name.
 A glob follows the rules under [Selecting files](#selecting-files) and
-matches files only, leaving out the top-level `ignore` but not candidates
-from `--files`, `--changed`, or `--since`, since these rules are about the
-tree, not the change set. `exists` passes when anything matches; `absent`
-reports every match.
+matches files only. Both leave out the top-level `ignore` and, inside a git
+work tree, whatever `.gitignore` covers, so a local `.env` that git ignores
+does not count as present; `gitignore: false` turns that off. Candidates
+from `--files`, `--changed`, or `--since` do not narrow them, since these
+rules are about the tree, not the change set. `exists` passes when anything
+matches; `absent` reports every match.
 
 ```yaml
   - id: has-docs

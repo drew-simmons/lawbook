@@ -33,16 +33,31 @@ async function gitCandidates(options: CandidateSource): Promise<Set<string> | un
   return listed === undefined ? undefined : new Set(listed);
 }
 
+/** What narrows a rule's view of the tree. */
+export interface Selection {
+  /** The files `files` rules may select; undefined when any file may be. */
+  candidates?: Set<string>;
+  /** What git tracks or does not ignore, which `exists` and `absent` see; undefined outside a work tree or under `gitignore: false`. */
+  listed?: Set<string>;
+}
+
 /**
  * The files `files` rules may select: the union of every selector given;
  * else what `.gitignore` leaves, in a git work tree; else undefined, so
- * every file may be.
+ * every file may be. The git listing comes along, since `exists` and
+ * `absent` respect it whatever the selectors say.
  */
-export async function candidatesFor(options: CandidateSource): Promise<Set<string> | undefined> {
+export async function selectionFor(options: CandidateSource): Promise<Selection> {
+  const listed = await gitCandidates(options);
   const selected = [
     namedFiles(options.root, options.files),
     await workingTreeFiles(options),
     await committedFiles(options),
   ].filter((paths) => paths !== undefined);
-  return selected.length === 0 ? gitCandidates(options) : new Set(selected.flat());
+  return { listed, candidates: selected.length === 0 ? listed : new Set(selected.flat()) };
+}
+
+/** The `candidates` of `selectionFor`. */
+export async function candidatesFor(options: CandidateSource): Promise<Set<string> | undefined> {
+  return (await selectionFor(options)).candidates;
 }

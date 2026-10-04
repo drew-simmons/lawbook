@@ -84,7 +84,9 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 - `src/files.ts` globs the files a rule selects and, when `check` was given
   `--files`, `--changed`, or `--since`, keeps only the candidates in
   `RuleContext.candidates`; with none given, inside a git work tree, the
-  candidates are what `git ls-files` lists, so `.gitignore` applies. It
+  candidates are what `git ls-files` lists, so `.gitignore` applies. That
+  listing also travels as `RuleContext.listed`, which `exists` and `absent`
+  honor whatever the selectors say, through `matchPaths`. It
   reads files once as a Buffer and drops binary ones (a NUL in the first
   8 KiB). `src/git.ts` runs git under the root and rebases the paths it
   reports onto the root; tests build real repositories in a temp dir with

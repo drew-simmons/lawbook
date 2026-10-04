@@ -72,15 +72,26 @@ async function existingLiterals(root: string, literals: string[]): Promise<strin
   return literals.filter((_file, index) => found[index] === true);
 }
 
+/** Whether `listed` names `file` or something under it; with no listing, everything counts. */
+export function isListed(listed: ReadonlySet<string> | undefined, file: string): boolean {
+  if (listed === undefined || listed.has(file)) {
+    return true;
+  }
+  const prefix = `${file}/`;
+  return [...listed].some((entry) => entry.startsWith(prefix));
+}
+
 /**
  * The root-relative paths `patterns` name: a literal path when it exists,
- * file or directory, plus every file a glob selects outside `ignore`.
- * Sorted, without duplicates.
+ * file or directory, plus every file a glob selects outside `ignore`. With
+ * `listed`, only paths it names or contains are kept, so what git ignores
+ * does not count. Sorted, without duplicates.
  */
 export async function matchPaths(
   root: string,
   patterns: string[],
   ignore: string[],
+  listed?: ReadonlySet<string>,
 ): Promise<string[]> {
   const globs = patterns.filter((pattern) => isDynamicPattern(pattern));
   const literals = patterns.filter((pattern) => !isDynamicPattern(pattern));
@@ -88,7 +99,7 @@ export async function matchPaths(
     existingLiterals(root, literals),
     globs.length === 0 ? [] : selectFiles(root, globs, ignore),
   ]);
-  return [...new Set([...found, ...selected])].toSorted();
+  return [...new Set([...found, ...selected])].filter((file) => isListed(listed, file)).toSorted();
 }
 
 export async function pathExists(file: string): Promise<boolean> {

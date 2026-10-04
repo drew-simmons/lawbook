@@ -1,5 +1,5 @@
 import path from "node:path";
-import { candidatesFor } from "./candidates.ts";
+import { selectionFor } from "./candidates.ts";
 import {
   type Config,
   type LlmConfig,
@@ -124,7 +124,7 @@ export async function check(options: CheckOptions): Promise<Report> {
   const ctx: JudgeContext = {
     root: options.root,
     ignore: options.config.ignore,
-    candidates: await candidatesFor(options),
+    ...(await selectionFor(options)),
     judges: await judgesFor(rules, options),
     concurrency: options.config.llm.concurrency,
     maxBytes: options.config.llm.maxBytes,
