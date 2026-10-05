@@ -123,6 +123,24 @@ matches; `absent` reports every match.
 be valid Unicode-mode syntax. Quote patterns with single quotes in YAML so
 backslashes survive. An invalid pattern stops the run with exit code `2`.
 
+The two rules see different text. A `forbid` pattern is tested against one
+line at a time, so it can never match across lines: `\n`, and a lookbehind or
+lookahead that reaches into the previous or next line, match nothing. A
+`require` pattern is tested against the whole file. A rule that needs to see
+two lines, such as "every exported function has a doc comment above it", is
+therefore a `require` with a negative lookahead over the file, anchored to its
+start with `(?<![\s\S])`:
+
+```yaml
+  - id: exports-are-documented
+    files: ["src/**/*.js"]
+    require: '(?<![\s\S])(?![\s\S]*?(?<!\*/)\nexport (async )?function)'
+    message: an exported function has no doc comment above it
+```
+
+It passes when no `export function` line follows anything but the end of a
+`/** ... */` comment. A `require` finding names the file, not a line.
+
 By default a `forbid` finding quotes the matching line and a `require`
 finding names the pattern. Set `message` to say what the contributor should
 do instead; the line number still locates a `forbid` finding:
@@ -195,6 +213,28 @@ its own, and run in that order. Only `rules` are inherited: `ignore`,
 `gitignore`, and `llm` always come from the file `lawbook check` reads.
 Globs in an inherited rule are relative to the checked directory, not to the
 file the rule came from.
+
+Because `llm` is not inherited, a second config can run the same rules
+through a different judge, which is how to try a cheaper model or point the
+standards at a local stand-in without touching the rules:
+
+```yaml
+# lawbook.haiku.yaml: the same rules, judged by Haiku
+version: 1
+extends: ./lawbook.yaml
+llm:
+  provider: bedrock
+  model: anthropic.claude-haiku-4-5
+rules: []
+```
+
+```sh
+lawbook check . --config lawbook.haiku.yaml
+lawbook test . --config lawbook.haiku.yaml
+```
+
+`rules` is required even when empty. A per-rule `llm` on an inherited rule
+still applies; drop it from the rule to let the top-level judge decide.
 
 A rule id that appears in two files, a file that extends itself through any
 chain, and an entry that cannot be found are errors with exit code `2`, each
