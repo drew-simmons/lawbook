@@ -97,7 +97,10 @@ should be left out, prefer the rule's `exclude` globs.
 
 `standard` rules call a provider: Amazon Bedrock by default (AWS credentials
 from the environment), or `anthropic` (`ANTHROPIC_API_KEY`) or `openai`
-(`OPENAI_API_KEY`) when `llm.provider` says so. Before a run with `standard`
+(`OPENAI_API_KEY`) when `llm.provider` says so. `claude-code` and `codex`
+run the installed `claude` or `codex` CLI instead, so a subscription the
+CLI is signed into pays; `claude auth status` and `codex login status` say
+whether one is. Before a run with `standard`
 rules, check which credentials the environment has. With none, run
 `check --no-llm` so the deterministic rules still run and say that the
 standards were skipped. Never put a key in `lawbook.yaml`; the file carries
@@ -153,7 +156,7 @@ or `exclude` until the count is reasonable, and cap the run with
 # yaml-language-server: $schema=https://raw.githubusercontent.com/drew-simmons/lawbook/main/lawbook.schema.json
 version: 1
 llm:
-  provider: anthropic          # bedrock (default) | anthropic | openai
+  provider: anthropic          # bedrock (default) | anthropic | openai | claude-code | codex
   maxRequests: 200             # stop before the first request when a run would exceed this
 rules:
   - id: no-console

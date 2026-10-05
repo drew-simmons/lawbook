@@ -59,15 +59,22 @@ export const SCOPES = ["file", "set"] as const;
 
 export type Scope = (typeof SCOPES)[number];
 
-export const PROVIDERS = ["bedrock", "anthropic", "openai"] as const;
+/**
+ * `bedrock`, `anthropic`, and `openai` speak to an API with a key.
+ * `claude-code` and `codex` run the installed CLI of that name, so a Claude
+ * or ChatGPT subscription the CLI is signed into pays for the requests.
+ */
+export const PROVIDERS = ["bedrock", "anthropic", "openai", "claude-code", "codex"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
 
-/** The model each provider uses when the config names none; `openai` has none, so `model` is required. */
+/** The model each provider uses when the config names none; `openai` and `codex` have none, so `model` is required. */
 export const DEFAULT_MODELS: Record<Provider, string | undefined> = {
   bedrock: "anthropic.claude-opus-5-5",
   anthropic: "claude-opus-5-5",
   openai: undefined,
+  "claude-code": "claude-opus-5-5",
+  codex: undefined,
 };
 
 /** The `llm` keys that belong to one provider, and which. */

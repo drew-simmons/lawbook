@@ -14,6 +14,8 @@ export const noJudges: Judges = {
   bedrock: () => Promise.reject(new Error("tests must inject a judge")),
   anthropic: () => Promise.reject(new Error("tests must inject a judge")),
   openai: () => Promise.reject(new Error("tests must inject a judge")),
+  "claude-code": () => Promise.reject(new Error("tests must inject a judge")),
+  codex: () => Promise.reject(new Error("tests must inject a judge")),
 };
 
 /**
@@ -107,7 +109,7 @@ export interface FakeJudge {
   requests: JudgeRequest[];
   /** The config each provider factory received, in order. */
   built: LlmConfig[];
-  /** Both providers build this judge. */
+  /** Every provider builds this judge. */
   deps: Deps;
 }
 
@@ -166,6 +168,14 @@ export function fakeJudge(verdicts: Record<string, Verdict> = {}): FakeJudge {
     judge,
     requests,
     built,
-    deps: { judges: { bedrock: factory, anthropic: factory, openai: factory } },
+    deps: {
+      judges: {
+        bedrock: factory,
+        anthropic: factory,
+        openai: factory,
+        "claude-code": factory,
+        codex: factory,
+      },
+    },
   };
 }

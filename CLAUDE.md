@@ -113,7 +113,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 - `src/judge/` holds the `Judge` interface, the provider-neutral
   `messagesJudge` core (fully tested with a stub `parse`), its Chat
   Completions twin `chatJudge` in `chat.ts`, the Bedrock, Anthropic, and
-  OpenAI adapters, which only build a client, and `cache.ts`, a
+  OpenAI adapters, which only build a client, the `claude-code` and `codex`
+  adapters, which spawn that CLI once per request through the `Exec`
+  function in `cli.ts` (tests pass a fake) with the answer schema and read
+  the structured result back, and `cache.ts`, a
   `Judge` wrapper that answers from `node_modules/.cache/lawbook` when the
   hash of model, prompt, standard, context, path, and content matches. The request
   marks the standard block for the provider's prompt cache, and every

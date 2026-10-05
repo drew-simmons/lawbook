@@ -456,7 +456,13 @@ test("a non-CliError from the judge still aborts the run", async () => {
 });
 
 test("default judges cover every provider", () => {
-  expect(Object.keys(defaultJudges).toSorted()).toEqual(["anthropic", "bedrock", "openai"]);
+  expect(Object.keys(defaultJudges).toSorted()).toEqual([
+    "anthropic",
+    "bedrock",
+    "claude-code",
+    "codex",
+    "openai",
+  ]);
 });
 
 test("check rejects baseUrl with the bedrock provider", async () => {
@@ -465,6 +471,36 @@ test("check rejects baseUrl with the bedrock provider", async () => {
   expect(result.code).toBe(2);
   expect(result.stderr).toContain("llm.baseUrl");
   expect(result.stderr).toContain("baseUrl applies to the openai provider only");
+});
+
+test("check fills in the default model for the claude-code provider", async () => {
+  await config(`llm:\n  provider: claude-code\nrules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  const fake = fakeJudge();
+  await lawbookWith(fake.deps, "check", dir());
+  expect(fake.built).toMatchObject([
+    { provider: "claude-code", model: DEFAULT_MODELS["claude-code"], concurrency: 4 },
+  ]);
+});
+
+test("check requires a model for the codex provider", async () => {
+  await config(`llm:\n  provider: codex\nrules:\n${STANDARD}`);
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("set llm.model; the codex provider has no default");
+});
+
+test("check rejects region and baseUrl with the CLI providers", async () => {
+  await config(`llm:\n  provider: claude-code\n  region: eu-west-1\nrules:\n${STANDARD}`);
+  const region = await lawbook("check", dir());
+  expect(region.code).toBe(2);
+  expect(region.stderr).toContain("region applies to the bedrock provider only");
+  await config(
+    `llm:\n  provider: codex\n  model: gpt-x\n  baseUrl: http://localhost:11434/v1\nrules:\n${STANDARD}`,
+  );
+  const baseUrl = await lawbook("check", dir());
+  expect(baseUrl.code).toBe(2);
+  expect(baseUrl.stderr).toContain("baseUrl applies to the openai provider only");
 });
 
 test("check requires a model for the openai provider", async () => {
