@@ -28,7 +28,7 @@ errors.
 | Key | Required | Meaning |
 | --- | --- | --- |
 | `version` | yes | Always `1`. |
-| `extends` | no | A config file or a list of them whose rules run before this file's own. An entry starting with `.` or an absolute path is relative to this file; anything else is a package specifier resolved from `node_modules` the way `require` would, so `@acme/lawbook-rules` or `@acme/lawbook-rules/strict.yaml` works once installed. Rules are collected depth-first. Only `rules` are inherited; `ignore`, `gitignore`, and `llm` come from the file lawbook reads. Globs in inherited rules are relative to the checked directory. A duplicate id across files, a cycle, or an unresolvable entry exits `2`. |
+| `extends` | no | A config file or a list of them whose rules run before this file's own. An entry starting with `.` or an absolute path is relative to this file; anything else is a package specifier resolved from `node_modules` the way `require` would, so `@acme/lawbook-rules` or `@acme/lawbook-rules/strict.yaml` works once installed. Rules are collected depth-first. Only `rules` are inherited; `ignore`, `gitignore`, and `llm` come from the file lawbook reads, so a config that extends another and sets only `llm` (with `rules: []`) runs the same rules through a different judge. Globs in inherited rules are relative to the checked directory. A duplicate id across files, a cycle, or an unresolvable entry exits `2`. |
 | `ignore` | no | Globs no rule looks at. Defaults to `["**/node_modules/**", "**/.git/**"]`; setting it replaces the defaults. |
 | `gitignore` | no | Whether files `.gitignore` covers are left out when the root is inside a git work tree. Defaults to `true`. One `git ls-files` call lists the tracked files plus untracked files git does not ignore, and every rule selects from that listing. |
 | `llm` | no | The model that judges `standard` rules. See below. |
@@ -88,6 +88,18 @@ Patterns are JavaScript regular expressions compiled with the `m` and `u`
 flags: `^` and `$` match at line boundaries, and the pattern must be valid
 Unicode-mode syntax (so a stray `\-` or an unescaped `{` is an error).
 Quote them with single quotes in YAML. An invalid pattern exits `2`.
+
+A `forbid` pattern is tested one line at a time, so `\n` and a lookaround
+into another line never match. A `require` pattern is tested against the
+whole file. A rule about two adjacent lines is a `require` with a negative
+lookahead anchored to the start of the file by `(?<![\s\S])`:
+
+```yaml
+- id: exports-are-documented
+  files: ["src/**/*.js"]
+  require: '(?<![\s\S])(?![\s\S]*?(?<!\*/)\nexport (async )?function)'
+  message: an exported function has no doc comment above it
+```
 
 ### exists and absent
 
