@@ -32,7 +32,9 @@ rules:
 ```
 
 `standard` rules use Amazon Bedrock by default, with credentials from the AWS
-environment, or the Anthropic API or OpenAI when the config says so. `check --no-llm`
+environment, or the Anthropic API or OpenAI when the config says so. With
+`provider: claude-code` or `provider: codex`, they run the installed CLI
+instead, so a Claude or ChatGPT subscription pays. `check --no-llm`
 skips them. The [docs](https://drew-simmons.github.io/lawbook/) describe the
 [configuration format](https://drew-simmons.github.io/lawbook/configuration),
 [LLM rules](https://drew-simmons.github.io/lawbook/llm-rules),

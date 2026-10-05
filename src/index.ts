@@ -50,6 +50,9 @@ export {
   type Verdict,
 } from "./judge/judge.ts";
 export { messagesJudge, type ParseFn, requestLabel } from "./judge/messages.ts";
+export { answerJsonSchema, defaultExec, type Exec, parseAnswer } from "./judge/cli.ts";
+export { claudeArgs, claudeCodeJudge, toClaudeVerdict } from "./judge/claude-code.ts";
+export { codexArgs, codexJudge, codexPrompt, toCodexVerdict } from "./judge/codex.ts";
 export {
   buildChatRequest,
   chatJudge,

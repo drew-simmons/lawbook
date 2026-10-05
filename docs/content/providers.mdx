@@ -1,6 +1,6 @@
 ---
 title: Providers
-description: Configure Amazon Bedrock, the default, the Anthropic API, or OpenAI for standard rules.
+description: Configure Amazon Bedrock, the default, the Anthropic API, OpenAI, or a Claude Code or Codex subscription for standard rules.
 sidebar:
   order: 5
 ---
@@ -19,8 +19,8 @@ llm:
 
 | Key           | Meaning                                                                                        |
 | ------------- | ---------------------------------------------------------------------------------------------- |
-| `provider`    | `bedrock` (default), `anthropic`, or `openai`.                                                 |
-| `model`       | The model id in the provider's own naming. Defaults per provider, see below; `openai` has no default, so `model` is required. |
+| `provider`    | `bedrock` (default), `anthropic`, `openai`, `claude-code`, or `codex`. The first three call an API with a key; the last two run the CLI of that name, so a subscription can pay. |
+| `model`       | The model id in the provider's own naming. Defaults per provider, see below; `openai` and `codex` have no default, so `model` is required. |
 | `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. Setting it under another provider is a config error. |
 | `baseUrl`     | OpenAI only. The URL of a server that speaks the Chat Completions API, in place of `https://api.openai.com/v1`. Setting it under another provider is a config error. |
 | `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
@@ -97,11 +97,72 @@ none. OpenAI caches shared prompt prefixes on
 its own, and lawbook reports the tokens it served from that cache under
 `cacheReadInputTokens`, as it does for the Anthropic providers.
 
+## Claude Code
+
+```yaml
+llm:
+  provider: claude-code
+  model: claude-opus-5-5
+```
+
+Judges through the `claude` command on `PATH`, so a Claude Pro, Max, Team,
+or Enterprise subscription that Claude Code is signed into pays for the
+requests, and no API key is needed. Install
+[Claude Code](https://code.claude.com/docs/en/setup), run `claude auth login`
+once, and check `claude auth status` reports `claude.ai`. An API key in
+`ANTHROPIC_API_KEY`, or a Console login, works too and is billed as API
+usage. The default model is `claude-opus-5-5`; `model` takes a full id or an
+alias Claude Code knows, such as `sonnet`.
+
+Each request runs `claude -p` once with the standard as its system prompt,
+the files on stdin, and the answer shaped by a JSON schema. The run has no
+tools, no MCP servers, and no slash commands, saves no session, and starts
+in an empty temporary directory, so the checked project's `CLAUDE.md`,
+hooks, and `.mcp.json` never load into the judge. Settings and hooks in
+`~/.claude` still apply, since the login lives there; `--bare` is not used
+because it would skip the login. Starting the CLI costs a second or two per
+file, so this provider suits `scope: set` rules and small file sets better
+than a rule over a whole tree. Usage counts come from the CLI's result,
+including the tokens it read from and wrote to the prompt cache.
+
+Anthropic permits programmatic use of a Claude subscription through the
+Agent SDK and `claude -p`, and such use currently draws from the plan's
+usage limits; the terms and the accounting are Anthropic's to change, so
+check them before relying on this in CI. Copying the CLI's login token into
+`ANTHROPIC_AUTH_TOKEN` for the `anthropic` provider is not permitted; use
+this provider instead.
+
+## Codex
+
+```yaml
+llm:
+  provider: codex
+  model: gpt-5-codex
+```
+
+Judges through the `codex` command on `PATH`, so the ChatGPT subscription
+that Codex is signed into pays for the requests. Install the
+[Codex CLI](https://developers.openai.com/codex/cli), run `codex login`
+once, and name a `model` the account offers; there is no default. An
+`OPENAI_API_KEY` the CLI is configured to use works too, billed as API
+usage; OpenAI recommends a key over a subscription login for CI.
+
+Each request runs `codex exec` once in an empty temporary directory with
+the standard and the files in one prompt, a read-only sandbox, nothing
+persisted, and the answer shaped by a JSON schema through
+`--output-schema`. The checked project's `AGENTS.md` never loads into the
+judge. Usage counts come from the run's events; Codex counts cached tokens
+inside its input count, and lawbook reports them apart as
+`cacheReadInputTokens`, as for the other providers. A recent Codex CLI is
+needed for `--output-schema` and `--ephemeral`.
+
 ## No network in tests
 
-All three providers sit behind one `Judge` interface, and `run` accepts the
+All five providers sit behind one `Judge` interface, and `run` accepts the
 factories that build them, so a test or an embedding program can pass its own
 judge and never reach a network. The package exports `messagesJudge`, the
 provider-neutral core the Bedrock and Anthropic adapters wrap, and
 `chatJudge`, which the OpenAI adapter wraps, for anyone adding a provider
-that speaks the Anthropic Messages API or the Chat Completions API.
+that speaks the Anthropic Messages API or the Chat Completions API. The CLI
+adapters, `claudeCodeJudge` and `codexJudge`, take an `Exec` function that
+spawns the command, so a test passes a fake and no CLI runs.
