@@ -44,21 +44,16 @@
       "type": "object",
       "properties": {
         "provider": {
-          "default": "bedrock",
+          "default": "bifrost",
           "type": "string",
           "enum": [
-            "bedrock",
-            "anthropic",
+            "bifrost",
             "openai",
             "claude-code",
             "codex"
           ]
         },
         "model": {
-          "type": "string",
-          "minLength": 1
-        },
-        "region": {
           "type": "string",
           "minLength": 1
         },
@@ -331,18 +326,13 @@
                   "provider": {
                     "type": "string",
                     "enum": [
-                      "bedrock",
-                      "anthropic",
+                      "bifrost",
                       "openai",
                       "claude-code",
                       "codex"
                     ]
                   },
                   "model": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "region": {
                     "type": "string",
                     "minLength": 1
                   },

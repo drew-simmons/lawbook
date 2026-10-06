@@ -38,8 +38,6 @@
     "coverage": "tsdown && vitest run --coverage"
   },
   "dependencies": {
-    "@anthropic-ai/bedrock-sdk": "0.34.2",
-    "@anthropic-ai/sdk": "0.131.0",
     "commander": "15.0.0",
     "openai": "7.27.0",
     "tinyglobby": "0.2.17",

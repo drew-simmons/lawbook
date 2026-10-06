@@ -173,10 +173,10 @@ test("a provider error during test exits two with its message", async () => {
   await config(`rules:\n${RULE}`);
   await fixtures();
   const fake = fakeJudge();
-  fake.judge.judge = () => Promise.reject(new CliError("bedrock: 401 invalid x-api-key"));
+  fake.judge.judge = () => Promise.reject(new CliError("bifrost: 401 invalid virtual key"));
   const result = await lawbookWith(fake.deps, "test", dir());
   expect(result.code).toBe(2);
-  expect(result.stderr).toBe("error: bedrock: 401 invalid x-api-key\n");
+  expect(result.stderr).toBe("error: bifrost: 401 invalid virtual key\n");
 });
 
 test("fixtures on a forbid rule are rejected", async () => {

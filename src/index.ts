@@ -40,6 +40,7 @@ export {
   type Answer,
   answerSchema,
   type Decision,
+  decisionOf,
   decisionSchema,
   type Judge,
   type JudgeFactory,
@@ -49,7 +50,8 @@ export {
   type Usage,
   type Verdict,
 } from "./judge/judge.ts";
-export { messagesJudge, type ParseFn, requestLabel } from "./judge/messages.ts";
+export { bifrostJudge, bifrostKey, DEFAULT_BIFROST_URL } from "./judge/bifrost.ts";
+export { requestLabel, SYSTEM_PROMPT } from "./judge/prompt.ts";
 export { answerJsonSchema, defaultExec, type Exec, parseAnswer } from "./judge/cli.ts";
 export { claudeArgs, claudeCodeJudge, toClaudeVerdict } from "./judge/claude-code.ts";
 export { codexArgs, codexJudge, codexPrompt, toCodexVerdict } from "./judge/codex.ts";
@@ -58,6 +60,7 @@ export {
   chatJudge,
   type ChatParams,
   type ChatParseFn,
+  type ChatUsage,
   toChatUsage,
   toChatVerdict,
 } from "./judge/chat.ts";

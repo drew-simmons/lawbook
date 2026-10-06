@@ -60,38 +60,37 @@ export const SCOPES = ["file", "set"] as const;
 export type Scope = (typeof SCOPES)[number];
 
 /**
- * `bedrock`, `anthropic`, and `openai` speak to an API with a key.
- * `claude-code` and `codex` run the installed CLI of that name, so a Claude
- * or ChatGPT subscription the CLI is signed into pays for the requests.
+ * `bifrost` and `openai` speak Chat Completions to a server: a Bifrost
+ * gateway, which holds the credentials and forwards to the provider the
+ * model id names, or api.openai.com with a key. `claude-code` and `codex`
+ * run the installed CLI of that name, so a Claude or ChatGPT subscription
+ * the CLI is signed into pays for the requests.
  */
-export const PROVIDERS = ["bedrock", "anthropic", "openai", "claude-code", "codex"] as const;
+export const PROVIDERS = ["bifrost", "openai", "claude-code", "codex"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
 
 /** The model each provider uses when the config names none; `openai` and `codex` have none, so `model` is required. */
 export const DEFAULT_MODELS: Record<Provider, string | undefined> = {
-  bedrock: "anthropic.claude-opus-5-5",
-  anthropic: "claude-opus-5-5",
+  bifrost: "anthropic/claude-opus-5-5",
   openai: undefined,
   "claude-code": "claude-opus-5-5",
   codex: undefined,
 };
 
-/** The `llm` keys that belong to one provider, and which. */
-const PROVIDER_KEYS = { region: "bedrock", baseUrl: "openai" } as const satisfies Record<
+/** The `llm` keys that belong to some providers, and which. */
+const PROVIDER_KEYS = { baseUrl: ["bifrost", "openai"] } as const satisfies Record<
   string,
-  Provider
+  readonly Provider[]
 >;
 
 type ProviderKey = keyof typeof PROVIDER_KEYS;
 
 const llmSchema = z
   .object({
-    provider: z.enum(PROVIDERS).default("bedrock"),
+    provider: z.enum(PROVIDERS).default("bifrost"),
     model: text.optional(),
-    /** Bedrock only: the AWS region. */
-    region: text.optional(),
-    /** OpenAI only: a server that speaks Chat Completions, in place of api.openai.com. */
+    /** `bifrost` and `openai` only: the server that speaks Chat Completions, in place of the provider's default. */
     baseUrl: z.url().optional(),
     /** How many files a `standard` rule judges at once. */
     concurrency: z.int().min(1).default(4),
@@ -105,12 +104,13 @@ const llmSchema = z
   .strict()
   .check((ctx) => {
     for (const key of Object.keys(PROVIDER_KEYS) as ProviderKey[]) {
-      if (ctx.value[key] !== undefined && ctx.value.provider !== PROVIDER_KEYS[key]) {
+      const providers: readonly Provider[] = PROVIDER_KEYS[key];
+      if (ctx.value[key] !== undefined && !providers.includes(ctx.value.provider)) {
         ctx.issues.push({
           code: "custom",
           input: ctx.value,
           path: [key],
-          message: `${key} applies to the ${PROVIDER_KEYS[key]} provider only`,
+          message: `${key} applies to the ${providers.join(" and ")} providers only`,
         });
       }
     }
@@ -136,7 +136,6 @@ const ruleLlmSchema = z
   .object({
     provider: z.enum(PROVIDERS).optional(),
     model: text.optional(),
-    region: text.optional(),
     baseUrl: z.url().optional(),
   })
   .strict();
@@ -169,8 +168,8 @@ export type RuleOf<K extends RuleKind> = Extract<Rule, { kind: K }>;
 
 /**
  * The run's `llm` with a rule's overrides on top. A rule that names another
- * provider starts from that provider's defaults, not the top-level model,
- * region, or URL, which belong to the top-level provider.
+ * provider starts from that provider's defaults, not the top-level model or
+ * URL, which belong to the top-level provider.
  */
 function mergeLlm(top: LlmConfig, rule: RuleOf<"standard">): z.input<typeof llmSchema> {
   const override = rule.llm ?? {};
@@ -179,7 +178,6 @@ function mergeLlm(top: LlmConfig, rule: RuleOf<"standard">): z.input<typeof llmS
   return {
     provider,
     model: override.model ?? (same ? top.model : undefined),
-    region: override.region ?? (same ? top.region : undefined),
     baseUrl: override.baseUrl ?? (same ? top.baseUrl : undefined),
     concurrency: top.concurrency,
     maxBytes: top.maxBytes,
@@ -193,7 +191,7 @@ export function ruleLlm(top: LlmConfig, rule: RuleOf<"standard">): LlmConfig {
   return llmSchema.parse(mergeLlm(top, rule));
 }
 
-/** A rule's `llm` is checked merged, so a `region` under an `anthropic` override is caught at load time. */
+/** A rule's `llm` is checked merged, so a `baseUrl` under a `codex` override is caught at load time. */
 function assertRuleLlm(file: string, top: LlmConfig, rule: Rule): void {
   if (rule.kind !== "standard" || rule.llm === undefined) {
     return;

@@ -13,7 +13,7 @@ probability falls below the rule's `threshold` (default `0.5`) is a finding.
 ```yaml
 version: 1
 llm:
-  provider: bedrock
+  provider: bifrost
 rules:
   - id: errors-are-actionable
     description: Users can act on every error
@@ -205,26 +205,26 @@ model while a subtle one keeps the default:
 
 ```yaml
 llm:
-  provider: bedrock
-  region: us-west-2
+  provider: bifrost
+  model: bedrock/anthropic.claude-sonnet-5-5
 rules:
   - id: has-doc-comments
     files: ["src/**/*.ts"]
     standard: Every exported function has a doc comment.
-    llm: { model: anthropic.claude-haiku-4-5 }
+    llm: { model: bedrock/anthropic.claude-haiku-4-5 }
   - id: errors-are-actionable
     files: ["src/**/*.ts"]
     standard: Every error message says what went wrong and what to do next.
 ```
 
-A rule's `llm` takes `provider`, `model`, `region`, and `baseUrl`. A rule
-that keeps the run's provider inherits its model, region, and URL and
-replaces only what it names. A rule that names another provider starts from
-that provider's defaults instead, since a Bedrock region means nothing to the
-Anthropic API; name its `model` too when the provider has no default.
-`concurrency`, `maxBytes`, and `cache` always come from the run's `llm`. The
-merged settings are checked when the config loads, so a `region` under an
-`anthropic` override is an error naming the rule.
+A rule's `llm` takes `provider`, `model`, and `baseUrl`. A rule that keeps
+the run's provider inherits its model and URL and replaces only what it
+names. A rule that names another provider starts from that provider's
+defaults instead, since a gateway URL means nothing to the Codex CLI; name
+its `model` too when the provider has no default. `concurrency`,
+`maxBytes`, and `cache` always come from the run's `llm`. The merged settings
+are checked when the config loads, so a `baseUrl` under a `codex` override
+is an error naming the rule.
 
 Rules with the same provider, model, and endpoint share one client, and the
 [verdict cache](#verdict-cache) keys on the model, so the same file judged by
@@ -232,11 +232,15 @@ two models is cached twice.
 
 ## Prompt caching
 
-The request marks the standard for the provider's prompt cache, so after the
-first file in a rule the provider reads the standard from its cache instead
-of processing it again. Short standards fall under the provider's minimum
-cacheable size and simply cost nothing extra. The JSON output reports what
-the provider read from and wrote to its cache under `usage`.
+The request puts the system prompt, the standard, and any context in one
+system message ahead of the files, so that stable prefix is what a provider
+caches. OpenAI caches shared prefixes on its own; through Bifrost, turn on
+`prompt_cache.auto_inject` for the provider and the gateway marks the system
+message for the provider's cache, see [Providers](/providers#bifrost). After
+the first file in a rule the provider then reads the standard from its cache
+instead of processing it again. Short standards fall under the provider's
+minimum cacheable size and simply cost nothing extra. The JSON output
+reports what the provider read from and wrote to its cache under `usage`.
 
 ## Verdict cache
 
@@ -308,14 +312,14 @@ exits `2` after printing the report:
 ```txt
 ERROR errors-are-actionable
   src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
-  src/init.ts: bedrock: 401 invalid x-api-key
+  src/init.ts: bifrost: 401 invalid virtual key
   src/report.ts: not judged after an earlier error
 
 0 passed, 0 failed, 0 warned, 1 errored, 0 skipped
 ```
 
 An `ERROR` rule is never a pass, whatever its `level`. A problem building the
-provider client, such as a missing Bedrock region, still stops the run before
+provider client, such as a missing OpenAI key, still stops the run before
 any rule runs.
 
 ## Skipping

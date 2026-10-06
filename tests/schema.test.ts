@@ -38,7 +38,6 @@ test("the schema describes every llm key and every rule kind", () => {
     "maxRequests",
     "model",
     "provider",
-    "region",
   ]);
   const kinds = schema.properties.rules.items.anyOf.map((branch) =>
     ["forbid", "require", "exists", "absent", "standard"].find((kind) => kind in branch.properties),

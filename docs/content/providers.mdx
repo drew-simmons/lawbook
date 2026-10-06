@@ -1,6 +1,6 @@
 ---
 title: Providers
-description: Configure Amazon Bedrock, the default, the Anthropic API, OpenAI, or a Claude Code or Codex subscription for standard rules.
+description: Configure a Bifrost gateway, the default, OpenAI, or a Claude Code or Codex subscription for standard rules.
 sidebar:
   order: 5
 ---
@@ -10,8 +10,8 @@ The `llm` section of `lawbook.yaml` chooses the model that judges
 
 ```yaml
 llm:
-  provider: bedrock
-  model: anthropic.claude-opus-5-5
+  provider: bifrost
+  model: anthropic/claude-opus-5-5
   concurrency: 4
   maxBytes: 131072
   cache: true
@@ -19,51 +19,75 @@ llm:
 
 | Key           | Meaning                                                                                        |
 | ------------- | ---------------------------------------------------------------------------------------------- |
-| `provider`    | `bedrock` (default), `anthropic`, `openai`, `claude-code`, or `codex`. The first three call an API with a key; the last two run the CLI of that name, so a subscription can pay. |
-| `model`       | The model id in the provider's own naming. Defaults per provider, see below; `openai` and `codex` have no default, so `model` is required. |
-| `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. Setting it under another provider is a config error. |
-| `baseUrl`     | OpenAI only. The URL of a server that speaks the Chat Completions API, in place of `https://api.openai.com/v1`. Setting it under another provider is a config error. |
+| `provider`    | `bifrost` (default), `openai`, `claude-code`, or `codex`. The first two speak Chat Completions to a server: a Bifrost gateway that holds the credentials for every provider behind it, or api.openai.com with a key. The last two run the CLI of that name, so a subscription can pay. |
+| `model`       | The model id in the provider's own naming; through Bifrost, `provider/model`. Defaults per provider, see below; `openai` and `codex` have no default, so `model` is required. |
+| `baseUrl`     | `bifrost` and `openai` only. The URL of the server that speaks the Chat Completions API, in place of `http://localhost:8080/openai` or `https://api.openai.com/v1`. Setting it under a CLI provider is a config error. |
 | `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
 | `cache`       | Whether verdicts are cached on disk and reused for unchanged files. Defaults to `true`; `--no-cache` overrides one run. See [LLM rules](/llm-rules#verdict-cache). |
 | `maxBytes`    | The largest file, in bytes, a `standard` rule sends. A whole number, at least `1`; defaults to `131072` (128 KiB). Larger files are listed as skipped and never judged. See [LLM rules](/llm-rules#large-files). |
 | `maxRequests` | The most model requests one run may make. A whole number; no limit by default. A run whose plan exceeds it stops with exit code `2` before any request. `--max-requests` overrides it. See [LLM rules](/llm-rules#budget). |
 
 Unknown keys are errors. A problem building the client, such as a missing
-Bedrock region, stops the run with exit code `2` and a one-line message
+OpenAI key, stops the run with exit code `2` and a one-line message
 before any report. A provider or credential error on a request is reported
 against the file, the rule shows as `ERROR`, and the run still prints its
 report before exiting `2`; see
 [LLM rules](/llm-rules#provider-errors).
 
-## Amazon Bedrock
+## Bifrost
 
-The default. Lawbook calls the Bedrock Messages endpoint through the Anthropic
-Bedrock SDK, which takes credentials from the usual AWS chain: environment
-variables, a shared config profile, SSO, or an instance role. Nothing is
-configured in lawbook itself beyond the region.
-
-```yaml
-llm:
-  provider: bedrock
-  model: anthropic.claude-opus-5-5
-  region: us-west-2
-```
-
-Model ids on Bedrock carry the `anthropic.` prefix. The default is
-`anthropic.claude-opus-5-5`; pick a cheaper model with `model` when a rule
-runs over many files. The region must offer the model you name.
-
-## Anthropic API
+The default. [Bifrost](https://github.com/maximhq/bifrost) is an open-source
+gateway that puts one Chat Completions endpoint in front of Amazon Bedrock,
+the Anthropic API, OpenAI, Vertex, Azure, Ollama, and more. The gateway holds
+the provider credentials and translates each request; lawbook holds no
+credentials and sends every request in one shape, so adding a provider is a
+line in the gateway's config, not an adapter in lawbook.
 
 ```yaml
 llm:
-  provider: anthropic
-  model: claude-opus-5-5
+  provider: bifrost
+  model: bedrock/anthropic.claude-haiku-4-5
 ```
 
-Credentials come from the environment: `ANTHROPIC_API_KEY`, or a profile
-created with `ant auth login`. The default model is `claude-opus-5-5`, and ids
-have no prefix.
+Run a gateway, then name the providers and their keys in it:
+
+```sh
+npx -y @maximhq/bifrost          # or: docker run -p 8080:8080 maximhq/bifrost
+```
+
+It listens on `http://localhost:8080` and serves a web UI there for adding a
+provider and its key. A `config.json` in its `-app-dir` does the same for
+CI, with `"env.AWS_REGION"`-style references to the environment; see
+[Bifrost's docs](https://docs.getbifrost.ai) for each provider's key shape.
+Bedrock takes the usual AWS chain or `AWS_BEARER_TOKEN_BEDROCK`, and a
+region.
+
+`model` is `provider/model` in the gateway's naming:
+`bedrock/anthropic.claude-haiku-4-5`, `anthropic/claude-opus-5-5`,
+`openai/gpt-5`, `ollama/llama3.3`. The default is `anthropic/claude-opus-5-5`.
+A model with no prefix goes to OpenAI.
+
+`baseUrl` defaults to `http://localhost:8080/openai`; set it for a gateway
+on another host or port. When the gateway requires a virtual key, put it in
+`BIFROST_API_KEY`; otherwise lawbook sends a placeholder the gateway ignores.
+
+Lawbook asks for the answer through a JSON schema `response_format`, and
+Bifrost turns that into the provider's own structured output: `output_format`
+on the Anthropic API, a forced tool call on Bedrock. Bedrock refuses forced
+tool calls for Claude Opus 5.5, Sonnet 5.5, and newer, so on those models the
+gateway sends the tool unforced and the model nearly always calls it; a
+reply without an answer is reported as that file's error, see
+[LLM rules](/llm-rules#provider-errors). Bifrost tracks the gap in
+[issue #8058](https://github.com/maximhq/bifrost/issues/8058); on the
+Anthropic API every model is fine.
+
+Turn on `prompt_cache.auto_inject` for the provider in the gateway, in its
+Prompt Caching tab or its `config.json`, and the gateway marks lawbook's
+system message, which carries the system prompt, the standard, and any
+context, for the provider's prompt cache, so after the first file in a rule
+the standard is read from the cache. The usage line reports what was read
+from and written to it under `cacheReadInputTokens` and
+`cacheCreationInputTokens`.
 
 ## OpenAI
 
@@ -73,15 +97,14 @@ llm:
   model: gpt-5
 ```
 
-The key comes from `OPENAI_API_KEY` in the environment; without one, `check`
-exits `2` before any request. Lawbook sends the
-same prompt as to the other providers through the Chat Completions API with
-a JSON schema response format, so `model` must be one that supports
-structured outputs. There is no default model; name one.
+Calls api.openai.com directly, with no gateway. The key comes from
+`OPENAI_API_KEY` in the environment; without one, `check` exits `2` before
+any request. Lawbook sends the same prompt as through Bifrost, with a JSON
+schema response format, so `model` must be one that supports structured
+outputs. There is no default model; name one.
 
-`baseUrl` points the same client at any server that speaks Chat Completions,
-such as a local model server, so a team can judge files without sending them
-outside its network:
+`baseUrl` points the same client at any other server that speaks Chat
+Completions, such as a local model server:
 
 ```yaml
 llm:
@@ -91,11 +114,11 @@ llm:
 ```
 
 The server must support `response_format` with `json_schema`; one that does
-not answers with a provider error. When `OPENAI_API_KEY` is unset, such a
-server gets a placeholder key, since most expect a bearer token and check
-none. OpenAI caches shared prompt prefixes on
-its own, and lawbook reports the tokens it served from that cache under
-`cacheReadInputTokens`, as it does for the Anthropic providers.
+not answers with a provider error, which is one reason to put Bifrost in
+front of it instead. When `OPENAI_API_KEY` is unset, such a server gets a
+placeholder key, since most expect a bearer token and check none. OpenAI
+caches shared prompt prefixes on its own, and lawbook reports the tokens it
+served from that cache under `cacheReadInputTokens`.
 
 ## Claude Code
 
@@ -158,11 +181,10 @@ needed for `--output-schema` and `--ephemeral`.
 
 ## No network in tests
 
-All five providers sit behind one `Judge` interface, and `run` accepts the
+All four providers sit behind one `Judge` interface, and `run` accepts the
 factories that build them, so a test or an embedding program can pass its own
-judge and never reach a network. The package exports `messagesJudge`, the
-provider-neutral core the Bedrock and Anthropic adapters wrap, and
-`chatJudge`, which the OpenAI adapter wraps, for anyone adding a provider
-that speaks the Anthropic Messages API or the Chat Completions API. The CLI
+judge and never reach a network. The package exports `chatJudge`, the
+provider-neutral core the Bifrost and OpenAI adapters wrap, for anyone
+adding a provider that speaks the Chat Completions API. The CLI
 adapters, `claudeCodeJudge` and `codexJudge`, take an `Exec` function that
 spawns the command, so a test passes a fake and no CLI runs.

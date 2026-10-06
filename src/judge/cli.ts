@@ -5,8 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { CliError } from "../errors.ts";
-import { answerSchema, type Decision } from "./judge.ts";
-import { decisionOf } from "./messages.ts";
+import { answerSchema, type Decision, decisionOf } from "./judge.ts";
 
 /**
  * Runs `command` with `args` in `cwd`, `input` on its stdin, and resolves

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LlmConfig, Provider } from "../config.ts";
+import { CliError } from "../errors.ts";
 import type { SourceFile } from "../files.ts";
 
 /**
@@ -13,6 +14,15 @@ export const decisionSchema = z.object({
 });
 
 export type Decision = z.infer<typeof decisionSchema>;
+
+/** The model's probability as a noul decision, or an error when it is out of range. */
+export function decisionOf(noul: number, path: string): Decision {
+  const decision = decisionSchema.safeParse({ type: "noul", noul });
+  if (!decision.success) {
+    throw new CliError(`the judge gave an out-of-range probability ${noul} for ${path}`);
+  }
+  return decision.data;
+}
 
 /**
  * What the model answers for one request. The range is stated in the

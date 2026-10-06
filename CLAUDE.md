@@ -110,21 +110,26 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   `JudgeRequest` always carries `files`, one for `scope: file`, and carries
   `context` only when the rule names reference files, which both prompt
   builders append to the cached system prefix.
-- `src/judge/` holds the `Judge` interface, the provider-neutral
-  `messagesJudge` core (fully tested with a stub `parse`), its Chat
-  Completions twin `chatJudge` in `chat.ts`, the Bedrock, Anthropic, and
-  OpenAI adapters, which only build a client, the `claude-code` and `codex`
+- `src/judge/` holds the `Judge` interface and `decisionOf` in `judge.ts`,
+  the prompt builders in `prompt.ts`, the provider-neutral Chat Completions
+  core `chatJudge` in `chat.ts` (fully tested with a stub `parse`), the
+  Bifrost and OpenAI adapters, which only build an OpenAI SDK client with a
+  base URL and a key, the `claude-code` and `codex`
   adapters, which spawn that CLI once per request through the `Exec`
   function in `cli.ts` (tests pass a fake) with the answer schema and read
   the structured result back, and `cache.ts`, a
   `Judge` wrapper that answers from `node_modules/.cache/lawbook` when the
   hash of model, prompt, standard, context, path, and content matches. The request
-  marks the standard block for the provider's prompt cache, and every
-  `Verdict` carries the provider's token `usage`, summed per rule and in
-  the summary. The adapters import
-  their SDK client lazily, though `messages.ts` and `chat.ts` load the
-  SDKs' error classes and schema helpers up front, and stay at complexity
-  1, since no test covers them. `run`
+  puts the stable prefix in one system message, which the gateway's
+  `auto_inject` marks for the provider's prompt cache, and every `Verdict`
+  carries the provider's token `usage`, summed per rule and in the summary;
+  `toChatUsage` reads OpenAI's `cached_tokens` and Bifrost's
+  `cached_read_tokens` and `cached_write_tokens`. Bifrost translates the
+  JSON schema `response_format` for each provider behind it, so lawbook
+  has one answer channel and no provider SDK but OpenAI's. The adapters
+  import that client lazily, though `chat.ts` loads the SDK's error class
+  and schema helper up front, and stay at complexity 1, since no test
+  covers them. `run`
   takes the factories as its `deps` argument; tests inject fakes. The judge
   returns a `Verdict`: a noul decision in the Jev decision schema plus a
   reason; `src/rules/llm.ts` compares the probability to the rule's

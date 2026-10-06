@@ -22,16 +22,15 @@ version: 1
 # Inside a git work tree, files .gitignore covers are left out. This is the default.
 # gitignore: true
 
-# The model that judges \`standard\` rules, with its defaults. The keys below
-# them have no default and apply to one provider.
+# The model that judges \`standard\` rules, with its defaults. A Bifrost
+# gateway holds the provider credentials; the model id names the provider.
 # llm:
-#   provider: bedrock           # bedrock | anthropic | openai
-#   model: anthropic.claude-opus-5-5   # the bedrock default; openai has none
+#   provider: bifrost           # bifrost | openai | claude-code | codex
+#   model: anthropic/claude-opus-5-5   # the bifrost default; openai and codex have none
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
 #   cache: true                 # reuse verdicts for unchanged files
-#   # region: us-west-2         # bedrock only; else AWS_REGION
-#   # baseUrl: http://localhost:11434/v1   # openai only: a compatible server
+#   # baseUrl: http://localhost:8080/openai   # bifrost and openai only: the server to call
 #   # maxRequests: 200          # stop before the first request when a run would exceed this
 
 rules:
@@ -73,8 +72,8 @@ rules:
   #   context: ["docs/style.md"]
   #   # Example files for \`lawbook test\`: ones that must pass, ones that must fail.
   #   fixtures: { pass: ["fixtures/good.ts"], fail: ["fixtures/bad.ts"] }
-  #   # A cheaper model for this rule alone; provider, region, and baseUrl work too.
-  #   llm: { model: anthropic.claude-sonnet-5-5 }
+  #   # A cheaper model for this rule alone; provider and baseUrl work too.
+  #   llm: { model: anthropic/claude-sonnet-5-5 }
 `;
 
 /** Writes `lawbook.yaml` into `root` and returns its path. */

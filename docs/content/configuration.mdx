@@ -15,7 +15,7 @@ ignore:
   - "**/node_modules/**"
   - "**/.git/**"
 llm:
-  provider: bedrock
+  provider: bifrost
 rules:
   - id: no-console
     description: Production code logs through the logger
@@ -112,7 +112,7 @@ matches; `absent` reports every match.
 | `standard`  | yes      | The standard in prose.                                                  |
 | `threshold` | no       | The probability, `0` to `1`, a file must reach to pass. Defaults to `0.5`. |
 | `scope`     | no       | `file` (default) judges each selected file in its own request. `set` sends every selected file in one request and gets one verdict for the set. See [LLM rules](/llm-rules#judging-files-together). |
-| `llm`       | no       | Overrides for this rule: `provider`, `model`, `region`, `baseUrl`. See [LLM rules](/llm-rules#per-rule-model). |
+| `llm`       | no       | Overrides for this rule: `provider`, `model`, `baseUrl`. See [LLM rules](/llm-rules#per-rule-model). |
 | `context`   | no       | Files, relative to the checked directory, sent with every request as reference material and never judged. See [LLM rules](/llm-rules#reference-files). |
 | `fixtures`  | no       | Example files for `lawbook test`, relative to the checked directory: `pass`, ones that must meet the standard, and `fail`, ones that must not. See [LLM rules](/llm-rules#testing-a-standard). |
 
@@ -223,8 +223,8 @@ standards at a local stand-in without touching the rules:
 version: 1
 extends: ./lawbook.yaml
 llm:
-  provider: bedrock
-  model: anthropic.claude-haiku-4-5
+  provider: bifrost
+  model: bedrock/anthropic.claude-haiku-4-5
 rules: []
 ```
 

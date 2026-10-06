@@ -11,7 +11,7 @@ import {
   translateExecError,
 } from "./cli.ts";
 import type { Judge, JudgeRequest, Usage, Verdict } from "./judge.ts";
-import { fileBlocks, requestLabel, systemTexts } from "./messages.ts";
+import { fileBlocks, requestLabel, systemTexts } from "./prompt.ts";
 
 export const CODEX_COMMAND = "codex";
 

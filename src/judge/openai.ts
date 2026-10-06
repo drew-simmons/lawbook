@@ -18,9 +18,10 @@ export function openaiKey(llm: LlmConfig, env: NodeJS.ProcessEnv): string {
 /**
  * Judges through the OpenAI API, or any server that speaks Chat Completions
  * when `llm.baseUrl` names one. The key comes from `OPENAI_API_KEY`.
+ * A Bifrost gateway has its own provider, `bifrost`, with its own key.
  */
 export async function openaiJudge(llm: LlmConfig, env: NodeJS.ProcessEnv): Promise<Judge> {
   const { default: OpenAI } = await import("openai");
   const client = new OpenAI({ baseURL: llm.baseUrl, apiKey: openaiKey(llm, env) });
-  return chatJudge((params) => client.chat.completions.parse(params), llm.model);
+  return chatJudge((params) => client.chat.completions.parse(params), llm.model, "openai");
 }

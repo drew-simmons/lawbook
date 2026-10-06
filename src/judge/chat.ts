@@ -6,17 +6,17 @@ import type {
   ParsedChatCompletion,
   ParsedChoice,
 } from "openai/resources/chat/completions";
-import type { CompletionUsage } from "openai/resources/completions";
 import { CliError } from "../errors.ts";
 import {
   type Answer,
   answerSchema,
+  decisionOf,
   type Judge,
   type JudgeRequest,
   type Usage,
   type Verdict,
 } from "./judge.ts";
-import { decisionOf, fileBlocks, requestLabel, systemTexts } from "./messages.ts";
+import { fileBlocks, requestLabel, systemTexts } from "./prompt.ts";
 
 /** A Chat Completions request whose answer parses into an `Answer`. */
 export type ChatParams = ChatCompletionCreateParamsNonStreaming & {
@@ -27,8 +27,25 @@ export type ChatParams = ChatCompletionCreateParamsNonStreaming & {
 export type ChatParseFn = (params: ChatParams) => Promise<ParsedChatCompletion<Answer>>;
 
 /**
- * The same prompt as the Messages API request, as one system message. OpenAI
- * caches shared prefixes on its own, so nothing marks the standard.
+ * The usage a Chat Completions server reports. OpenAI puts the tokens it
+ * read from its cache in `cached_tokens`; Bifrost reports reads and writes
+ * apart as `cached_read_tokens` and `cached_write_tokens`.
+ */
+export interface ChatUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens?: number;
+  prompt_tokens_details?: {
+    cached_tokens?: number;
+    cached_read_tokens?: number;
+    cached_write_tokens?: number;
+  } | null;
+}
+
+/**
+ * The same prompt as every provider gets, as one system message. The
+ * standard is the stable prefix, so a server that caches prefixes, on its
+ * own or through Bifrost's `auto_inject`, caches the whole system message.
  */
 export function buildChatRequest(request: JudgeRequest, model: string): ChatParams {
   return {
@@ -42,14 +59,16 @@ export function buildChatRequest(request: JudgeRequest, model: string): ChatPara
   };
 }
 
-/** OpenAI counts cached tokens inside `prompt_tokens`; lawbook reports them apart, like the other providers. */
-export function toChatUsage(usage: CompletionUsage | undefined): Usage {
-  const cached = usage?.prompt_tokens_details?.cached_tokens ?? 0;
+/** Servers count cached tokens inside `prompt_tokens`; lawbook reports them apart, like the CLI providers. */
+export function toChatUsage(usage: ChatUsage | undefined): Usage {
+  const details = usage?.prompt_tokens_details;
+  const read = details?.cached_read_tokens ?? details?.cached_tokens ?? 0;
+  const written = details?.cached_write_tokens ?? 0;
   return {
-    inputTokens: (usage?.prompt_tokens ?? 0) - cached,
+    inputTokens: (usage?.prompt_tokens ?? 0) - read - written,
     outputTokens: usage?.completion_tokens ?? 0,
-    cacheReadInputTokens: cached,
-    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: read,
+    cacheCreationInputTokens: written,
   };
 }
 
@@ -73,18 +92,20 @@ export function toChatVerdict(completion: ParsedChatCompletion<Answer>, label: s
 }
 
 /** SDK errors become one-line `CliError`s naming the provider; anything else is a bug. */
-export function translateChatError(error: unknown): never {
+export function translateChatError(error: unknown, provider: string): never {
   if (error instanceof OpenAIError) {
-    throw new CliError(`openai: ${error.message}`);
+    throw new CliError(`${provider}: ${error.message}`);
   }
   throw error;
 }
 
-/** The judge behind the OpenAI adapter, and any server that speaks Chat Completions. */
-export function chatJudge(parse: ChatParseFn, model: string): Judge {
+/** The judge behind the Bifrost and OpenAI adapters: any server that speaks Chat Completions. */
+export function chatJudge(parse: ChatParseFn, model: string, provider: string): Judge {
   return {
     async judge(request) {
-      const completion = await parse(buildChatRequest(request, model)).catch(translateChatError);
+      const completion = await parse(buildChatRequest(request, model)).catch((error: unknown) =>
+        translateChatError(error, provider),
+      );
       return toChatVerdict(completion, requestLabel(request));
     },
   };

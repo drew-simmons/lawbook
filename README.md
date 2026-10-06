@@ -31,8 +31,10 @@ rules:
     standard: Every error message says what went wrong and what to do next.
 ```
 
-`standard` rules use Amazon Bedrock by default, with credentials from the AWS
-environment, or the Anthropic API or OpenAI when the config says so. With
+`standard` rules go through a [Bifrost](https://github.com/maximhq/bifrost)
+gateway by default, which holds the credentials and forwards each request to
+the provider the model id names, such as Amazon Bedrock, the Anthropic API,
+or OpenAI, or to OpenAI directly when the config says so. With
 `provider: claude-code` or `provider: codex`, they run the installed CLI
 instead, so a Claude or ChatGPT subscription pays. `check --no-llm`
 skips them. The [docs](https://drew-simmons.github.io/lawbook/) describe the

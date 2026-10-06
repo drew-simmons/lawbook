@@ -78,7 +78,7 @@ function withCache(judge: Judge, llm: LlmConfig, options: CheckOptions): Judge {
 
 /** What makes two rules share a judge: the same provider, model, and endpoint. */
 function llmKey(llm: LlmConfig): string {
-  return JSON.stringify([llm.provider, llm.model, llm.region ?? null, llm.baseUrl ?? null]);
+  return JSON.stringify([llm.provider, llm.model, llm.baseUrl ?? null]);
 }
 
 /** One judge per distinct `llm`, reused across the rules that share it. */

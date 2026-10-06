@@ -88,7 +88,7 @@ test("the default cache dir is node_modules/.cache/lawbook under the root", asyn
 test("a corrupt cache entry is a miss and is rewritten", async () => {
   await config(`rules:\n${STANDARD}`);
   await write(dir(), "a.ts", "throw new Error('bad');\n");
-  const key = cacheKey("anthropic.claude-opus-5-5", {
+  const key = cacheKey("anthropic/claude-opus-5-5", {
     standard: "Errors say what to do next",
     files: [{ path: "a.ts", content: "throw new Error('bad');\n" }],
   });

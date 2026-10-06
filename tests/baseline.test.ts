@@ -91,7 +91,7 @@ test("a baselined standard finding is hidden but a provider error is not", async
   expect(first.stdout).toContain("PASS actionable-errors\n  2 findings in baseline\n");
   fake.judge.judge = (request) =>
     request.files[0]?.path === "b.ts"
-      ? Promise.reject(new CliError("bedrock: 503 unavailable"))
+      ? Promise.reject(new CliError("bifrost: 503 unavailable"))
       : Promise.resolve(noul(0.1, "worded differently"));
   const second = await lawbookWith(
     fake.deps,
@@ -103,7 +103,7 @@ test("a baselined standard finding is hidden but a provider error is not", async
   );
   expect(second.code).toBe(2);
   expect(second.stdout).toContain(
-    "ERROR actionable-errors\n  b.ts: bedrock: 503 unavailable\n  1 finding in baseline\n",
+    "ERROR actionable-errors\n  b.ts: bifrost: 503 unavailable\n  1 finding in baseline\n",
   );
 });
 

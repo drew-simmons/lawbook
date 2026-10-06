@@ -11,8 +11,7 @@ import type { Judge, JudgeRequest, Judges, Usage, Verdict } from "../src/judge/j
 
 /** No test may reach a provider, so the default factories refuse to build one. */
 export const noJudges: Judges = {
-  bedrock: () => Promise.reject(new Error("tests must inject a judge")),
-  anthropic: () => Promise.reject(new Error("tests must inject a judge")),
+  bifrost: () => Promise.reject(new Error("tests must inject a judge")),
   openai: () => Promise.reject(new Error("tests must inject a judge")),
   "claude-code": () => Promise.reject(new Error("tests must inject a judge")),
   codex: () => Promise.reject(new Error("tests must inject a judge")),
@@ -170,8 +169,7 @@ export function fakeJudge(verdicts: Record<string, Verdict> = {}): FakeJudge {
     built,
     deps: {
       judges: {
-        bedrock: factory,
-        anthropic: factory,
+        bifrost: factory,
         openai: factory,
         "claude-code": factory,
         codex: factory,

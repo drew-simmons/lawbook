@@ -18,7 +18,7 @@ import {
   codexPrompt,
   toCodexUsage,
 } from "../src/judge/codex.ts";
-import { contextBlock, SYSTEM_PROMPT } from "../src/judge/messages.ts";
+import { contextBlock, SYSTEM_PROMPT } from "../src/judge/prompt.ts";
 import { useTempDir } from "./helpers.ts";
 
 const dir = useTempDir();
