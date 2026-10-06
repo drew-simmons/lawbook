@@ -1,6 +1,6 @@
 {
   "name": "lawbook",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Checks code standards with repeatable rules and LLM decisions",
   "keywords": [
     "cli"
