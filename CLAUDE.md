@@ -121,7 +121,10 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   hash of model, prompt, standard, context, path, and content matches. The request
   marks the standard block for the provider's prompt cache, and every
   `Verdict` carries the provider's token `usage`, summed per rule and in
-  the summary. The adapters import
+  the summary. Bedrock refuses structured output, so `bedrock.ts` routes
+  `anthropic.*` ids to `messagesToolJudge` and `openai.*` ids to
+  `chatToolJudge`, the tool-call twins that read the answer from an
+  `answer` tool call, through `BEDROCK_ROUTES`. The adapters import
   their SDK client lazily, though `messages.ts` and `chat.ts` load the
   SDKs' error classes and schema helpers up front, and stay at complexity
   1, since no test covers them. `run`

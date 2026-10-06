@@ -40,6 +40,9 @@
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "0.34.2",
     "@anthropic-ai/sdk": "0.131.0",
+    "@aws-sdk/credential-provider-node": "3.972.84",
+    "@smithy/hash-node": "4.5.2",
+    "@smithy/signature-v4": "5.7.4",
     "commander": "15.0.0",
     "openai": "7.27.0",
     "tinyglobby": "0.2.17",

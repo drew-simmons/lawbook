@@ -37,10 +37,9 @@ report before exiting `2`; see
 
 ## Amazon Bedrock
 
-The default. Lawbook calls the Bedrock Messages endpoint through the Anthropic
-Bedrock SDK, which takes credentials from the usual AWS chain: environment
-variables, a shared config profile, SSO, or an instance role. Nothing is
-configured in lawbook itself beyond the region.
+The default. One `provider: bedrock` judges with both the Anthropic and the
+OpenAI models Bedrock hosts; the model id picks the endpoint, in the region
+the config or the environment names.
 
 ```yaml
 llm:
@@ -49,9 +48,45 @@ llm:
   region: us-west-2
 ```
 
-Model ids on Bedrock carry the `anthropic.` prefix. The default is
-`anthropic.claude-opus-5-5`; pick a cheaper model with `model` when a rule
-runs over many files. The region must offer the model you name.
+| Model id                                   | Endpoint                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------ |
+| `anthropic.<model>`                        | The Bedrock Messages endpoint, `bedrock-mantle.<region>.api.aws/anthropic`, through the Anthropic Bedrock SDK. |
+| `openai.<model>`, `us.openai.<model>`, `global.openai.<model>` | Bedrock's OpenAI-compatible Chat Completions endpoint, `bedrock-runtime.<region>.amazonaws.com/openai/v1`, through the OpenAI SDK. |
+
+Any other family, such as `meta.` or `amazon.`, stops the run with exit code
+`2` before any request.
+
+The Messages endpoint takes undated ids: `anthropic.claude-haiku-4-5`, not
+`anthropic.claude-haiku-4-5-20251001-v1:0`, and not a `us.` or `global.`
+inference-profile id. It also knows fewer models than
+`aws bedrock list-foundation-models` lists for the account; an id it does not
+serve is reported as unknown to the Messages endpoint, with the undated form
+to use. The default is `anthropic.claude-opus-5-5`; pick a cheaper model with
+`model` when a rule runs over many files.
+
+The newer OpenAI models, such as `gpt-5.5`, run only through an inference
+profile, so name them `us.openai.gpt-5.5`; the bare `openai.gpt-5.5` is
+refused for lack of on-demand throughput, and lawbook says which id to use
+instead. The open-weight `openai.gpt-oss-120b-1:0` and
+`openai.gpt-oss-20b-1:0` work with their bare ids.
+
+Credentials, for both families:
+
+- `AWS_BEARER_TOKEN_BEDROCK`, a Bedrock API key, is sent as a bearer token
+  when it is set. AWS's `aws-bedrock-token-generator` mints a twelve-hour one
+  from the credential chain.
+- Otherwise requests are signed with SigV4 from the usual AWS chain:
+  environment variables, a shared config profile, SSO, or an instance role.
+
+`OPENAI_API_KEY` plays no part here. Neither Bedrock endpoint accepts
+structured output, so on Bedrock the answer comes back as a call to an
+`answer` tool whose input is the probability and the reason: forced where the
+model allows it, and requested in the system prompt for Claude Opus 5.5,
+Sonnet 5.5, and Fable 5.1, which refuse a forced tool choice. Lawbook checks
+the tool's input against the same schema as on the other providers, and
+ignores any text the model writes beside the call, such as the reasoning the
+gpt-oss models put ahead of their answer. The prompt and the verdict cache
+are the same as for the other providers.
 
 ## Anthropic API
 
@@ -161,8 +196,10 @@ needed for `--output-schema` and `--ephemeral`.
 All five providers sit behind one `Judge` interface, and `run` accepts the
 factories that build them, so a test or an embedding program can pass its own
 judge and never reach a network. The package exports `messagesJudge`, the
-provider-neutral core the Bedrock and Anthropic adapters wrap, and
-`chatJudge`, which the OpenAI adapter wraps, for anyone adding a provider
-that speaks the Anthropic Messages API or the Chat Completions API. The CLI
+provider-neutral core the Anthropic adapter wraps, and `chatJudge`, which the
+OpenAI adapter wraps, for anyone adding a provider that speaks the Anthropic
+Messages API or the Chat Completions API; `messagesToolJudge` and
+`chatToolJudge` are their tool-call twins, which the Bedrock adapter wraps,
+for an endpoint that refuses structured output. The CLI
 adapters, `claudeCodeJudge` and `codexJudge`, take an `Exec` function that
 spawns the command, so a test passes a fake and no CLI runs.

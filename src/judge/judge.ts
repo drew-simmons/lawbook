@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LlmConfig, Provider } from "../config.ts";
+import { CliError } from "../errors.ts";
 import type { SourceFile } from "../files.ts";
 
 /**
@@ -25,6 +26,32 @@ export const answerSchema = z.object({
 });
 
 export type Answer = z.infer<typeof answerSchema>;
+
+/** The model's probability as a noul decision, or an error when it is out of range. */
+export function decisionOf(noul: number, path: string): Decision {
+  const decision = decisionSchema.safeParse({ type: "noul", noul });
+  if (!decision.success) {
+    throw new CliError(`the judge gave an out-of-range probability ${noul} for ${path}`);
+  }
+  return decision.data;
+}
+
+/** The answer's shape as JSON Schema, for a CLI's structured-output flag or an answer tool's input. */
+export function answerJsonSchema(): Record<string, unknown> {
+  const { $schema: _, ...schema } = z.toJSONSchema(answerSchema);
+  return schema;
+}
+
+/** A parsed answer as a noul decision and reason, or an error naming why it is not one. */
+export function parseAnswer(value: unknown, label: string): { decision: Decision; reason: string } {
+  const answer = answerSchema.safeParse(value);
+  if (!answer.success) {
+    throw new CliError(
+      `the judge gave no verdict for ${label} (${z.prettifyError(answer.error).replaceAll("\n", "; ")})`,
+    );
+  }
+  return { decision: decisionOf(answer.data.noul, label), reason: answer.data.reason };
+}
 
 /** What one request cost, as the provider counts tokens. */
 export interface Usage {

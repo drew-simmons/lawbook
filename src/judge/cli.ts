@@ -5,8 +5,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { CliError } from "../errors.ts";
-import { answerSchema, type Decision } from "./judge.ts";
-import { decisionOf } from "./messages.ts";
+
+export { answerJsonSchema, parseAnswer } from "./judge.ts";
 
 /**
  * Runs `command` with `args` in `cwd`, `input` on its stdin, and resolves
@@ -86,21 +86,4 @@ export async function inScratchDir<T>(work: (dir: string) => Promise<T>): Promis
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
-}
-
-/** The answer's shape as JSON Schema, for a CLI's structured-output flag. */
-export function answerJsonSchema(): Record<string, unknown> {
-  const { $schema: _, ...schema } = z.toJSONSchema(answerSchema);
-  return schema;
-}
-
-/** A parsed answer as a noul decision and reason, or an error naming why it is not one. */
-export function parseAnswer(value: unknown, label: string): { decision: Decision; reason: string } {
-  const answer = answerSchema.safeParse(value);
-  if (!answer.success) {
-    throw new CliError(
-      `the judge gave no verdict for ${label} (${z.prettifyError(answer.error).replaceAll("\n", "; ")})`,
-    );
-  }
-  return { decision: decisionOf(answer.data.noul, label), reason: answer.data.reason };
 }

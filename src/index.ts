@@ -49,16 +49,24 @@ export {
   type Usage,
   type Verdict,
 } from "./judge/judge.ts";
-export { messagesJudge, type ParseFn, requestLabel } from "./judge/messages.ts";
+export {
+  type CreateFn,
+  messagesJudge,
+  messagesToolJudge,
+  type ParseFn,
+  requestLabel,
+} from "./judge/messages.ts";
 export { answerJsonSchema, defaultExec, type Exec, parseAnswer } from "./judge/cli.ts";
 export { claudeArgs, claudeCodeJudge, toClaudeVerdict } from "./judge/claude-code.ts";
 export { codexArgs, codexJudge, codexPrompt, toCodexVerdict } from "./judge/codex.ts";
 export {
   buildChatRequest,
+  type ChatCreateFn,
   chatJudge,
   type ChatParams,
   type ChatParseFn,
   toChatUsage,
+  chatToolJudge,
   toChatVerdict,
 } from "./judge/chat.ts";
 export { type Plan, plan, type PlanOptions, type PlanRule } from "./plan.ts";

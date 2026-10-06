@@ -191,7 +191,7 @@ Credentials never go in the file:
 
 | Provider | Credentials |
 | --- | --- |
-| `bedrock` | The AWS chain: environment variables, a shared profile, SSO, or an instance role. The region must offer the model. |
+| `bedrock` | `AWS_BEARER_TOKEN_BEDROCK` as a bearer token when set, else SigV4 from the AWS chain: environment variables, a shared profile, SSO, or an instance role. `anthropic.<model>` ids (undated) go to the Messages endpoint, `openai.<model>` and `us.openai.<model>` to the Chat Completions endpoint. The region must offer the model. |
 | `anthropic` | `ANTHROPIC_API_KEY`, or a profile from `ant auth login`. |
 | `openai` | `OPENAI_API_KEY`. Unset, `check` exits `2` before any request, unless `baseUrl` points elsewhere, in which case a placeholder key is sent. |
 
