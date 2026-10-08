@@ -3,22 +3,9 @@ import path from "node:path";
 import { expect, test } from "vitest";
 import { CliError } from "../src/errors.ts";
 import { claudeArgs, claudeCodeJudge, toClaudeVerdict } from "../src/judge/claude-code.ts";
-import {
-  answerJsonSchema,
-  defaultExec,
-  type Exec,
-  inScratchDir,
-  parseAnswer,
-  translateExecError,
-} from "../src/judge/cli.ts";
-import {
-  codexArgs,
-  codexEvents,
-  codexJudge,
-  codexPrompt,
-  toCodexUsage,
-} from "../src/judge/codex.ts";
-import { contextBlock, SYSTEM_PROMPT } from "../src/judge/messages.ts";
+import { defaultExec, type Exec, inScratchDir, translateExecError } from "../src/judge/cli.ts";
+import { answerJsonSchema, parseAnswer } from "../src/judge/judge.ts";
+import { contextBlock, SYSTEM_PROMPT } from "../src/judge/prompt.ts";
 import { useTempDir } from "./helpers.ts";
 
 const dir = useTempDir();
@@ -35,7 +22,6 @@ interface Call {
   cwd: string;
   /** What the scratch directory held when the CLI ran; it is gone afterwards. */
   systemText?: string;
-  schemaText?: string;
 }
 
 /** An `Exec` that records each call, runs `during` in the scratch directory, and answers with `stdout`. */
@@ -46,9 +32,6 @@ function fakeExec(stdout: string | Error, during?: (cwd: string) => Promise<void
     const systemFile = args[args.indexOf("--system-prompt-file") + 1];
     if (args.includes("--system-prompt-file") && systemFile !== undefined) {
       call.systemText = await readFile(systemFile, "utf8");
-    }
-    if (args.includes("--output-schema")) {
-      call.schemaText = await readFile(path.join(cwd, "schema.json"), "utf8");
     }
     calls.push(call);
     await during?.(cwd);
@@ -174,98 +157,11 @@ test("toClaudeVerdict rejects output that is not the JSON envelope, an unknown s
   expect(bare.usage.inputTokens).toBe(0);
 });
 
-const CODEX_EVENTS = [
-  { type: "thread.started", thread_id: "t1" },
-  { type: "turn.started" },
-  { type: "item.completed", item: { id: "i1", type: "agent_message", text: "{}" } },
-  {
-    type: "turn.completed",
-    usage: { input_tokens: 130, cached_input_tokens: 100, output_tokens: 9 },
-  },
-]
-  .map((event) => JSON.stringify(event))
-  .join("\n");
-
-/** Writes the answer file the way `codex exec -o` does. */
-function writesAnswer(answer: unknown) {
-  return (cwd: string) => writeFile(path.join(cwd, "answer.json"), JSON.stringify(answer));
-}
-
-test("codexJudge runs codex exec with the schema file, the answer file, and the whole prompt on stdin", async () => {
-  const fake = fakeExec(CODEX_EVENTS, writesAnswer({ noul: 0.3, reason: "no next step" }));
-  const verdict = await codexJudge("gpt-x", fake.exec).judge(REQUEST);
-  expect(verdict).toEqual({
-    decision: { type: "noul", noul: 0.3 },
-    reason: "no next step",
-    usage: {
-      inputTokens: 30,
-      outputTokens: 9,
-      cacheReadInputTokens: 100,
-      cacheCreationInputTokens: 0,
-    },
-  });
-  const [call] = fake.calls;
-  expect(call?.command).toBe("codex");
-  expect(call?.args).toEqual(codexArgs("gpt-x", call?.cwd ?? ""));
-  expect(call?.args.slice(0, 2)).toEqual(["exec", "--skip-git-repo-check"]);
-  expect(call?.args.at(-1)).toBe("-");
-  expect(call?.input).toBe(codexPrompt(REQUEST));
-  expect(call?.input).toBe(
-    `${SYSTEM_PROMPT}\n\nStandard:\nErrors are actionable\n\nFile: src/a.ts\n\nthrow 1;\n`,
-  );
-  expect(JSON.parse(call?.schemaText ?? "")).toMatchObject(ANSWER_SCHEMA);
-});
-
-test("codexJudge reports a failed turn as a CliError naming codex", async () => {
-  const failed = `${JSON.stringify({ type: "turn.started" })}\n${JSON.stringify({
-    type: "turn.failed",
-    error: { message: "401 Unauthorized" },
-  })}\n`;
-  const fake = fakeExec(failed);
-  await expect(codexJudge("gpt-x", fake.exec).judge(REQUEST)).rejects.toThrow(
-    new CliError("codex: 401 Unauthorized"),
-  );
-  const plain = fakeExec(JSON.stringify({ type: "error", message: "stream disconnected" }));
-  await expect(codexJudge("gpt-x", plain.exec).judge(REQUEST)).rejects.toThrow(
-    new CliError("codex: stream disconnected"),
-  );
-});
-
-test("codexJudge without an answer file or with a non-JSON one gives no verdict", async () => {
-  const none = fakeExec(CODEX_EVENTS);
-  await expect(codexJudge("gpt-x", none.exec).judge(REQUEST)).rejects.toThrow(
-    /^the judge gave no verdict for src\/a\.ts \(.*ENOENT/,
-  );
-  const text = fakeExec(CODEX_EVENTS, (cwd) =>
-    writeFile(path.join(cwd, "answer.json"), "I'd say yes."),
-  );
-  await expect(codexJudge("gpt-x", text.exec).judge(REQUEST)).rejects.toThrow(
-    /^the judge gave no verdict for src\/a\.ts \(SyntaxError/,
-  );
-});
-
-test("codexEvents keeps the lines that parse as events and toCodexUsage reads zero without a turn", () => {
-  const events = codexEvents(
-    `not json\n${JSON.stringify({ type: "turn.started" })}\n{"no":"type"}\n`,
-  );
-  expect(events).toEqual([{ type: "turn.started" }]);
-  expect(toCodexUsage(events)).toEqual({
-    inputTokens: 0,
-    outputTokens: 0,
-    cacheReadInputTokens: 0,
-    cacheCreationInputTokens: 0,
-  });
-});
-
 test("a CLI that is not installed is a CliError naming the provider and command", async () => {
   const missing = Object.assign(new Error("spawn ENOENT"), { code: "ENOENT" });
   const claude = fakeExec(missing);
   await expect(claudeCodeJudge("claude-x", claude.exec).judge(REQUEST)).rejects.toThrow(
     new CliError("claude-code: claude is not installed or not on PATH"),
-  );
-  const codex = fakeExec(missing);
-  await expect(codexJudge("gpt-x", codex.exec).judge(REQUEST)).rejects.toThrow(
-    new CliError("codex: codex is not installed or not on PATH"),
   );
 });
 
@@ -304,21 +200,23 @@ test("parseAnswer names what is wrong with an answer", () => {
 });
 
 test("translateExecError names a missing command, quotes a failed one, and passes bugs through", () => {
-  expect(() => translateExecError({ code: "ENOENT" }, "codex", "codex")).toThrow(
-    new CliError("codex: codex is not installed or not on PATH"),
+  expect(() => translateExecError({ code: "ENOENT" }, "claude-code", "claude")).toThrow(
+    new CliError("claude-code: claude is not installed or not on PATH"),
   );
   const failed = { code: 1, stdout: "", stderr: "warning: slow\nerror: not logged in\n\n" };
   expect(() => translateExecError(failed, "claude-code", "claude")).toThrow(
     new CliError("claude-code: error: not logged in"),
   );
-  expect(() => translateExecError({ code: 2, stdout: "from stdout\n" }, "codex", "codex")).toThrow(
-    new CliError("codex: from stdout"),
+  expect(() =>
+    translateExecError({ code: 2, stdout: "from stdout\n" }, "claude-code", "claude"),
+  ).toThrow(new CliError("claude-code: from stdout"));
+  expect(() => translateExecError({ code: 3 }, "claude-code", "claude")).toThrow(
+    new CliError("claude-code: exited with 3"),
   );
-  expect(() => translateExecError({ code: 3 }, "codex", "codex")).toThrow(
-    new CliError("codex: exited with 3"),
+  expect(() => translateExecError(new TypeError("boom"), "claude-code", "claude")).toThrow(
+    TypeError,
   );
-  expect(() => translateExecError(new TypeError("boom"), "codex", "codex")).toThrow(TypeError);
-  expect(() => translateExecError("boom", "codex", "codex")).toThrow("boom");
+  expect(() => translateExecError("boom", "claude-code", "claude")).toThrow("boom");
 });
 
 test("defaultExec feeds stdin, collects output, and rejects with the exit code or ENOENT", async () => {
@@ -335,9 +233,11 @@ test("defaultExec feeds stdin, collects output, and rejects with the exit code o
   });
   await expect(
     defaultExec("lawbook-no-such-command", [], "x", dir()).catch((error: unknown) =>
-      translateExecError(error, "codex", "lawbook-no-such-command"),
+      translateExecError(error, "claude-code", "lawbook-no-such-command"),
     ),
-  ).rejects.toThrow(new CliError("codex: lawbook-no-such-command is not installed or not on PATH"));
+  ).rejects.toThrow(
+    new CliError("claude-code: lawbook-no-such-command is not installed or not on PATH"),
+  );
 });
 
 test("inScratchDir removes the directory when the work throws", async () => {

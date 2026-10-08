@@ -96,15 +96,13 @@ should be left out, prefer the rule's `exclude` globs.
 ### Standard rules need a model
 
 `standard` rules call a provider: Amazon Bedrock by default (AWS credentials
-from the environment), or `anthropic` (`ANTHROPIC_API_KEY`) or `openai`
-(`OPENAI_API_KEY`) when `llm.provider` says so. `claude-code` and `codex`
-run the installed `claude` or `codex` CLI instead, so a subscription the
-CLI is signed into pays; `claude auth status` and `codex login status` say
-whether one is. Before a run with `standard`
-rules, check which credentials the environment has. With none, run
-`check --no-llm` so the deterministic rules still run and say that the
-standards were skipped. Never put a key in `lawbook.yaml`; the file carries
-only the provider name, model, and region or URL.
+from the environment, or `AWS_BEARER_TOKEN_BEDROCK`), or `claude-code` when
+`llm.provider` says so, which runs the installed `claude` CLI, so the
+subscription it is signed into pays; `claude auth status` says whether one
+is. Before a run with `standard` rules, check which credentials the
+environment has. With none, run `check --no-llm` so the deterministic rules
+still run and say that the standards were skipped. Never put a key in
+`lawbook.yaml`; the file carries only the provider name, model, and region.
 
 Before the first run of a new or widened `standard` rule, count the cost:
 
@@ -156,7 +154,7 @@ or `exclude` until the count is reasonable, and cap the run with
 # yaml-language-server: $schema=https://raw.githubusercontent.com/drew-simmons/lawbook/main/lawbook.schema.json
 version: 1
 llm:
-  provider: anthropic          # bedrock (default) | anthropic | openai | claude-code | codex
+  provider: bedrock            # bedrock (default) | claude-code
   maxRequests: 200             # stop before the first request when a run would exceed this
 rules:
   - id: no-console
@@ -308,7 +306,8 @@ so edits elsewhere in a file do not resurface them, and each carries a
   `--dry-run`; the file may be excluded, gitignored, binary, or over
   `llm.maxBytes` (listed as `skipped`).
 - **`ERROR <id>` with a credential or region message**: the provider, not
-  the code. Set the key or `AWS_REGION`, or run `--no-llm`.
+  the code. Set the AWS credentials or `AWS_REGION`, run `claude auth login`
+  for `claude-code`, or run `--no-llm`.
 - **`over llm.maxRequests`**: narrow `files`, pass `--only`, or raise the
   cap deliberately.
 - **`--dry-run prints text or json, not github`**: the annotation formats

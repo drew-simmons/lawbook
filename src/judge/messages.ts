@@ -1,69 +1,39 @@
-import type { AutoParseableOutputFormat, ParsedMessage } from "@anthropic-ai/sdk";
-import type { TextBlockParam } from "@anthropic-ai/sdk/resources/messages";
+/**
+ * The Anthropic Messages exchange behind the Bedrock adapter. Bedrock's
+ * Messages endpoint rejects `output_config` and `tools[].strict`, so the
+ * answer comes back as a plain call to one `answer` tool. The instruction
+ * to call it sits after the cache marker, so the cached prefix is the
+ * system prompt, the standard, and any reference material, as before.
+ */
 import { AnthropicError } from "@anthropic-ai/sdk/error";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/messages";
+import type {
+  Message,
+  MessageCreateParamsNonStreaming,
+  TextBlockParam,
+  Tool,
+  ToolUseBlock,
+} from "@anthropic-ai/sdk/resources/messages";
 import { CliError } from "../errors.ts";
-import type { SourceFile } from "../files.ts";
 import {
-  type Answer,
-  answerSchema,
-  type Decision,
-  decisionSchema,
+  answerJsonSchema,
   type Judge,
   type JudgeRequest,
+  parseAnswer,
   type Usage,
   type Verdict,
 } from "./judge.ts";
+import { fileBlocks, requestLabel, systemTexts } from "./prompt.ts";
 
-export const SYSTEM_PROMPT = `You review one or more files against one written standard.
+export const ANSWER_TOOL = "answer";
 
-Give the probability, from 0 to 1, that the files meet the standard. Judge
-only what the standard says: a file that has other problems still meets the
-standard when the standard is met, and a file the standard does not apply to
-meets it. Base the probability on the files alone. When several files are
-given, judge whether they meet the standard together.
+/** The last system block, after the cached prefix: how the model is to answer. */
+export const TOOL_INSTRUCTION = `Answer by calling the ${ANSWER_TOOL} tool once, with the probability and the reason as its input, and nothing else.`;
 
-Calibrate the number. 1 means the files plainly meet the standard and 0
-means they plainly do not. 0.5 means the files give no way to tell. Use
-values in between when the evidence is mixed, and stay away from 0 and 1
-unless the files leave no doubt.
+/** Room for the thinking the newer models do before the call; 1024 can stop short of it. */
+export const MAX_TOKENS = 4096;
 
-In the reason, cite the evidence in one or two sentences, naming the file
-and quoting the relevant line when that helps the reader find it.`;
-
-/** A Messages API request whose answer parses into an `Answer`. */
-export type AnswerParams = MessageCreateParamsNonStreaming & {
-  output_config: { format: AutoParseableOutputFormat<Answer> };
-};
-
-/** `client.messages.parse` from any Anthropic SDK client. */
-export type ParseFn = (params: AnswerParams) => Promise<ParsedMessage<Answer>>;
-
-/** `File: <path>` and the content, one block per file, blank-line separated. */
-export function fileBlocks(files: SourceFile[]): string {
-  return files.map((file) => `File: ${file.path}\n\n${file.content}`).join("\n\n");
-}
-
-/** What messages call the request: the one file's path, or how many files there were. */
-export function requestLabel(request: JudgeRequest): string {
-  const paths = request.files.map((file) => file.path);
-  return paths.length === 1 ? paths.join("") : `${paths.length} files`;
-}
-
-/** The reference files as one block the model reads but does not judge, or nothing. */
-export function contextBlock(context: SourceFile[] | undefined): string[] {
-  return context === undefined || context.length === 0
-    ? []
-    : [
-        `Reference material. Use it to understand the standard; judge only the files in the message, not these.\n\n${fileBlocks(context)}`,
-      ];
-}
-
-/** The system prompt, the standard, and any reference material: the same for every file in a rule. */
-export function systemTexts(request: JudgeRequest): string[] {
-  return [SYSTEM_PROMPT, `Standard:\n${request.standard}`, ...contextBlock(request.context)];
-}
+/** `client.messages.create` from an Anthropic SDK client; tests pass a stub. */
+export type CreateFn = (params: MessageCreateParamsNonStreaming) => Promise<Message>;
 
 /** The texts as blocks, the last one marked so the provider caches the whole prefix. */
 function withCacheControl(texts: string[]): TextBlockParam[] {
@@ -74,18 +44,31 @@ function withCacheControl(texts: string[]): TextBlockParam[] {
   );
 }
 
-export function buildRequest(request: JudgeRequest, model: string): AnswerParams {
+/** The one tool the model may call: its input is the answer. */
+export function answerTool(): Tool {
+  return {
+    name: ANSWER_TOOL,
+    description: "Record the verdict: the probability that the files meet the standard, and why.",
+    input_schema: { type: "object", ...answerJsonSchema() },
+  };
+}
+
+export function buildRequest(
+  request: JudgeRequest,
+  model: string,
+): MessageCreateParamsNonStreaming {
   return {
     model,
-    max_tokens: 1024,
-    system: withCacheControl(systemTexts(request)),
+    max_tokens: MAX_TOKENS,
+    system: [...withCacheControl(systemTexts(request)), { type: "text", text: TOOL_INSTRUCTION }],
     messages: [{ role: "user", content: fileBlocks(request.files) }],
-    output_config: { format: zodOutputFormat(answerSchema) },
+    tools: [answerTool()],
+    tool_choice: { type: "auto" },
   };
 }
 
 /** The provider's counts in lawbook's names; a provider without a cache reports null. */
-export function toUsage(usage: ParsedMessage<Answer>["usage"]): Usage {
+export function toUsage(usage: Message["usage"]): Usage {
   return {
     inputTokens: usage.input_tokens,
     outputTokens: usage.output_tokens,
@@ -94,28 +77,22 @@ export function toUsage(usage: ParsedMessage<Answer>["usage"]): Usage {
   };
 }
 
-/** The model's probability as a noul decision, or an error when it is out of range. */
-export function decisionOf(noul: number, path: string): Decision {
-  const decision = decisionSchema.safeParse({ type: "noul", noul });
-  if (!decision.success) {
-    throw new CliError(`the judge gave an out-of-range probability ${noul} for ${path}`);
-  }
-  return decision.data;
+/** The call to the answer tool, whatever the model wrote around it, or undefined. */
+function answerCall(message: Message): ToolUseBlock | undefined {
+  return message.content.find(
+    (block): block is ToolUseBlock => block.type === "tool_use" && block.name === ANSWER_TOOL,
+  );
 }
 
-/** The parsed answer as a noul decision, or an error naming why the model gave no usable one. */
-export function toVerdict(message: ParsedMessage<Answer>, path: string): Verdict {
-  const answer = message.parsed_output;
-  if (answer === null) {
+/** The answer tool's input as a noul decision, or an error naming why the model gave no usable one. */
+export function toVerdict(message: Message, label: string): Verdict {
+  const call = answerCall(message);
+  if (call === undefined) {
     throw new CliError(
-      `the judge gave no verdict for ${path} (stop reason: ${message.stop_reason})`,
+      `the judge gave no verdict for ${label} (stop reason: ${message.stop_reason})`,
     );
   }
-  return {
-    decision: decisionOf(answer.noul, path),
-    reason: answer.reason,
-    usage: toUsage(message.usage),
-  };
+  return { ...parseAnswer(call.input, label), usage: toUsage(message.usage) };
 }
 
 /** SDK errors become one-line `CliError`s naming the provider; anything else is a bug. */
@@ -126,11 +103,11 @@ export function translateError(error: unknown, provider: string): never {
   throw error;
 }
 
-/** The provider-neutral judge every adapter wraps around its own client. */
-export function messagesJudge(parse: ParseFn, model: string, provider: string): Judge {
+/** The judge the Bedrock adapter wraps around its client's `create`. */
+export function messagesJudge(create: CreateFn, model: string, provider: string): Judge {
   return {
     async judge(request) {
-      const message = await parse(buildRequest(request, model)).catch((error: unknown) =>
+      const message = await create(buildRequest(request, model)).catch((error: unknown) =>
         translateError(error, provider),
       );
       return toVerdict(message, requestLabel(request));

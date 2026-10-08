@@ -2,17 +2,16 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { CliError } from "../errors.ts";
+import { defaultExec, type Exec, execFailure, inScratchDir, translateExecError } from "./cli.ts";
 import {
   answerJsonSchema,
-  defaultExec,
-  type Exec,
-  execFailure,
-  inScratchDir,
+  type Judge,
+  type JudgeRequest,
   parseAnswer,
-  translateExecError,
-} from "./cli.ts";
-import type { Judge, JudgeRequest, Usage, Verdict } from "./judge.ts";
-import { fileBlocks, requestLabel, systemTexts } from "./messages.ts";
+  type Usage,
+  type Verdict,
+} from "./judge.ts";
+import { fileBlocks, requestLabel, systemTexts } from "./prompt.ts";
 
 export const CLAUDE_COMMAND = "claude";
 
