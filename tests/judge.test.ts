@@ -11,7 +11,7 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages";
 import { expect, test } from "vitest";
 import { CliError } from "../src/errors.ts";
-import { bedrockRegion, unknownModel } from "../src/judge/bedrock.ts";
+import { bedrockRegion, undatedModelId, unknownModel } from "../src/judge/bedrock.ts";
 import { decisionSchema } from "../src/judge/judge.ts";
 import {
   buildRequest,
@@ -45,7 +45,7 @@ function message(content: ContentBlock[], stopReason = "tool_use"): Message {
     id: "msg_1",
     type: "message",
     role: "assistant",
-    model: "anthropic.claude-haiku-5-5",
+    model: "anthropic.claude-haiku-4-5",
     content,
     stop_reason: stopReason as Message["stop_reason"],
     stop_sequence: null,
@@ -81,10 +81,10 @@ function stubCreate(result: Message | Error) {
 
 test("messagesJudge sends the standard and file with one answer tool the model may call", async () => {
   const stub = stubCreate(message([answerCall({ noul: 0.9, reason: "ok" })]));
-  await messagesJudge(stub.create, "anthropic.claude-haiku-5-5", "bedrock").judge(REQUEST);
+  await messagesJudge(stub.create, "anthropic.claude-haiku-4-5", "bedrock").judge(REQUEST);
   expect(stub.calls).toHaveLength(1);
   const [params] = stub.calls;
-  expect(params?.model).toBe("anthropic.claude-haiku-5-5");
+  expect(params?.model).toBe("anthropic.claude-haiku-4-5");
   expect(params?.max_tokens).toBe(MAX_TOKENS);
   expect(params?.system).toEqual([
     { type: "text", text: SYSTEM_PROMPT },
@@ -186,20 +186,36 @@ test("other errors propagate unchanged", async () => {
   await expect(messagesJudge(stub.create, "m", "bedrock").judge(REQUEST)).rejects.toBe(error);
 });
 
-test("unknownModel turns the endpoint's 404 into advice naming the id", () => {
+test.each([
+  ["us.anthropic.claude-haiku-4-5-20251001-v1:0", "anthropic.claude-haiku-4-5"],
+  ["global.anthropic.claude-opus-5-5", "anthropic.claude-opus-5-5"],
+  ["anthropic.claude-opus-4-6-v1", "anthropic.claude-opus-4-6"],
+  ["anthropic.claude-sonnet-5", "anthropic.claude-sonnet-5"],
+])("undatedModelId(%s) is %s", (model, undated) => {
+  expect(undatedModelId(model)).toBe(undated);
+});
+
+const notFound = new NotFoundError(404, undefined, "The model does not exist", headers);
+
+test("unknownModel turns the endpoint's 404 for a dated id into the undated form", () => {
   const dated = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
-  const notFound = new NotFoundError(404, undefined, "The model does not exist", headers);
-  expect(() => unknownModel(dated)(notFound)).toThrow(CliError);
-  expect(() => unknownModel(dated)(notFound)).toThrow(
-    `bedrock: the Bedrock Messages endpoint does not know the model id ${dated}; name it in the undated anthropic.<model> form, such as anthropic.claude-haiku-5-5`,
+  expect(() => unknownModel(dated, "us-east-1")(notFound)).toThrow(CliError);
+  expect(() => unknownModel(dated, "us-east-1")(notFound)).toThrow(
+    `bedrock: the Bedrock Messages endpoint in us-east-1 does not know the model id ${dated}; name it in the undated anthropic.<model> form, anthropic.claude-haiku-4-5`,
+  );
+});
+
+test("unknownModel turns the 404 for an undated id into a model the endpoint serves", () => {
+  expect(() => unknownModel("anthropic.claude-haiku-5-5", "us-west-2")(notFound)).toThrow(
+    "bedrock: the Bedrock Messages endpoint in us-west-2 does not know the model id anthropic.claude-haiku-5-5; it serves only some of the models Bedrock lists; name one it serves, such as anthropic.claude-haiku-4-5",
   );
 });
 
 test("unknownModel passes every other error on unchanged", () => {
   const denied = new AuthenticationError(401, undefined, "denied", headers);
-  expect(() => unknownModel("m")(denied)).toThrow(denied);
+  expect(() => unknownModel("m", "r")(denied)).toThrow(denied);
   const bug = new TypeError("boom");
-  expect(() => unknownModel("m")(bug)).toThrow(bug);
+  expect(() => unknownModel("m", "r")(bug)).toThrow(bug);
 });
 
 test("bedrockRegion prefers the config", () => {

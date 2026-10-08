@@ -214,7 +214,7 @@ rules:
   - id: errors-are-actionable
     files: ["src/**/*.ts"]
     standard: Every error message says what went wrong and what to do next.
-    llm: { model: anthropic.claude-sonnet-5-5 }
+    llm: { model: anthropic.claude-sonnet-5 }
 ```
 
 A rule's `llm` takes `provider`, `model`, and `region`. A rule that keeps

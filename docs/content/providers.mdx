@@ -11,7 +11,7 @@ The `llm` section of `lawbook.yaml` chooses the model that judges
 ```yaml
 llm:
   provider: bedrock
-  model: anthropic.claude-haiku-5-5
+  model: anthropic.claude-haiku-4-5
   concurrency: 4
   maxBytes: 131072
   cache: true
@@ -20,7 +20,7 @@ llm:
 | Key           | Meaning                                                                                        |
 | ------------- | ---------------------------------------------------------------------------------------------- |
 | `provider`    | `bedrock` (default) or `claude-code`. The first calls Amazon Bedrock with AWS credentials; the second runs the `claude` CLI, so a Claude subscription can pay. |
-| `model`       | The model id in the provider's own naming. Defaults to Claude Haiku 5.5 under either provider, see below. |
+| `model`       | The model id in the provider's own naming. Defaults per provider, see below. |
 | `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. Setting it under `claude-code` is a config error. |
 | `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
 | `cache`       | Whether verdicts are cached on disk and reused for unchanged files. Defaults to `true`; `--no-cache` overrides one run. See [LLM rules](/llm-rules#verdict-cache). |
@@ -45,15 +45,20 @@ Nothing is configured in lawbook itself beyond the region.
 ```yaml
 llm:
   provider: bedrock
-  model: anthropic.claude-haiku-5-5
+  model: anthropic.claude-haiku-4-5
   region: us-west-2
 ```
 
 The endpoint knows models by their undated `anthropic.<model>` ids, such as
-`anthropic.claude-haiku-5-5` or `anthropic.claude-sonnet-5-5`. A dated id, a
+`anthropic.claude-haiku-4-5` or `anthropic.claude-sonnet-5`. A dated id, a
 `-v1:0` suffix, or a `us.` inference-profile prefix gets a 404, which lawbook
-reports as one line naming the id and the form to use. The default is
-`anthropic.claude-haiku-5-5`; pick a stronger model with `model` for a
+reports as one line naming the id and the form to use. The endpoint also
+serves fewer models than `aws bedrock list-foundation-models` lists: on
+8 October 2026 it answered 404 to `anthropic.claude-haiku-5-5` and
+`anthropic.claude-sonnet-5-5` in us-east-1 and us-west-2, while
+`anthropic.claude-haiku-4-5`, `anthropic.claude-sonnet-5`, and
+`anthropic.claude-opus-5-5` worked. The default is therefore
+`anthropic.claude-haiku-4-5`; pick a stronger model with `model` for a
 subtle standard. The region must offer the model you name.
 
 The endpoint does not take a structured-output format, so lawbook sends one

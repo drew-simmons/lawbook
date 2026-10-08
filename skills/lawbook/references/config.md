@@ -133,7 +133,7 @@ about the tree, not the change set.
   fixtures:
     pass: ["fixtures/errors/good.ts"]
     fail: ["fixtures/errors/vague.ts", "fixtures/errors/silent.ts"]
-  llm: { model: anthropic.claude-sonnet-5-5 }
+  llm: { model: anthropic.claude-sonnet-5 }
 ```
 
 | Key | Required | Meaning |
@@ -170,7 +170,7 @@ Defaults:
 ```yaml
 llm:
   provider: bedrock
-  model: anthropic.claude-haiku-5-5
+  model: anthropic.claude-haiku-4-5
   concurrency: 4
   maxBytes: 131072
   cache: true
@@ -179,7 +179,7 @@ llm:
 | Key | Meaning |
 | --- | --- |
 | `provider` | `bedrock` (default) or `claude-code`, which runs the installed `claude` CLI. |
-| `model` | The model id in the provider's own naming. Bedrock defaults to `anthropic.claude-haiku-5-5` and takes only undated `anthropic.<model>` ids; `claude-code` defaults to `claude-haiku-5-5` and also takes an alias such as `sonnet`. |
+| `model` | The model id in the provider's own naming. Bedrock defaults to `anthropic.claude-haiku-4-5` and takes only undated `anthropic.<model>` ids; its Messages endpoint does not serve every model Bedrock lists (not Haiku 5.5 or Sonnet 5.5 as of October 2026), and a 404 names what to use. `claude-code` defaults to `claude-haiku-5-5` and also takes an alias such as `sonnet`. |
 | `region` | Bedrock only. Else `AWS_REGION`, else `AWS_DEFAULT_REGION`. Under `claude-code` it is a config error. |
 | `concurrency` | Files judged at once. Integer, at least `1`, default `4`. Lower it when rate-limited. |
 | `maxBytes` | Largest file sent, in bytes. Default `131072`. |

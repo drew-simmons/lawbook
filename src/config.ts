@@ -68,9 +68,13 @@ export const PROVIDERS = ["bedrock", "claude-code"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
 
-/** The model each provider uses when the config names none. */
+/**
+ * The model each provider uses when the config names none. Bedrock's
+ * Messages endpoint does not serve Haiku 5.5 yet (checked 8 October 2026),
+ * so Bedrock stays on Haiku 4.5 until it does.
+ */
 export const DEFAULT_MODELS: Record<Provider, string> = {
-  bedrock: "anthropic.claude-haiku-5-5",
+  bedrock: "anthropic.claude-haiku-4-5",
   "claude-code": "claude-haiku-5-5",
 };
 

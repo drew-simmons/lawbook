@@ -26,7 +26,7 @@ version: 1
 # them have no default.
 # llm:
 #   provider: bedrock           # bedrock | claude-code
-#   model: anthropic.claude-haiku-5-5   # the bedrock default; claude-code defaults to claude-haiku-5-5
+#   model: anthropic.claude-haiku-4-5   # the bedrock default; claude-code defaults to claude-haiku-5-5
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
 #   cache: true                 # reuse verdicts for unchanged files
@@ -73,7 +73,7 @@ rules:
   #   # Example files for \`lawbook test\`: ones that must pass, ones that must fail.
   #   fixtures: { pass: ["fixtures/good.ts"], fail: ["fixtures/bad.ts"] }
   #   # A stronger model for this rule alone; provider and region work too.
-  #   llm: { model: anthropic.claude-sonnet-5-5 }
+  #   llm: { model: anthropic.claude-sonnet-5 }
 `;
 
 /** Writes `lawbook.yaml` into `root` and returns its path. */
