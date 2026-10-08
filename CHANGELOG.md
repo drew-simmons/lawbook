@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/drew-simmons/lawbook/compare/v0.1.0...v0.2.0) (2026-10-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* judge through Bedrock or Claude Code only ([#50](https://github.com/drew-simmons/lawbook/issues/50))
+
+### Features
+
+* judge through Bedrock or Claude Code only ([#50](https://github.com/drew-simmons/lawbook/issues/50)) ([a3aeeea](https://github.com/drew-simmons/lawbook/commit/a3aeeea4bb06877e37843eb6d144d67a49fc7504))
+
 ## 0.1.0 (2026-10-05)
 
 
