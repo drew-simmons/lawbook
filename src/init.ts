@@ -23,15 +23,14 @@ version: 1
 # gitignore: true
 
 # The model that judges \`standard\` rules, with its defaults. The keys below
-# them have no default and apply to one provider.
+# them have no default.
 # llm:
-#   provider: bedrock           # bedrock | anthropic | openai
-#   model: anthropic.claude-opus-5-5   # the bedrock default; openai has none
+#   provider: bedrock           # bedrock | claude-code
+#   model: anthropic.claude-haiku-5-5   # the bedrock default; claude-code defaults to claude-haiku-5-5
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
 #   cache: true                 # reuse verdicts for unchanged files
 #   # region: us-west-2         # bedrock only; else AWS_REGION
-#   # baseUrl: http://localhost:11434/v1   # openai only: a compatible server
 #   # maxRequests: 200          # stop before the first request when a run would exceed this
 
 rules:
@@ -73,7 +72,7 @@ rules:
   #   context: ["docs/style.md"]
   #   # Example files for \`lawbook test\`: ones that must pass, ones that must fail.
   #   fixtures: { pass: ["fixtures/good.ts"], fail: ["fixtures/bad.ts"] }
-  #   # A cheaper model for this rule alone; provider, region, and baseUrl work too.
+  #   # A stronger model for this rule alone; provider and region work too.
   #   llm: { model: anthropic.claude-sonnet-5-5 }
 `;
 

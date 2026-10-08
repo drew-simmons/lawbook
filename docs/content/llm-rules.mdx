@@ -200,8 +200,8 @@ list them. A changed reference file changes every verdict's
 ## Per-rule model
 
 The run's `llm` section picks the model for every `standard` rule. A rule can
-override it with its own `llm`, so a simple style check can go to a cheaper
-model while a subtle one keeps the default:
+override it with its own `llm`, so a subtle check can go to a stronger model
+while the rest keep the default:
 
 ```yaml
 llm:
@@ -211,22 +211,21 @@ rules:
   - id: has-doc-comments
     files: ["src/**/*.ts"]
     standard: Every exported function has a doc comment.
-    llm: { model: anthropic.claude-haiku-4-5 }
   - id: errors-are-actionable
     files: ["src/**/*.ts"]
     standard: Every error message says what went wrong and what to do next.
+    llm: { model: anthropic.claude-sonnet-5-5 }
 ```
 
-A rule's `llm` takes `provider`, `model`, `region`, and `baseUrl`. A rule
-that keeps the run's provider inherits its model, region, and URL and
-replaces only what it names. A rule that names another provider starts from
-that provider's defaults instead, since a Bedrock region means nothing to the
-Anthropic API; name its `model` too when the provider has no default.
+A rule's `llm` takes `provider`, `model`, and `region`. A rule that keeps
+the run's provider inherits its model and region and replaces only what it
+names. A rule that names the other provider starts from that provider's
+defaults instead, since a Bedrock region means nothing to Claude Code.
 `concurrency`, `maxBytes`, and `cache` always come from the run's `llm`. The
-merged settings are checked when the config loads, so a `region` under an
-`anthropic` override is an error naming the rule.
+merged settings are checked when the config loads, so a `region` under a
+`claude-code` override is an error naming the rule.
 
-Rules with the same provider, model, and endpoint share one client, and the
+Rules with the same provider, model, and region share one client, and the
 [verdict cache](#verdict-cache) keys on the model, so the same file judged by
 two models is cached twice.
 

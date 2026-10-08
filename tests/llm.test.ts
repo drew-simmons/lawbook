@@ -295,16 +295,6 @@ test("check passes the configured provider, model, and region to the factory", a
   ]);
 });
 
-test("check fills in the default model for the configured provider", async () => {
-  await config(`llm:\n  provider: anthropic\nrules:\n${STANDARD}`);
-  await write(dir(), "a.ts", "const a = 1;\n");
-  const fake = fakeJudge();
-  await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toMatchObject([
-    { provider: "anthropic", model: DEFAULT_MODELS.anthropic, concurrency: 4 },
-  ]);
-});
-
 test("a file over llm.maxBytes is skipped without a request", async () => {
   await config(`llm:\n  maxBytes: 16\nrules:\n${STANDARD}`);
   await write(dir(), "a.ts", "const a = 1;\n");
@@ -335,20 +325,23 @@ test("llm.maxBytes leaves deterministic rules alone", async () => {
   expect(JSON.parse(json.stdout).results[0]).not.toHaveProperty("skipped");
 });
 
-test("check rejects region with the anthropic provider", async () => {
-  await config(`llm:\n  provider: anthropic\n  region: eu-west-1\nrules:\n${STANDARD}`);
+test("check rejects region with the claude-code provider", async () => {
+  await config(`llm:\n  provider: claude-code\n  region: eu-west-1\nrules:\n${STANDARD}`);
   const result = await lawbook("check", dir());
   expect(result.code).toBe(2);
   expect(result.stderr).toContain("llm.region");
   expect(result.stderr).toContain("region applies to the bedrock provider only");
 });
 
-test("check rejects an unknown provider", async () => {
-  await config(`llm:\n  provider: vertex\nrules:\n${STANDARD}`);
-  const result = await lawbook("check", dir());
-  expect(result.code).toBe(2);
-  expect(result.stderr).toContain("llm.provider");
-});
+test.each(["anthropic", "openai", "codex", "vertex"])(
+  "check rejects the %s provider",
+  async (provider) => {
+    await config(`llm:\n  provider: ${provider}\nrules:\n${STANDARD}`);
+    const result = await lawbook("check", dir());
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("llm.provider");
+  },
+);
 
 test("check rejects an unknown llm key", async () => {
   await config(`llm:\n  temperature: 0\nrules:\n${STANDARD}`);
@@ -397,7 +390,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
   fake.judge.judge = async (request) => {
     fake.requests.push(request);
     if (requestKey(request) === "b.ts") {
-      throw new CliError("anthropic: 429 rate limited");
+      throw new CliError("bedrock: 429 rate limited");
     }
     await new Promise((resolve) => setImmediate(resolve));
     return noul(0.3, "slow but judged");
@@ -413,7 +406,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
     status: "error",
     findings: [
       { path: "a.ts", message: "slow but judged", decision: { type: "noul", noul: 0.3 } },
-      { path: "b.ts", message: "anthropic: 429 rate limited" },
+      { path: "b.ts", message: "bedrock: 429 rate limited" },
       { path: "c.ts", message: NOT_JUDGED },
       { path: "d.ts", message: NOT_JUDGED },
     ],
@@ -456,21 +449,14 @@ test("a non-CliError from the judge still aborts the run", async () => {
 });
 
 test("default judges cover every provider", () => {
-  expect(Object.keys(defaultJudges).toSorted()).toEqual([
-    "anthropic",
-    "bedrock",
-    "claude-code",
-    "codex",
-    "openai",
-  ]);
+  expect(Object.keys(defaultJudges).toSorted()).toEqual(["bedrock", "claude-code"]);
 });
 
-test("check rejects baseUrl with the bedrock provider", async () => {
+test("check rejects baseUrl, which no provider takes", async () => {
   await config(`llm:\n  baseUrl: http://localhost:11434/v1\nrules:\n${STANDARD}`);
   const result = await lawbook("check", dir());
   expect(result.code).toBe(2);
-  expect(result.stderr).toContain("llm.baseUrl");
-  expect(result.stderr).toContain("baseUrl applies to the openai provider only");
+  expect(result.stderr).toContain('Unrecognized key: "baseUrl"');
 });
 
 test("check fills in the default model for the claude-code provider", async () => {
@@ -480,46 +466,6 @@ test("check fills in the default model for the claude-code provider", async () =
   await lawbookWith(fake.deps, "check", dir());
   expect(fake.built).toMatchObject([
     { provider: "claude-code", model: DEFAULT_MODELS["claude-code"], concurrency: 4 },
-  ]);
-});
-
-test("check requires a model for the codex provider", async () => {
-  await config(`llm:\n  provider: codex\nrules:\n${STANDARD}`);
-  const result = await lawbook("check", dir());
-  expect(result.code).toBe(2);
-  expect(result.stderr).toContain("set llm.model; the codex provider has no default");
-});
-
-test("check rejects region and baseUrl with the CLI providers", async () => {
-  await config(`llm:\n  provider: claude-code\n  region: eu-west-1\nrules:\n${STANDARD}`);
-  const region = await lawbook("check", dir());
-  expect(region.code).toBe(2);
-  expect(region.stderr).toContain("region applies to the bedrock provider only");
-  await config(
-    `llm:\n  provider: codex\n  model: gpt-x\n  baseUrl: http://localhost:11434/v1\nrules:\n${STANDARD}`,
-  );
-  const baseUrl = await lawbook("check", dir());
-  expect(baseUrl.code).toBe(2);
-  expect(baseUrl.stderr).toContain("baseUrl applies to the openai provider only");
-});
-
-test("check requires a model for the openai provider", async () => {
-  await config(`llm:\n  provider: openai\nrules:\n${STANDARD}`);
-  const result = await lawbook("check", dir());
-  expect(result.code).toBe(2);
-  expect(result.stderr).toContain("llm.model");
-  expect(result.stderr).toContain("set llm.model; the openai provider has no default");
-});
-
-test("check passes the openai model and baseUrl to the factory", async () => {
-  await config(
-    `llm:\n  provider: openai\n  model: gpt-x\n  baseUrl: http://localhost:11434/v1\nrules:\n${STANDARD}`,
-  );
-  await write(dir(), "a.ts", "const a = 1;\n");
-  const fake = fakeJudge();
-  await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toMatchObject([
-    { provider: "openai", model: "gpt-x", baseUrl: "http://localhost:11434/v1" },
   ]);
 });
 
@@ -536,24 +482,24 @@ test("rules with different models build two judges and rules with the same model
   expect(result.code).toBe(0);
   expect(fake.built.map((llm) => llm.model)).toEqual([
     "anthropic.claude-sonnet-5-5",
-    "anthropic.claude-opus-5-5",
+    DEFAULT_MODELS.bedrock,
   ]);
 });
 
 test("a rule's provider override starts from that provider's defaults", async () => {
   await config(
-    `llm:\n  region: eu-west-1\n  model: anthropic.claude-sonnet-5-5\nrules:\n${STANDARD}    llm: { provider: anthropic }\n`,
+    `llm:\n  region: eu-west-1\n  model: anthropic.claude-sonnet-5-5\nrules:\n${STANDARD}    llm: { provider: claude-code }\n`,
   );
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toMatchObject([{ provider: "anthropic", model: "claude-opus-5-5" }]);
+  expect(fake.built).toMatchObject([{ provider: "claude-code", model: "claude-haiku-5-5" }]);
   expect(fake.built[0]?.region).toBeUndefined();
 });
 
 test("a rule's model override inherits the top-level provider, region, and settings", async () => {
   await config(
-    `llm:\n  region: eu-west-1\n  concurrency: 2\nrules:\n${STANDARD}    llm: { model: anthropic.claude-haiku-4-5 }\n`,
+    `llm:\n  region: eu-west-1\n  concurrency: 2\nrules:\n${STANDARD}    llm: { model: anthropic.claude-sonnet-5-5 }\n`,
   );
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
@@ -561,7 +507,7 @@ test("a rule's model override inherits the top-level provider, region, and setti
   expect(fake.built).toMatchObject([
     {
       provider: "bedrock",
-      model: "anthropic.claude-haiku-4-5",
+      model: "anthropic.claude-sonnet-5-5",
       region: "eu-west-1",
       concurrency: 2,
     },
@@ -575,19 +521,12 @@ test("a rule's llm rejects unknown keys", async () => {
   expect(result.stderr).toContain("rules[0].llm");
 });
 
-test("a rule's region under an anthropic override is rejected naming the rule", async () => {
-  await config(`rules:\n${STANDARD}    llm: { provider: anthropic, region: eu-west-1 }\n`);
+test("a rule's region under a claude-code override is rejected naming the rule", async () => {
+  await config(`rules:\n${STANDARD}    llm: { provider: claude-code, region: eu-west-1 }\n`);
   const result = await lawbook("check", dir());
   expect(result.code).toBe(2);
   expect(result.stderr).toContain('rule "actionable-errors": llm:');
   expect(result.stderr).toContain("region applies to the bedrock provider only");
-});
-
-test("a rule's openai override needs a model", async () => {
-  await config(`rules:\n${STANDARD}    llm: { provider: openai }\n`);
-  const result = await lawbook("check", dir());
-  expect(result.code).toBe(2);
-  expect(result.stderr).toContain("set llm.model; the openai provider has no default");
 });
 
 test("a rule's llm with --no-llm still skips without building a judge", async () => {

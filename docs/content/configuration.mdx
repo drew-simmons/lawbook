@@ -112,7 +112,7 @@ matches; `absent` reports every match.
 | `standard`  | yes      | The standard in prose.                                                  |
 | `threshold` | no       | The probability, `0` to `1`, a file must reach to pass. Defaults to `0.5`. |
 | `scope`     | no       | `file` (default) judges each selected file in its own request. `set` sends every selected file in one request and gets one verdict for the set. See [LLM rules](/llm-rules#judging-files-together). |
-| `llm`       | no       | Overrides for this rule: `provider`, `model`, `region`, `baseUrl`. See [LLM rules](/llm-rules#per-rule-model). |
+| `llm`       | no       | Overrides for this rule: `provider`, `model`, `region`. See [LLM rules](/llm-rules#per-rule-model). |
 | `context`   | no       | Files, relative to the checked directory, sent with every request as reference material and never judged. See [LLM rules](/llm-rules#reference-files). |
 | `fixtures`  | no       | Example files for `lawbook test`, relative to the checked directory: `pass`, ones that must meet the standard, and `fail`, ones that must not. See [LLM rules](/llm-rules#testing-a-standard). |
 
@@ -215,21 +215,21 @@ Globs in an inherited rule are relative to the checked directory, not to the
 file the rule came from.
 
 Because `llm` is not inherited, a second config can run the same rules
-through a different judge, which is how to try a cheaper model or point the
-standards at a local stand-in without touching the rules:
+through a different judge, which is how to try a stronger model or a Claude
+Code subscription without touching the rules:
 
 ```yaml
-# lawbook.haiku.yaml: the same rules, judged by Haiku
+# lawbook.sonnet.yaml: the same rules, judged by Sonnet
 version: 1
 extends: ./lawbook.yaml
 llm:
   provider: bedrock
-  model: anthropic.claude-haiku-4-5
+  model: anthropic.claude-sonnet-5-5
 rules: []
 ```
 
 ```sh
-lawbook check . --config lawbook.haiku.yaml
+lawbook check . --config lawbook.sonnet.yaml
 lawbook test . --config lawbook.haiku.yaml
 ```
 

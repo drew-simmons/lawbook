@@ -64,7 +64,7 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   table instead of a chain of `if`s. New rule kinds add a schema, a runner
   in `src/rules/`, and a table entry. A `standard` rule may carry its own
   `llm`; `ruleLlm` merges it over the top-level `llm` and `check` builds one
-  judge per distinct provider, model, and endpoint, handed to rules by id
+  judge per distinct provider, model, and region, handed to rules by id
   through `JudgeContext.judges`.
 - `src/candidates.ts` turns `--files`, `--changed`, `--since`, and the
   `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
@@ -110,21 +110,24 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   `JudgeRequest` always carries `files`, one for `scope: file`, and carries
   `context` only when the rule names reference files, which both prompt
   builders append to the cached system prefix.
-- `src/judge/` holds the `Judge` interface, the provider-neutral
-  `messagesJudge` core (fully tested with a stub `parse`), its Chat
-  Completions twin `chatJudge` in `chat.ts`, the Bedrock, Anthropic, and
-  OpenAI adapters, which only build a client, the `claude-code` and `codex`
-  adapters, which spawn that CLI once per request through the `Exec`
-  function in `cli.ts` (tests pass a fake) with the answer schema and read
-  the structured result back, and `cache.ts`, a
-  `Judge` wrapper that answers from `node_modules/.cache/lawbook` when the
-  hash of model, prompt, standard, context, path, and content matches. The request
-  marks the standard block for the provider's prompt cache, and every
-  `Verdict` carries the provider's token `usage`, summed per rule and in
-  the summary. The adapters import
-  their SDK client lazily, though `messages.ts` and `chat.ts` load the
-  SDKs' error classes and schema helpers up front, and stay at complexity
-  1, since no test covers them. `run`
+- `src/judge/` holds the `Judge` interface and the answer schema in
+  `judge.ts`, the system prompt and prompt blocks both providers share in
+  `prompt.ts`, the Anthropic Messages exchange `messagesJudge` in
+  `messages.ts` (fully tested with a stub `create`), the Bedrock adapter,
+  which builds the Mantle client and maps its 404 for a dated model id to
+  one line of advice, the `claude-code` adapter, which spawns `claude -p`
+  once per request through the `Exec` function in `cli.ts` (tests pass a
+  fake) with the answer schema and reads the structured result back, and
+  `cache.ts`, a `Judge` wrapper that answers from
+  `node_modules/.cache/lawbook` when the hash of model, prompt, standard,
+  context, path, and content matches. Bedrock's Messages endpoint rejects
+  structured output, so `messages.ts` sends one `answer` tool with
+  `tool_choice: auto` and a trailing instruction block, placed after the
+  cache marker on the standard block so the prefix still caches, and reads
+  the verdict from the `tool_use` block. Every `Verdict` carries the
+  provider's token `usage`, summed per rule and in the summary.
+  `bedrock.ts` imports the SDK client lazily and stays at complexity 1,
+  since no test covers it. `run`
   takes the factories as its `deps` argument; tests inject fakes. The judge
   returns a `Verdict`: a noul decision in the Jev decision schema plus a
   reason; `src/rules/llm.ts` compares the probability to the rule's

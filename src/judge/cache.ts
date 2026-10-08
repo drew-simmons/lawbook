@@ -4,7 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import { CliError, errorMessage } from "../errors.ts";
 import { decisionSchema, type Judge, type JudgeRequest, NO_USAGE } from "./judge.ts";
-import { SYSTEM_PROMPT } from "./messages.ts";
+import { SYSTEM_PROMPT } from "./prompt.ts";
 
 /** Where verdicts are cached, relative to the checked directory. */
 export const DEFAULT_CACHE_DIR = "node_modules/.cache/lawbook";

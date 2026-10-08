@@ -48,10 +48,7 @@
           "type": "string",
           "enum": [
             "bedrock",
-            "anthropic",
-            "openai",
-            "claude-code",
-            "codex"
+            "claude-code"
           ]
         },
         "model": {
@@ -61,10 +58,6 @@
         "region": {
           "type": "string",
           "minLength": 1
-        },
-        "baseUrl": {
-          "type": "string",
-          "format": "uri"
         },
         "concurrency": {
           "default": 4,
@@ -332,10 +325,7 @@
                     "type": "string",
                     "enum": [
                       "bedrock",
-                      "anthropic",
-                      "openai",
-                      "claude-code",
-                      "codex"
+                      "claude-code"
                     ]
                   },
                   "model": {
@@ -345,10 +335,6 @@
                   "region": {
                     "type": "string",
                     "minLength": 1
-                  },
-                  "baseUrl": {
-                    "type": "string",
-                    "format": "uri"
                   }
                 },
                 "additionalProperties": false

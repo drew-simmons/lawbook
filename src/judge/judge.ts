@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LlmConfig, Provider } from "../config.ts";
+import { CliError } from "../errors.ts";
 import type { SourceFile } from "../files.ts";
 
 /**
@@ -16,8 +17,9 @@ export type Decision = z.infer<typeof decisionSchema>;
 
 /**
  * What the model answers for one request. The range is stated in the
- * description, not as a schema constraint, because the Messages API rejects
- * numeric constraints in structured outputs.
+ * description, not as a schema constraint, because the schema goes to the
+ * model as a tool's input schema and the Messages API rejects numeric
+ * constraints there.
  */
 export const answerSchema = z.object({
   noul: z.number().describe("probability, from 0 to 1, that the files meet the standard"),
@@ -25,6 +27,32 @@ export const answerSchema = z.object({
 });
 
 export type Answer = z.infer<typeof answerSchema>;
+
+/** The model's probability as a noul decision, or an error when it is out of range. */
+export function decisionOf(noul: number, path: string): Decision {
+  const decision = decisionSchema.safeParse({ type: "noul", noul });
+  if (!decision.success) {
+    throw new CliError(`the judge gave an out-of-range probability ${noul} for ${path}`);
+  }
+  return decision.data;
+}
+
+/** The answer's shape as JSON Schema, for a tool's input schema or a CLI's structured-output flag. */
+export function answerJsonSchema(): Record<string, unknown> {
+  const { $schema: _, ...schema } = z.toJSONSchema(answerSchema);
+  return schema;
+}
+
+/** A parsed answer as a noul decision and reason, or an error naming why it is not one. */
+export function parseAnswer(value: unknown, label: string): { decision: Decision; reason: string } {
+  const answer = answerSchema.safeParse(value);
+  if (!answer.success) {
+    throw new CliError(
+      `the judge gave no verdict for ${label} (${z.prettifyError(answer.error).replaceAll("\n", "; ")})`,
+    );
+  }
+  return { decision: decisionOf(answer.data.noul, label), reason: answer.data.reason };
+}
 
 /** What one request cost, as the provider counts tokens. */
 export interface Usage {

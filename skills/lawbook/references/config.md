@@ -3,7 +3,7 @@
 The complete `lawbook.yaml` format, every command and flag, the output
 formats, and provider setup. `SKILL.md` covers the workflow; come here for
 a key, a flag, or a shape. The published docs at
-https://drew-simmons.github.io/lawbook/ say the same in more words, and
+<https://drew-simmons.github.io/lawbook/> say the same in more words, and
 `lawbook schema` prints the JSON Schema the installed version validates
 with.
 
@@ -133,7 +133,7 @@ about the tree, not the change set.
   fixtures:
     pass: ["fixtures/errors/good.ts"]
     fail: ["fixtures/errors/vague.ts", "fixtures/errors/silent.ts"]
-  llm: { provider: anthropic, model: claude-haiku-4-5-20251001 }
+  llm: { model: anthropic.claude-sonnet-5-5 }
 ```
 
 | Key | Required | Meaning |
@@ -141,7 +141,7 @@ about the tree, not the change set.
 | `standard` | yes | The standard in prose. |
 | `threshold` | no | Probability, `0` to `1`, a file must reach to pass. Default `0.5`. |
 | `scope` | no | `file` (default) judges each selected file in its own request. `set` sends every selected file in one request, each as a `File: <path>` block, and gets one verdict for the set; the finding names no file. A set over `llm.maxBytes` is an `ERROR` without a request. |
-| `llm` | no | Per-rule overrides: `provider`, `model`, `region`, `baseUrl`. A rule that keeps the run's provider inherits its model, region, and URL. A rule that names another provider starts from that provider's defaults, so name its `model` when the provider has none. `concurrency`, `maxBytes`, and `cache` always come from the run's `llm`. |
+| `llm` | no | Per-rule overrides: `provider`, `model`, `region`. A rule that keeps the run's provider inherits its model and region. A rule that names the other provider starts from that provider's defaults. `concurrency`, `maxBytes`, and `cache` always come from the run's `llm`. |
 | `context` | no | Files, relative to the checked directory, sent with every request as reference material and never judged. A missing or binary one exits `2` before any request. They sit in the cached prompt prefix and do not count against `maxBytes`. |
 | `fixtures` | no | `pass`, files that must meet the standard, and `fail`, files that must not. `lawbook test` judges them. |
 
@@ -170,7 +170,7 @@ Defaults:
 ```yaml
 llm:
   provider: bedrock
-  model: anthropic.claude-opus-5-5
+  model: anthropic.claude-haiku-5-5
   concurrency: 4
   maxBytes: 131072
   cache: true
@@ -178,10 +178,9 @@ llm:
 
 | Key | Meaning |
 | --- | --- |
-| `provider` | `bedrock` (default), `anthropic`, or `openai`. |
-| `model` | The model id in the provider's own naming. Bedrock defaults to `anthropic.claude-opus-5-5`, Anthropic to `claude-opus-5-5`; `openai` has no default, so `model` is required. |
-| `region` | Bedrock only. Else `AWS_REGION`, else `AWS_DEFAULT_REGION`. Under another provider it is a config error. |
-| `baseUrl` | OpenAI only. A server that speaks Chat Completions with `response_format: json_schema`, such as a local model server at `http://localhost:11434/v1`. Under another provider it is a config error. |
+| `provider` | `bedrock` (default) or `claude-code`, which runs the installed `claude` CLI. |
+| `model` | The model id in the provider's own naming. Bedrock defaults to `anthropic.claude-haiku-5-5` and takes only undated `anthropic.<model>` ids; `claude-code` defaults to `claude-haiku-5-5` and also takes an alias such as `sonnet`. |
+| `region` | Bedrock only. Else `AWS_REGION`, else `AWS_DEFAULT_REGION`. Under `claude-code` it is a config error. |
 | `concurrency` | Files judged at once. Integer, at least `1`, default `4`. Lower it when rate-limited. |
 | `maxBytes` | Largest file sent, in bytes. Default `131072`. |
 | `cache` | Whether verdicts are cached on disk. Default `true`. |
@@ -191,9 +190,8 @@ Credentials never go in the file:
 
 | Provider | Credentials |
 | --- | --- |
-| `bedrock` | The AWS chain: environment variables, a shared profile, SSO, or an instance role. The region must offer the model. |
-| `anthropic` | `ANTHROPIC_API_KEY`, or a profile from `ant auth login`. |
-| `openai` | `OPENAI_API_KEY`. Unset, `check` exits `2` before any request, unless `baseUrl` points elsewhere, in which case a placeholder key is sent. |
+| `bedrock` | The AWS chain: environment variables, a shared profile, SSO, or an instance role; else `AWS_BEARER_TOKEN_BEDROCK` as a bearer token. The region must offer the model. |
+| `claude-code` | The login of the `claude` CLI on `PATH`: `claude auth login` once, then `claude auth status`. `ANTHROPIC_API_KEY` works too, billed as API usage. |
 
 A problem building the client (missing region, missing key) exits `2`
 before any rule runs. A provider error on a request is recorded against
@@ -387,7 +385,8 @@ GitHub Actions, pull requests only:
     fetch-depth: 0
 - run: npx lawbook check --since origin/${{ github.base_ref }} --format github
   env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    AWS_REGION: us-west-2
+    AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
 ```
 
 `github.base_ref` is set on `pull_request` events only. Drop the `env` and

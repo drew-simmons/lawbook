@@ -31,7 +31,6 @@ test("the schema is draft 2020-12, names its URL, and rejects unknown keys", () 
 
 test("the schema describes every llm key and every rule kind", () => {
   expect(Object.keys(schema.properties.llm.properties).toSorted()).toEqual([
-    "baseUrl",
     "cache",
     "concurrency",
     "maxBytes",
