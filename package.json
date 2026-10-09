@@ -18,6 +18,7 @@
   },
   "files": [
     "dist",
+    "examples",
     "lawbook.schema.json"
   ],
   "type": "module",
@@ -25,7 +26,8 @@
     ".": {
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
-    }
+    },
+    "./examples/*": "./examples/*"
   },
   "scripts": {
     "build": "tsdown",

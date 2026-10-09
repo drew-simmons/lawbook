@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import { lawbook, useTempDir, write } from "./helpers.ts";
 
 const EXAMPLE = fileURLToPath(new URL("../examples/clean-code.lawbook.yaml", import.meta.url));
+const MANIFEST = new URL("../package.json", import.meta.url);
 const PAGE = new URL("../docs/content/examples.mdx", import.meta.url);
 
 const RULES = [
@@ -34,6 +35,25 @@ test("the clean-code example loads and plans every rule", async () => {
   for (const id of RULES) {
     expect(result.stdout).toContain(`PLAN ${id} (`);
   }
+});
+
+test("the published package exposes the example to extends by specifier", async () => {
+  const [manifest, example] = await Promise.all([
+    readFile(MANIFEST, "utf8"),
+    readFile(EXAMPLE, "utf8"),
+  ]);
+  const { files } = JSON.parse(manifest) as { files: string[] };
+  expect(files).toContain("examples");
+  await write(dir(), "node_modules/lawbook/package.json", manifest);
+  await write(dir(), "node_modules/lawbook/examples/clean-code.lawbook.yaml", example);
+  await write(
+    dir(),
+    "lawbook.yaml",
+    'version: 1\nextends: ["lawbook/examples/clean-code.lawbook.yaml"]\nrules: []\n',
+  );
+  const result = await lawbook("check", dir(), "--dry-run");
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("PLAN has-readme (");
 });
 
 test("the clean-code example passes its deterministic rules on a minimal project", async () => {

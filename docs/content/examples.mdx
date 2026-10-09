@@ -26,6 +26,19 @@ extends: ["./clean-code.lawbook.yaml"]
 rules: []
 ```
 
+The npm package ships the file too, so a project that installs `lawbook`
+can extend the published copy by package specifier and pick up its changes
+with each release instead of keeping a copy:
+
+```yaml
+version: 1
+extends: ["lawbook/examples/clean-code.lawbook.yaml"]
+rules: []
+```
+
+Projects without `node_modules` keep the copy; see
+[Sharing rules](/configuration#sharing-rules) for how specifiers resolve.
+
 Then run it. Every `standard` rule is one model request per selected file,
 so on a pull request judge only the files the branch changed, and on a
 codebase with history record the findings it has today so only new ones
@@ -103,12 +116,14 @@ that must be met beyond doubt, lower it to flag only clear violations.
 #
 # Every rule covers what a linter or formatter cannot: names, the shape of
 # functions, comments, error handling, dependencies, module boundaries, and
-# tests. Copy this file to lawbook.yaml, or keep it beside your own and list
-# it under `extends`. The file globs cover the common languages; narrow them
-# to yours. Each `standard` rule is one model request per selected file, so
-# on a pull request run `lawbook check --since origin/main`, and on an old
-# codebase start with `lawbook check --update-baseline` so only new findings
-# fail. Format reference: https://drew-simmons.github.io/lawbook/configuration
+# tests. Copy this file to lawbook.yaml, keep it beside your own and list it
+# under `extends`, or in a Node project extend the copy the package ships as
+# `lawbook/examples/clean-code.lawbook.yaml`. The file globs cover the common
+# languages; narrow them to yours. Each `standard` rule is one model request
+# per selected file, so on a pull request run `lawbook check --since
+# origin/main`, and on an old codebase start with `lawbook check
+# --update-baseline` so only new findings fail.
+# Format reference: https://drew-simmons.github.io/lawbook/configuration
 version: 1
 
 llm:
