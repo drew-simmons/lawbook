@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/drew-simmons/lawbook/compare/v0.2.0...v0.3.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* judge through the Claude Code, Codex, or Kiro CLI only ([#53](https://github.com/drew-simmons/lawbook/issues/53))
+
+### Features
+
+* judge through the Claude Code, Codex, or Kiro CLI only ([#53](https://github.com/drew-simmons/lawbook/issues/53)) ([eed1355](https://github.com/drew-simmons/lawbook/commit/eed1355ebe06971ad0e66616beefe1fef5929592))
+* ship examples/ in the npm package ([#55](https://github.com/drew-simmons/lawbook/issues/55)) ([ab0495a](https://github.com/drew-simmons/lawbook/commit/ab0495a44b5b324568ad780a58044c2d1f5a6828))
+
 ## [0.2.0](https://github.com/drew-simmons/lawbook/compare/v0.1.0...v0.2.0) (2026-10-08)
 
 
