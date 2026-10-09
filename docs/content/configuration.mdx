@@ -205,7 +205,9 @@ the file that names it. Any other entry is a package specifier resolved from
 `node_modules` the way `require` would: the package's `main` can point at
 its `lawbook.yaml`, or an `exports` entry can expose a subpath such as
 `@acme/lawbook-rules/strict.yaml`. There is no network access; install the
-package first.
+package first. The `lawbook` package itself exports its `examples`
+directory, so `lawbook/examples/clean-code.lawbook.yaml` extends the
+[clean-code example](/examples) the installed version ships.
 
 Every extended file is a full config with `version: 1`, and may extend others
 in turn. Rules are collected depth-first, each file's inherited rules before

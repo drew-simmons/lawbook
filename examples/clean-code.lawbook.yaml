@@ -15,12 +15,14 @@
 #
 # Every rule covers what a linter or formatter cannot: names, the shape of
 # functions, comments, error handling, dependencies, module boundaries, and
-# tests. Copy this file to lawbook.yaml, or keep it beside your own and list
-# it under `extends`. The file globs cover the common languages; narrow them
-# to yours. Each `standard` rule is one model request per selected file, so
-# on a pull request run `lawbook check --since origin/main`, and on an old
-# codebase start with `lawbook check --update-baseline` so only new findings
-# fail. Format reference: https://drew-simmons.github.io/lawbook/configuration
+# tests. Copy this file to lawbook.yaml, keep it beside your own and list it
+# under `extends`, or in a Node project extend the copy the package ships as
+# `lawbook/examples/clean-code.lawbook.yaml`. The file globs cover the common
+# languages; narrow them to yours. Each `standard` rule is one model request
+# per selected file, so on a pull request run `lawbook check --since
+# origin/main`, and on an old codebase start with `lawbook check
+# --update-baseline` so only new findings fail.
+# Format reference: https://drew-simmons.github.io/lawbook/configuration
 version: 1
 
 llm:
