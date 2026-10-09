@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { glob, isDynamicPattern } from "tinyglobby";
 
@@ -58,6 +58,26 @@ export function isBinary(buffer: Buffer): boolean {
 export async function readSourceFile(root: string, file: string): Promise<SourceFile | undefined> {
   const buffer = await readFile(path.join(root, file));
   return isBinary(buffer) ? undefined : { path: file, content: buffer.toString("utf8") };
+}
+
+/** Whether the text is empty or only whitespace, so a standard has nothing in it to judge. */
+export function isBlank(content: string): boolean {
+  return content.trim() === "";
+}
+
+/** Whether the file has no bytes; one that cannot be checked counts as not empty, so the run reports it. */
+async function isEmptyFile(file: string): Promise<boolean> {
+  try {
+    return (await stat(file)).size === 0;
+  } catch {
+    return false;
+  }
+}
+
+/** The root-relative `files` that hold at least one byte, in order; telling them by size reads nothing. */
+export async function withoutEmpty(root: string, files: string[]): Promise<string[]> {
+  const empty = await Promise.all(files.map((file) => isEmptyFile(path.join(root, file))));
+  return files.filter((_file, index) => empty[index] !== true);
 }
 
 /** The globs a `files` rule selects with and the globs it leaves out. */

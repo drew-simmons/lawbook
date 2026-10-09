@@ -92,8 +92,8 @@ findings print without failing the run (see
   "code is well documented" is not.
 - Name the exemptions. Without them the model has to guess.
 - Keep `files` narrow, and use `exclude` for fixtures and generated code.
-  Every selected file is one model request, so a `**/*` glob on a large
-  repository is slow and costly. `lawbook check --dry-run` lists the files
+  Every selected file but an empty one is one model request, so a `**/*`
+  glob on a large repository is slow and costly. `lawbook check --dry-run` lists the files
   and counts the requests before you pay for them.
 - Run `lawbook check --only <id>` while you refine the wording, and pin the
   rest of the suite with `--no-llm`.
@@ -167,7 +167,8 @@ FAIL consistent-naming
 
 A set has one verdict: the finding names no file, and the JSON result
 carries it as `decision` instead of the per-file `decisions`. Suppressed
-files are left out of the set and listed as skipped. The set is sized as a
+files are left out of the set and listed as skipped, and
+[blank files](#empty-files) are left out unlisted. The set is sized as a
 whole against `llm.maxBytes`; a set that does not fit is reported as an
 `ERROR` without a request, since nothing was judged. A set with no files
 passes without a request. `--dry-run` counts one request for the rule.
@@ -278,9 +279,10 @@ llm:
 error: the run would make 412 model requests, over llm.maxRequests 200; narrow files, pass --only, or raise the limit
 ```
 
-The count is the plan's, so it includes files the [verdict cache](#verdict-cache)
-would answer and files the size and suppression guards would drop; it is an
-upper bound on what the run would send. `--max-requests <n>` overrides the
+The count is the plan's, so it leaves out empty files but includes files the
+[verdict cache](#verdict-cache) would answer, whitespace-only files, and files
+the size and suppression guards would drop; it is an upper bound on what the
+run would send. `--max-requests <n>` overrides the
 config for one run, and `--no-llm` makes no requests, so the cap never
 applies to it.
 
@@ -293,6 +295,16 @@ JSON under `skipped`, and does not affect the rule's status, since nothing
 was judged. Raise `llm.maxBytes`, which applies to every rule, when one
 must see a large file, or narrow `files` so the file is not selected. Binary files are skipped by every rule
 without being listed; see [Configuration](/configuration#selecting-files).
+
+## Empty files
+
+A file that is empty or holds only whitespace has nothing in it to break a
+standard, so a `standard` rule leaves it out without a request and without
+listing it, the way binary files are left out. An empty `__init__.py` costs
+nothing however many standards select it. `--dry-run` leaves empty files out
+too; it tells them by size, so a file of only whitespace still appears there.
+`forbid` and `require` still read such a file, so a standard that a file must
+have content to meet, such as a license header, belongs in a `require` rule.
 
 ## Provider errors
 

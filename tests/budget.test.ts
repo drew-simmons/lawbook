@@ -37,6 +37,16 @@ test("a run at llm.maxRequests proceeds", async () => {
   expect(fake.requests).toHaveLength(2);
 });
 
+test("an empty file does not count against llm.maxRequests", async () => {
+  await config(`llm:\n  maxRequests: 2\nrules:\n${STANDARD}`);
+  await twoFiles();
+  await write(dir(), "empty.ts", "");
+  const fake = fakeJudge();
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(0);
+  expect(fake.requests).toHaveLength(2);
+});
+
 test("--max-requests overrides llm.maxRequests either way", async () => {
   await config(`llm:\n  maxRequests: 10\nrules:\n${STANDARD}`);
   await twoFiles();

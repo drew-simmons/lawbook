@@ -1,6 +1,7 @@
 import { selectionFor } from "./candidates.ts";
 import { filterOnly } from "./check.ts";
 import type { Config, Level, Rule, RuleKind, RuleOf, Scope } from "./config.ts";
+import { withoutEmpty } from "./files.ts";
 import { type RuleContext, selectRuleFiles } from "./rules/deterministic.ts";
 
 /** What `check` would look at for one rule, without reading anything. */
@@ -15,7 +16,7 @@ export interface PlanRule {
 
 export interface Plan {
   rules: PlanRule[];
-  /** How many model requests the run would make: one per selected file of a `standard` rule. */
+  /** How many model requests the run would make: one per listed file of a `standard` rule. */
   requests: number;
 }
 
@@ -31,11 +32,20 @@ export interface PlanOptions {
 
 type Paths<K extends RuleKind> = (rule: RuleOf<K>, ctx: RuleContext) => Promise<string[]>;
 
-/** `files` rules list what their globs select; path rules list their patterns as written, since nothing is read. */
+/** What a `standard` rule selects but the empty files, which `check` never sends. */
+async function judgeablePaths(rule: RuleOf<"standard">, ctx: RuleContext): Promise<string[]> {
+  return withoutEmpty(ctx.root, await selectRuleFiles(rule, ctx));
+}
+
+/**
+ * `files` rules list what their globs select, and a `standard` rule leaves
+ * out empty files, told by size; path rules list their patterns as written,
+ * since nothing is read.
+ */
 const PATHS: { [K in RuleKind]: Paths<K> } = {
   forbid: selectRuleFiles,
   require: selectRuleFiles,
-  standard: selectRuleFiles,
+  standard: judgeablePaths,
   exists: async (rule) => rule.exists,
   absent: async (rule) => rule.absent,
 };

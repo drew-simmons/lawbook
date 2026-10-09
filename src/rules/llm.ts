@@ -1,6 +1,6 @@
 import type { RuleOf, Scope } from "../config.ts";
 import { CliError, cliErrorMessage } from "../errors.ts";
-import { readSourceFile, type SourceFile } from "../files.ts";
+import { isBlank, readSourceFile, type SourceFile } from "../files.ts";
 import type { Judge, JudgeRequest, Verdict } from "../judge/judge.ts";
 import { mapLimit } from "../pool.ts";
 import {
@@ -96,6 +96,12 @@ const GUARDS: Record<Scope, Guard> = {
     [...suppressionSkip(file, rule.id), ...sizeSkip(file, ctx.maxBytes)].slice(0, 1),
   set: (file, rule) => suppressionSkip(file, rule.id),
 };
+
+/** The selected files with something to judge; a blank file, like a binary one, is left out unlisted and costs no request. */
+async function readJudgeable(rule: RuleOf<"standard">, ctx: RuleContext): Promise<SourceFile[]> {
+  const files = await readSelected(rule, ctx);
+  return files.filter((file) => !isBlank(file.content));
+}
 
 /** Splits the files into those the judge sees and those left out, with the first reason that applies. */
 function partition(files: SourceFile[], rule: RuleOf<"standard">, ctx: JudgeContext): Partition {
@@ -238,7 +244,7 @@ async function judgeFiles(
   ctx: JudgeContext,
 ): Promise<RuleResult> {
   const ask = await askFor(rule, ctx);
-  const { judged, skipped } = partition(await readSelected(rule, ctx), rule, ctx);
+  const { judged, skipped } = partition(await readJudgeable(rule, ctx), rule, ctx);
   const halt: Halt = { stopped: false };
   const outcomes = await RUN[rule.scope](ask, judge, judged, ctx, halt);
   return judgedResult(rule, outcomes, skipped, ctx);

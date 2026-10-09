@@ -210,7 +210,8 @@ keys anywhere are errors, so a typo cannot silently disable a rule.
 - The top-level `ignore` defaults to `**/node_modules/**` and `**/.git/**`;
   setting it replaces the defaults, so repeat them.
 - A rule whose globs select nothing passes. Binary files are skipped
-  silently.
+  silently, and a `standard` rule also skips files that are empty or only
+  whitespace, so an empty `__init__.py` costs no request.
 - `forbid` and `require` are JavaScript regular expressions with the `m`
   and `u` flags, so `^` and `$` match at line boundaries and the syntax
   must be valid in Unicode mode. Quote them with single quotes in YAML so
@@ -302,8 +303,8 @@ so edits elsewhere in a file do not resurface them, and each carries a
 - **`error: no lawbook.yaml, lawbook.yml, lawbook.json found`**: run from
   the repository root, pass the root as the argument, or `--config <file>`.
 - **A rule passes on a file that should fail**: check the globs with
-  `--dry-run`; the file may be excluded, gitignored, binary, or over
-  `llm.maxBytes` (listed as `skipped`).
+  `--dry-run`; the file may be excluded, gitignored, binary, blank (for a
+  `standard` rule), or over `llm.maxBytes` (listed as `skipped`).
 - **`ERROR <id>` with a login or "not installed" message**: the CLI, not
   the code. Install it, run `claude auth login`, `codex login`, or
   `kiro-cli login`, or run `--no-llm`.

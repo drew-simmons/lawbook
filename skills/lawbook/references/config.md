@@ -156,7 +156,8 @@ with no knowledge of each other, and results print in path order.
 Files over `llm.maxBytes` are listed as `path: skipped, N bytes over
 llm.maxBytes M` and do not change the rule's status. A file with
 `lawbook-disable-file <id>` is listed as `path: suppressed by
-lawbook-disable-file` and never sent.
+lawbook-disable-file` and never sent. A file that is empty or only
+whitespace is never sent either and is not listed.
 
 Verdicts are cached under `node_modules/.cache/lawbook/` in the checked
 directory, keyed by model, system prompt, standard, context, path, and
@@ -226,7 +227,7 @@ commented examples of the rest.
 | `--since <ref>` | Only files committed since the merge base with `ref` (`git diff <ref>...HEAD`). |
 | `--baseline <file>` | Hide the findings this file records. Relative to the current directory. |
 | `--update-baseline` | Write this run's findings to the `--baseline` file, then report with them hidden. |
-| `--dry-run` | List the files each rule would check and the request count, exit `0`, read nothing, build no client. Text or JSON only. |
+| `--dry-run` | List the files each rule would check and the request count, exit `0`, read nothing, build no client. A `standard` rule leaves out empty files, told by size. Text or JSON only. |
 | `--explain` | Print the model's reason for passing files too. |
 | `--max-requests <n>` | Exit `2` before any request when the plan exceeds `n`. Overrides `llm.maxRequests`. |
 | `--no-cache` | Ask the model for every file and store nothing. |

@@ -114,6 +114,28 @@ test("scope: set leaves suppressed files out and lists them as skipped", async (
   );
 });
 
+test("scope: set leaves blank files out of the set without listing them", async () => {
+  await config(`rules:\n${SET}`);
+  await twoFiles();
+  await write(dir(), "empty.ts", "");
+  await write(dir(), "spaces.ts", "\n\n");
+  const fake = fakeJudge();
+  const result = await lawbookWith(fake.deps, "check", dir(), "--no-cache");
+  expect(fake.requests.map(requestKey)).toEqual(["a.ts,b.ts"]);
+  expect(result.stdout).toBe(
+    `PASS consistent-naming\n\n1 passed, 0 failed, 0 warned, 0 errored, 0 skipped\n${usageLine(1)}`,
+  );
+});
+
+test("scope: set of blank files passes without a request", async () => {
+  await config(`rules:\n${SET}`);
+  await write(dir(), "empty.ts", "");
+  const fake = fakeJudge();
+  const result = await lawbookWith(fake.deps, "check", dir());
+  expect(result.code).toBe(0);
+  expect(fake.requests).toEqual([]);
+});
+
 test("scope: set caches the whole set and a changed file misses", async () => {
   await config(`rules:\n${SET}`);
   await twoFiles();
@@ -144,6 +166,15 @@ test("--dry-run counts one request for a set rule with files and none without", 
   const result = await lawbook("check", dir(), "--dry-run");
   expect(result.stdout).toContain("PLAN consistent-naming (standard, 2 files)");
   expect(result.stdout).toContain("\n2 files, 3 model requests\n");
+});
+
+test("--dry-run counts no request for a set whose files are all empty", async () => {
+  await config(`rules:\n${SET}`);
+  await write(dir(), "empty.ts", "");
+  const result = await lawbook("check", dir(), "--dry-run");
+  expect(result.stdout).toBe(
+    "PLAN consistent-naming (standard, 0 files)\n\n0 files, 0 model requests\n",
+  );
 });
 
 test("a set request carries the rule's context", async () => {
