@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/drew-simmons/lawbook/compare/v0.3.0...v0.3.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* skip blank files in standard rules ([#57](https://github.com/drew-simmons/lawbook/issues/57)) ([c0bd80d](https://github.com/drew-simmons/lawbook/commit/c0bd80dd253af302ff5b246afd1edfc8ae5430a0))
+
 ## [0.3.0](https://github.com/drew-simmons/lawbook/compare/v0.2.0...v0.3.0) (2026-10-09)
 
 
