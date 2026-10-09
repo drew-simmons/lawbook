@@ -274,25 +274,24 @@ test("check builds the judge once with the default provider and model", async ()
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
   expect(fake.built).toMatchObject([
-    { provider: "bedrock", model: DEFAULT_MODELS.bedrock, concurrency: 4 },
+    { provider: "claude-code", model: DEFAULT_MODELS["claude-code"], concurrency: 4 },
   ]);
 });
 
-test("check passes the configured provider, model, and region to the factory", async () => {
-  await config(
-    `llm:\n  provider: bedrock\n  model: anthropic.claude-sonnet-5-5\n  region: eu-west-1\nrules:\n${STANDARD}`,
-  );
+test("check passes the configured provider and model to the factory", async () => {
+  await config(`llm:\n  provider: codex\n  model: gpt-5.6-terra\nrules:\n${STANDARD}`);
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
-  expect(fake.built).toMatchObject([
-    {
-      provider: "bedrock",
-      model: "anthropic.claude-sonnet-5-5",
-      region: "eu-west-1",
-      concurrency: 4,
-    },
-  ]);
+  expect(fake.built).toMatchObject([{ provider: "codex", model: "gpt-5.6-terra", concurrency: 4 }]);
+});
+
+test.each(["codex", "kiro"])("check requires a model for the %s provider", async (provider) => {
+  await config(`llm:\n  provider: ${provider}\nrules:\n${STANDARD}`);
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("llm.model");
+  expect(result.stderr).toContain(`set llm.model; the ${provider} provider has no default`);
 });
 
 test("a file over llm.maxBytes is skipped without a request", async () => {
@@ -325,15 +324,14 @@ test("llm.maxBytes leaves deterministic rules alone", async () => {
   expect(JSON.parse(json.stdout).results[0]).not.toHaveProperty("skipped");
 });
 
-test("check rejects region with the claude-code provider", async () => {
-  await config(`llm:\n  provider: claude-code\n  region: eu-west-1\nrules:\n${STANDARD}`);
+test("check rejects region, which no provider takes", async () => {
+  await config(`llm:\n  region: eu-west-1\nrules:\n${STANDARD}`);
   const result = await lawbook("check", dir());
   expect(result.code).toBe(2);
-  expect(result.stderr).toContain("llm.region");
-  expect(result.stderr).toContain("region applies to the bedrock provider only");
+  expect(result.stderr).toContain('Unrecognized key: "region"');
 });
 
-test.each(["anthropic", "openai", "codex", "vertex"])(
+test.each(["bedrock", "anthropic", "openai", "vertex"])(
   "check rejects the %s provider",
   async (provider) => {
     await config(`llm:\n  provider: ${provider}\nrules:\n${STANDARD}`);
@@ -374,12 +372,12 @@ test("a provider error on one file reports ERROR with the other verdicts and exi
   await config(`llm:\n  concurrency: 1\nrules:\n${STANDARD}`);
   await writeFiles(3);
   const fake = fakeJudge({ "a.ts": noul(0.1, "'bad' names no next step") });
-  rejecting(fake, "b.ts", new CliError("bedrock: 401 invalid x-api-key"));
+  rejecting(fake, "b.ts", new CliError("claude-code: Not logged in"));
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(2);
   expect(result.stderr).toBe("");
   expect(result.stdout).toBe(
-    `ERROR actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  b.ts: bedrock: 401 invalid x-api-key\n  c.ts: not judged after an earlier error\n\n0 passed, 0 failed, 0 warned, 1 errored, 0 skipped\n${usageLine(1)}`,
+    `ERROR actionable-errors\n  a.ts: 'bad' names no next step (noul 0.10)\n  b.ts: claude-code: Not logged in\n  c.ts: not judged after an earlier error\n\n0 passed, 0 failed, 0 warned, 1 errored, 0 skipped\n${usageLine(1)}`,
   );
 });
 
@@ -390,7 +388,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
   fake.judge.judge = async (request) => {
     fake.requests.push(request);
     if (requestKey(request) === "b.ts") {
-      throw new CliError("bedrock: 429 rate limited");
+      throw new CliError("codex: 429 rate limited");
     }
     await new Promise((resolve) => setImmediate(resolve));
     return noul(0.3, "slow but judged");
@@ -406,7 +404,7 @@ test("after the first error no new requests go out but in-flight ones finish", a
     status: "error",
     findings: [
       { path: "a.ts", message: "slow but judged", decision: { type: "noul", noul: 0.3 } },
-      { path: "b.ts", message: "bedrock: 429 rate limited" },
+      { path: "b.ts", message: "codex: 429 rate limited" },
       { path: "c.ts", message: NOT_JUDGED },
       { path: "d.ts", message: NOT_JUDGED },
     ],
@@ -419,11 +417,11 @@ test("an errored rule exits two even when another rule fails", async () => {
   await config(`rules:\n${STANDARD}  - id: readme\n    exists: README.md\n`);
   await writeFiles(1);
   const fake = fakeJudge();
-  rejecting(fake, "a.ts", new CliError("bedrock: no credentials"));
+  rejecting(fake, "a.ts", new CliError("kiro: Not logged in"));
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(2);
   expect(result.stdout).toBe(
-    "ERROR actionable-errors\n  a.ts: bedrock: no credentials\nFAIL readme\n  README.md: missing\n\n0 passed, 1 failed, 0 warned, 1 errored, 0 skipped\n",
+    "ERROR actionable-errors\n  a.ts: kiro: Not logged in\nFAIL readme\n  README.md: missing\n\n0 passed, 1 failed, 0 warned, 1 errored, 0 skipped\n",
   );
 });
 
@@ -431,7 +429,7 @@ test("a warn standard rule with a provider error is still an error", async () =>
   await config(`rules:\n${STANDARD}    level: warn\n`);
   await writeFiles(1);
   const fake = fakeJudge();
-  rejecting(fake, "a.ts", new CliError("bedrock: no credentials"));
+  rejecting(fake, "a.ts", new CliError("kiro: Not logged in"));
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(2);
   expect(result.stdout).toContain("ERROR actionable-errors\n");
@@ -449,7 +447,7 @@ test("a non-CliError from the judge still aborts the run", async () => {
 });
 
 test("default judges cover every provider", () => {
-  expect(Object.keys(defaultJudges).toSorted()).toEqual(["bedrock", "claude-code"]);
+  expect(Object.keys(defaultJudges).toSorted()).toEqual(["claude-code", "codex", "kiro"]);
 });
 
 test("check rejects baseUrl, which no provider takes", async () => {
@@ -474,43 +472,37 @@ const SECOND =
 
 test("rules with different models build two judges and rules with the same model share one", async () => {
   await config(
-    `rules:\n${STANDARD}    llm: { model: anthropic.claude-sonnet-5-5 }\n${SECOND}  - id: third\n    files: ['**/*.ts']\n    standard: Third\n    llm: { model: anthropic.claude-sonnet-5-5 }\n`,
+    `rules:\n${STANDARD}    llm: { model: claude-sonnet-5-5 }\n${SECOND}  - id: third\n    files: ['**/*.ts']\n    standard: Third\n    llm: { model: claude-sonnet-5-5 }\n`,
   );
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   const result = await lawbookWith(fake.deps, "check", dir());
   expect(result.code).toBe(0);
   expect(fake.built.map((llm) => llm.model)).toEqual([
-    "anthropic.claude-sonnet-5-5",
-    DEFAULT_MODELS.bedrock,
+    "claude-sonnet-5-5",
+    DEFAULT_MODELS["claude-code"],
   ]);
 });
 
 test("a rule's provider override starts from that provider's defaults", async () => {
   await config(
-    `llm:\n  region: eu-west-1\n  model: anthropic.claude-sonnet-5-5\nrules:\n${STANDARD}    llm: { provider: claude-code }\n`,
+    `llm:\n  provider: kiro\n  model: claude-haiku-4.5\nrules:\n${STANDARD}    llm: { provider: claude-code }\n`,
   );
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
   expect(fake.built).toMatchObject([{ provider: "claude-code", model: "claude-haiku-5-5" }]);
-  expect(fake.built[0]?.region).toBeUndefined();
 });
 
-test("a rule's model override inherits the top-level provider, region, and settings", async () => {
+test("a rule's model override inherits the top-level provider and settings", async () => {
   await config(
-    `llm:\n  region: eu-west-1\n  concurrency: 2\nrules:\n${STANDARD}    llm: { model: anthropic.claude-sonnet-5-5 }\n`,
+    `llm:\n  provider: kiro\n  model: claude-haiku-4.5\n  concurrency: 2\nrules:\n${STANDARD}    llm: { model: claude-sonnet-5 }\n`,
   );
   await write(dir(), "a.ts", "const a = 1;\n");
   const fake = fakeJudge();
   await lawbookWith(fake.deps, "check", dir());
   expect(fake.built).toMatchObject([
-    {
-      provider: "bedrock",
-      model: "anthropic.claude-sonnet-5-5",
-      region: "eu-west-1",
-      concurrency: 2,
-    },
+    { provider: "kiro", model: "claude-sonnet-5", concurrency: 2 },
   ]);
 });
 
@@ -521,12 +513,20 @@ test("a rule's llm rejects unknown keys", async () => {
   expect(result.stderr).toContain("rules[0].llm");
 });
 
-test("a rule's region under a claude-code override is rejected naming the rule", async () => {
-  await config(`rules:\n${STANDARD}    llm: { provider: claude-code, region: eu-west-1 }\n`);
+test("a rule's codex override without a model is rejected naming the rule", async () => {
+  await config(`rules:\n${STANDARD}    llm: { provider: codex }\n`);
   const result = await lawbook("check", dir());
   expect(result.code).toBe(2);
   expect(result.stderr).toContain('rule "actionable-errors": llm:');
-  expect(result.stderr).toContain("region applies to the bedrock provider only");
+  expect(result.stderr).toContain("set llm.model; the codex provider has no default");
+});
+
+test("a rule's region is rejected, since no provider takes one", async () => {
+  await config(`rules:\n${STANDARD}    llm: { region: eu-west-1 }\n`);
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("rules[0].llm");
+  expect(result.stderr).toContain('Unrecognized key: "region"');
 });
 
 test("a rule's llm with --no-llm still skips without building a judge", async () => {

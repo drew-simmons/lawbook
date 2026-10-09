@@ -13,7 +13,7 @@ probability falls below the rule's `threshold` (default `0.5`) is a finding.
 ```yaml
 version: 1
 llm:
-  provider: bedrock
+  provider: claude-code
 rules:
   - id: errors-are-actionable
     description: Users can act on every error
@@ -189,8 +189,9 @@ rules:
 
 The model is told to read the reference files to understand the standard and
 to judge only the files in the message, never the references themselves. The
-context sits with the standard in the cached part of the prompt, so after the
-first file in a rule the provider reads it from its cache. Context files are
+context sits with the standard in the instructions, ahead of the files, so a
+CLI that caches its prompt reads it from the cache after the first file in a
+rule. Context files are
 read once per rule; a path that is missing, or a binary file, is a config
 error with exit code `2` before any request is made. They are not counted
 against `llm.maxBytes`, since the author chose them, and `--dry-run` does not
@@ -205,8 +206,7 @@ while the rest keep the default:
 
 ```yaml
 llm:
-  provider: bedrock
-  region: us-west-2
+  provider: claude-code
 rules:
   - id: has-doc-comments
     files: ["src/**/*.ts"]
@@ -214,28 +214,29 @@ rules:
   - id: errors-are-actionable
     files: ["src/**/*.ts"]
     standard: Every error message says what went wrong and what to do next.
-    llm: { model: anthropic.claude-sonnet-5 }
+    llm: { model: claude-sonnet-5-5 }
 ```
 
-A rule's `llm` takes `provider`, `model`, and `region`. A rule that keeps
-the run's provider inherits its model and region and replaces only what it
-names. A rule that names the other provider starts from that provider's
-defaults instead, since a Bedrock region means nothing to Claude Code.
+A rule's `llm` takes `provider` and `model`. A rule that keeps the run's
+provider inherits its model and replaces it only when it names one. A rule
+that names another provider starts from that provider's default model
+instead, since a Claude Code model id means nothing to Codex; `codex` and
+`kiro` have no default, so such an override must name a `model`.
 `concurrency`, `maxBytes`, and `cache` always come from the run's `llm`. The
-merged settings are checked when the config loads, so a `region` under a
-`claude-code` override is an error naming the rule.
+merged settings are checked when the config loads, so a `codex` override
+without a model is an error naming the rule.
 
-Rules with the same provider, model, and region share one client, and the
+Rules with the same provider and model share one judge, and the
 [verdict cache](#verdict-cache) keys on the model, so the same file judged by
 two models is cached twice.
 
 ## Prompt caching
 
-The request marks the standard for the provider's prompt cache, so after the
-first file in a rule the provider reads the standard from its cache instead
-of processing it again. Short standards fall under the provider's minimum
-cacheable size and simply cost nothing extra. The JSON output reports what
-the provider read from and wrote to its cache under `usage`.
+The standard and any reference material come before the files in every
+request, so a CLI that caches its prompt reads them from the cache after
+the first file in a rule. Claude Code and Codex report what they read from
+the cache, and the JSON output carries it under `usage`; Kiro meters
+credits rather than tokens, so its usage shows zero.
 
 ## Verdict cache
 
@@ -307,20 +308,19 @@ exits `2` after printing the report:
 ```txt
 ERROR errors-are-actionable
   src/cli.ts: "unexpected state" on line 41 says what broke but not what to do. (noul 0.12)
-  src/init.ts: bedrock: 401 invalid x-api-key
+  src/init.ts: claude-code: Not logged in. Run claude auth login
   src/report.ts: not judged after an earlier error
 
 0 passed, 0 failed, 0 warned, 1 errored, 0 skipped
 ```
 
-An `ERROR` rule is never a pass, whatever its `level`. A problem building the
-provider client, such as a missing Bedrock region, still stops the run before
-any rule runs.
+An `ERROR` rule is never a pass, whatever its `level`. A CLI that is not
+installed is reported the same way, on the first request.
 
 ## Skipping
 
 `lawbook check --no-llm` reports every `standard` rule as `SKIP` without
-building a provider client, so a run with no credentials still checks the
+touching a CLI, so a run on a machine with none installed still checks the
 deterministic rules and exits on their result alone. A config with no
 `standard` rule never touches a provider either.
 

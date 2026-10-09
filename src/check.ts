@@ -76,9 +76,9 @@ function withCache(judge: Judge, llm: LlmConfig, options: CheckOptions): Judge {
   return on ? cachedJudge(judge, cacheDirFor(options), llm.model) : judge;
 }
 
-/** What makes two rules share a judge: the same provider, model, and region. */
+/** What makes two rules share a judge: the same provider and model. */
 function llmKey(llm: LlmConfig): string {
-  return JSON.stringify([llm.provider, llm.model, llm.region ?? null]);
+  return JSON.stringify([llm.provider, llm.model]);
 }
 
 /** One judge per distinct `llm`, reused across the rules that share it. */

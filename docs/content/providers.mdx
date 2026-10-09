@@ -1,17 +1,20 @@
 ---
 title: Providers
-description: Configure Amazon Bedrock, the default, or a Claude Code subscription for standard rules.
+description: Judge standard rules through the Claude Code, Codex, or Kiro CLI, so a subscription pays.
 sidebar:
   order: 5
 ---
 
-The `llm` section of `lawbook.yaml` chooses the model that judges
-[`standard` rules](/llm-rules). It is optional; these are the defaults:
+The `llm` section of `lawbook.yaml` chooses the CLI that judges
+[`standard` rules](/llm-rules). Every provider runs the CLI of that name,
+installed and signed in on the machine that runs lawbook, so the
+subscription behind it pays for the requests and lawbook holds no
+credentials of its own. The section is optional; these are the defaults:
 
 ```yaml
 llm:
-  provider: bedrock
-  model: anthropic.claude-haiku-4-5
+  provider: claude-code
+  model: claude-haiku-5-5
   concurrency: 4
   maxBytes: 131072
   cache: true
@@ -19,54 +22,26 @@ llm:
 
 | Key           | Meaning                                                                                        |
 | ------------- | ---------------------------------------------------------------------------------------------- |
-| `provider`    | `bedrock` (default) or `claude-code`. The first calls Amazon Bedrock with AWS credentials; the second runs the `claude` CLI, so a Claude subscription can pay. |
-| `model`       | The model id in the provider's own naming. Defaults per provider, see below. |
-| `region`      | Bedrock only. The AWS region; else `AWS_REGION`, else `AWS_DEFAULT_REGION` from the environment. Setting it under `claude-code` is a config error. |
-| `concurrency` | How many files a `standard` rule sends to the model at once. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
+| `provider`    | `claude-code` (default), `codex`, or `kiro`: the `claude`, `codex`, or `kiro-cli` command on `PATH`. |
+| `model`       | The model id in the CLI's own naming. `claude-code` defaults to `claude-haiku-5-5`; `codex` and `kiro` have no default, so `model` is required under them. |
+| `concurrency` | How many files a `standard` rule judges at once, each in its own CLI process. A whole number, at least `1`; defaults to `4`. Lower it when the provider rate-limits you, raise it when it does not. |
 | `cache`       | Whether verdicts are cached on disk and reused for unchanged files. Defaults to `true`; `--no-cache` overrides one run. See [LLM rules](/llm-rules#verdict-cache). |
 | `maxBytes`    | The largest file, in bytes, a `standard` rule sends. A whole number, at least `1`; defaults to `131072` (128 KiB). Larger files are listed as skipped and never judged. See [LLM rules](/llm-rules#large-files). |
 | `maxRequests` | The most model requests one run may make. A whole number; no limit by default. A run whose plan exceeds it stops with exit code `2` before any request. `--max-requests` overrides it. See [LLM rules](/llm-rules#budget). |
 
-Unknown keys are errors. A problem building the client, such as a missing
-Bedrock region, stops the run with exit code `2` and a one-line message
-before any report. A provider or credential error on a request is reported
-against the file, the rule shows as `ERROR`, and the run still prints its
-report before exiting `2`; see
+Unknown keys are errors. A CLI that is not installed, not signed in, or
+given a model it does not know fails on the first request; lawbook reports
+the CLI's own one-line reason against the file, the rule shows as `ERROR`,
+and the run still prints its report before exiting `2`; see
 [LLM rules](/llm-rules#provider-errors).
 
-## Amazon Bedrock
-
-The default. Lawbook calls the Bedrock Messages endpoint through the Anthropic
-Bedrock SDK, which takes credentials from the usual AWS chain: environment
-variables, a shared config profile, SSO, or an instance role. When the chain
-has none, the SDK sends `AWS_BEARER_TOKEN_BEDROCK` as a bearer token instead.
-Nothing is configured in lawbook itself beyond the region.
-
-```yaml
-llm:
-  provider: bedrock
-  model: anthropic.claude-haiku-4-5
-  region: us-west-2
-```
-
-The endpoint knows models by their undated `anthropic.<model>` ids, such as
-`anthropic.claude-haiku-4-5` or `anthropic.claude-sonnet-5`. A dated id, a
-`-v1:0` suffix, or a `us.` inference-profile prefix gets a 404, which lawbook
-reports as one line naming the id and the form to use. The endpoint also
-serves fewer models than `aws bedrock list-foundation-models` lists: on
-8 October 2026 it answered 404 to `anthropic.claude-haiku-5-5` and
-`anthropic.claude-sonnet-5-5` in us-east-1 and us-west-2, while
-`anthropic.claude-haiku-4-5`, `anthropic.claude-sonnet-5`, and
-`anthropic.claude-opus-5-5` worked. The default is therefore
-`anthropic.claude-haiku-4-5`; pick a stronger model with `model` for a
-subtle standard. The region must offer the model you name.
-
-The endpoint does not take a structured-output format, so lawbook sends one
-tool, `answer`, whose input is the verdict, and asks the model in the system
-prompt to call it. That instruction sits after the cached prefix, so the
-system prompt, the standard, and any reference material still cache as one
-block. A reply with no call to `answer` is reported as the file's finding,
-with the model's stop reason.
+Every request runs the CLI once in an empty temporary directory, with the
+system prompt, the standard, and any reference material as the CLI's
+instructions and the files on stdin. Nothing in the checked project loads
+into the judge: no `CLAUDE.md`, `AGENTS.md`, steering files, hooks, or MCP
+servers, and no tool runs. Starting a CLI costs a second or two per file,
+so these providers suit `scope: set` rules and small file sets better than
+a rule over a whole tree; `concurrency` runs that many at once.
 
 ## Claude Code
 
@@ -76,36 +51,89 @@ llm:
   model: claude-haiku-5-5
 ```
 
-Judges through the `claude` command on `PATH`, so a Claude Pro, Max, Team,
-or Enterprise subscription that Claude Code is signed into pays for the
-requests, and no API key is needed. Install
-[Claude Code](https://code.claude.com/docs/en/setup), run `claude auth login`
-once, and check `claude auth status` reports `claude.ai`. An API key in
-`ANTHROPIC_API_KEY`, or a Console login, works too and is billed as API
-usage. The default model is `claude-haiku-5-5`; `model` takes a full id or an
-alias Claude Code knows, such as `sonnet`.
+Judges through the `claude` command, so a Claude Pro, Max, Team, or
+Enterprise subscription that Claude Code is signed into pays for the
+requests. Install [Claude Code](https://code.claude.com/docs/en/setup), run
+`claude auth login` once, and check `claude auth status` reports
+`claude.ai`. An API key in `ANTHROPIC_API_KEY`, or a Console login, works
+too and is billed as API usage. `model` takes a full id or an alias Claude
+Code knows, such as `sonnet`.
 
-Each request runs `claude -p` once with the standard as its system prompt,
-the files on stdin, and the answer shaped by a JSON schema. The run has no
-tools, no MCP servers, and no slash commands, saves no session, and starts
-in an empty temporary directory, so the checked project's `CLAUDE.md`,
-hooks, and `.mcp.json` never load into the judge. Settings and hooks in
-`~/.claude` still apply, since the login lives there; `--bare` is not used
-because it would skip the login. Starting the CLI costs a second or two per
-file, so this provider suits `scope: set` rules and small file sets better
-than a rule over a whole tree. Usage counts come from the CLI's result,
-including the tokens it read from and wrote to the prompt cache.
+Each request runs `claude -p` with the standard as its system prompt, the
+files on stdin, and the answer shaped by a JSON schema. The run has no
+tools, no MCP servers, and no slash commands, and saves no session.
+Settings and hooks in `~/.claude` still apply, since the login lives there;
+`--bare` is not used because it would skip the login. Usage counts come
+from the CLI's result, including the tokens it read from and wrote to the
+prompt cache.
 
 Anthropic permits programmatic use of a Claude subscription through the
 Agent SDK and `claude -p`, and such use currently draws from the plan's
 usage limits; the terms and the accounting are Anthropic's to change, so
-check them before relying on this in CI.
+check them before leaning on this.
+
+## Codex
+
+```yaml
+llm:
+  provider: codex
+  model: gpt-5.6-terra
+```
+
+Judges through the `codex` command, so the ChatGPT plan that Codex is
+signed into pays. Install [Codex](https://developers.openai.com/codex), run
+`codex login` once, and check `codex login status`. Leave `OPENAI_API_KEY`
+and `CODEX_API_KEY` unset: either one switches Codex to API billing. There
+is no default model; name one your plan offers.
+
+Each request runs `codex exec` with the whole prompt on stdin, the answer
+shaped by a JSON schema file and written to a file, and the run's events on
+stdout for the token counts. The sandbox is read-only, nothing is saved,
+and no execpolicy rules load. Codex counts cached tokens inside its input
+count; lawbook reports them apart, as the other providers do.
+
+## Kiro
+
+```yaml
+llm:
+  provider: kiro
+  model: claude-haiku-4.5
+```
+
+Judges through the `kiro-cli` command, so the Kiro subscription it is
+signed into pays in that plan's credits. Install
+[Kiro CLI](https://kiro.dev/docs/cli/), run `kiro-cli login` once, and
+check `kiro-cli whoami`. A saved login wins over `KIRO_API_KEY`; the key,
+which Pro and higher plans can mint, serves a machine with no login and
+draws from the same credits. There is no default model;
+`kiro-cli chat --list-models` lists the ids, and one Kiro does not know is
+reported against the file like any other provider error.
+
+Kiro has no system-prompt flag and no structured-output flag. Lawbook
+writes a workspace agent, `.kiro/agents/lawbook.json`, into the temporary
+directory with the prompt as the agent's instructions, no tools, and no MCP
+servers, runs `kiro-cli chat --no-interactive --agent lawbook` with the
+files on stdin and `--trust-tools=` so nothing could run anyway, and reads
+the answer out of the final text in the run's JSON event stream. The
+prompt asks for one JSON object, and lawbook takes the first `{` to the
+last `}` of the reply, so a code fence around it is fine. A reply with no
+JSON object in it is reported as the file's finding. Steering files,
+skills, and `AGENTS.md` under `~/.kiro` are still inherited, since the
+login lives there. Kiro meters credits, not tokens, so the usage line and
+the JSON `usage` show zero tokens for its requests; the request count is
+still right.
+
+## Running in CI
+
+Lawbook is built for a developer's machine, where the CLI is already
+installed and signed in. In a CI job, pass `--no-llm` to report `standard`
+rules as skipped and let the deterministic rules decide, or install the
+CLI on the runner and sign it in the way its vendor supports there.
 
 ## No network in tests
 
-Both providers sit behind one `Judge` interface, and `run` accepts the
-factories that build them, so a test or an embedding program can pass its own
-judge and never reach a network. The package exports `messagesJudge`, which
-takes the `create` function of any Anthropic SDK client and is what the
-Bedrock adapter wraps, and `claudeCodeJudge`, which takes an `Exec` function
-that spawns the command, so a test passes a fake and no CLI runs.
+The three providers sit behind one `Judge` interface, and `run` accepts the
+factories that build them, so a test or an embedding program can pass its
+own judge and never reach a network. The package exports `claudeCodeJudge`,
+`codexJudge`, and `kiroJudge`, each of which takes an `Exec` function that
+spawns the command, so a test passes a fake and no CLI runs.

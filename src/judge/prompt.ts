@@ -1,7 +1,7 @@
 import type { SourceFile } from "../files.ts";
 import type { JudgeRequest } from "./judge.ts";
 
-/** The prompt both providers send: the same words, whatever carries them. */
+/** The prompt every provider sends: the same words, whatever carries them. */
 export const SYSTEM_PROMPT = `You review one or more files against one written standard.
 
 Give the probability, from 0 to 1, that the files meet the standard. Judge
@@ -17,6 +17,12 @@ unless the files leave no doubt.
 
 In the reason, cite the evidence in one or two sentences, naming the file
 and quoting the relevant line when that helps the reader find it.`;
+
+/**
+ * How to answer, for a CLI with no structured-output flag: Claude Code and
+ * Codex take the answer schema as an argument, Kiro reads it here.
+ */
+export const ANSWER_INSTRUCTION = `Answer with one JSON object and nothing else, shaped like {"noul": <number from 0 to 1>, "reason": "<one or two sentences citing the evidence>"}.`;
 
 /** `File: <path>` and the content, one block per file, blank-line separated. */
 export function fileBlocks(files: SourceFile[]): string {

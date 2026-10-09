@@ -52,10 +52,11 @@ export {
   type Usage,
   type Verdict,
 } from "./judge/judge.ts";
-export { buildRequest, type CreateFn, messagesJudge, toVerdict } from "./judge/messages.ts";
 export { requestLabel } from "./judge/prompt.ts";
 export { defaultExec, type Exec } from "./judge/cli.ts";
 export { claudeArgs, claudeCodeJudge, toClaudeVerdict } from "./judge/claude-code.ts";
+export { codexArgs, codexJudge, codexPrompt, toCodexVerdict } from "./judge/codex.ts";
+export { kiroAgent, kiroArgs, kiroJudge, toKiroVerdict } from "./judge/kiro.ts";
 export { type Plan, plan, type PlanOptions, type PlanRule } from "./plan.ts";
 export { configJsonSchema, formatSchema, SCHEMA_URL } from "./schema.ts";
 export {

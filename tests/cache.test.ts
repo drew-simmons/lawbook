@@ -70,7 +70,7 @@ test("a changed file, standard, or model misses the cache", async () => {
     "rules:\n  - id: actionable-errors\n    files: ['**/*.ts']\n    standard: Errors say what to do\n",
   );
   expect((await run()).requests).toEqual(["a.ts"]);
-  await config(`llm:\n  model: anthropic.claude-sonnet-5-5\nrules:\n${STANDARD}`);
+  await config(`llm:\n  model: claude-sonnet-5-5\nrules:\n${STANDARD}`);
   expect((await run()).requests).toEqual(["a.ts"]);
   expect((await run()).requests).toEqual([]);
 });
@@ -88,7 +88,7 @@ test("the default cache dir is node_modules/.cache/lawbook under the root", asyn
 test("a corrupt cache entry is a miss and is rewritten", async () => {
   await config(`rules:\n${STANDARD}`);
   await write(dir(), "a.ts", "throw new Error('bad');\n");
-  const key = cacheKey("anthropic.claude-haiku-4-5", {
+  const key = cacheKey("claude-haiku-5-5", {
     standard: "Errors say what to do next",
     files: [{ path: "a.ts", content: "throw new Error('bad');\n" }],
   });

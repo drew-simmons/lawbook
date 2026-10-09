@@ -22,15 +22,14 @@ version: 1
 # Inside a git work tree, files .gitignore covers are left out. This is the default.
 # gitignore: true
 
-# The model that judges \`standard\` rules, with its defaults. The keys below
-# them have no default.
+# The CLI that judges \`standard\` rules, with its defaults. Each provider runs
+# the installed CLI, so its subscription pays. The key below them has no default.
 # llm:
-#   provider: bedrock           # bedrock | claude-code
-#   model: anthropic.claude-haiku-4-5   # the bedrock default; claude-code defaults to claude-haiku-5-5
+#   provider: claude-code       # claude-code | codex | kiro
+#   model: claude-haiku-5-5     # the claude-code default; codex and kiro need one
 #   concurrency: 4              # files judged at once
 #   maxBytes: 131072            # largest file sent to the model
 #   cache: true                 # reuse verdicts for unchanged files
-#   # region: us-west-2         # bedrock only; else AWS_REGION
 #   # maxRequests: 200          # stop before the first request when a run would exceed this
 
 rules:
@@ -72,8 +71,8 @@ rules:
   #   context: ["docs/style.md"]
   #   # Example files for \`lawbook test\`: ones that must pass, ones that must fail.
   #   fixtures: { pass: ["fixtures/good.ts"], fail: ["fixtures/bad.ts"] }
-  #   # A stronger model for this rule alone; provider and region work too.
-  #   llm: { model: anthropic.claude-sonnet-5 }
+  #   # A stronger model for this rule alone; provider works too.
+  #   llm: { model: claude-sonnet-5-5 }
 `;
 
 /** Writes `lawbook.yaml` into `root` and returns its path. */
