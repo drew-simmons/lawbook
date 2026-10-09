@@ -60,35 +60,29 @@ export const SCOPES = ["file", "set"] as const;
 export type Scope = (typeof SCOPES)[number];
 
 /**
- * `bedrock` calls Amazon Bedrock with AWS credentials. `claude-code` runs
- * the installed `claude` CLI, so the Claude subscription it is signed into
- * pays for the requests.
+ * Each provider runs the installed CLI of that name, so the subscription
+ * the CLI is signed into pays for the requests: `claude` for Claude Code,
+ * `codex` for Codex, `kiro-cli` for Kiro.
  */
-export const PROVIDERS = ["bedrock", "claude-code"] as const;
+export const PROVIDERS = ["claude-code", "codex", "kiro"] as const;
 
 export type Provider = (typeof PROVIDERS)[number];
 
 /**
- * The model each provider uses when the config names none. Bedrock's
- * Messages endpoint does not serve Haiku 5.5 yet (checked 8 October 2026),
- * so Bedrock stays on Haiku 4.5 until it does.
+ * The model each provider uses when the config names none. Codex and Kiro
+ * have none, so `model` is required under them; `kiro-cli chat
+ * --list-models` lists Kiro's.
  */
-export const DEFAULT_MODELS: Record<Provider, string> = {
-  bedrock: "anthropic.claude-haiku-4-5",
+export const DEFAULT_MODELS: Record<Provider, string | undefined> = {
   "claude-code": "claude-haiku-5-5",
+  codex: undefined,
+  kiro: undefined,
 };
-
-/** The `llm` keys that belong to one provider, and which. */
-const PROVIDER_KEYS = { region: "bedrock" } as const satisfies Record<string, Provider>;
-
-type ProviderKey = keyof typeof PROVIDER_KEYS;
 
 const llmSchema = z
   .object({
-    provider: z.enum(PROVIDERS).default("bedrock"),
+    provider: z.enum(PROVIDERS).default("claude-code"),
     model: text.optional(),
-    /** Bedrock only: the AWS region. */
-    region: text.optional(),
     /** How many files a `standard` rule judges at once. */
     concurrency: z.int().min(1).default(4),
     /** The largest file, in bytes, a `standard` rule sends to the model. */
@@ -99,28 +93,27 @@ const llmSchema = z
     maxRequests: z.int().min(0).optional(),
   })
   .strict()
-  .check((ctx) => {
-    for (const key of Object.keys(PROVIDER_KEYS) as ProviderKey[]) {
-      if (ctx.value[key] !== undefined && ctx.value.provider !== PROVIDER_KEYS[key]) {
-        ctx.issues.push({
-          code: "custom",
-          input: ctx.value,
-          path: [key],
-          message: `${key} applies to the ${PROVIDER_KEYS[key]} provider only`,
-        });
-      }
+  .transform((llm, ctx) => {
+    const model = llm.model ?? DEFAULT_MODELS[llm.provider];
+    if (model === undefined) {
+      ctx.issues.push({
+        code: "custom",
+        input: llm,
+        path: ["model"],
+        message: `set llm.model; the ${llm.provider} provider has no default`,
+      });
+      return z.NEVER;
     }
-  })
-  .transform((llm) => ({ ...llm, model: llm.model ?? DEFAULT_MODELS[llm.provider] }));
+    return { ...llm, model };
+  });
 
 export type LlmConfig = z.infer<typeof llmSchema>;
 
-/** What a `standard` rule may override in `llm`: which model answers it, and where. */
+/** What a `standard` rule may override in `llm`: which provider and model answer it. */
 const ruleLlmSchema = z
   .object({
     provider: z.enum(PROVIDERS).optional(),
     model: text.optional(),
-    region: text.optional(),
   })
   .strict();
 
@@ -152,8 +145,8 @@ export type RuleOf<K extends RuleKind> = Extract<Rule, { kind: K }>;
 
 /**
  * The run's `llm` with a rule's overrides on top. A rule that names another
- * provider starts from that provider's defaults, not the top-level model
- * or region, which belong to the top-level provider.
+ * provider starts from that provider's default model, not the top-level
+ * one, which belongs to the top-level provider.
  */
 function mergeLlm(top: LlmConfig, rule: RuleOf<"standard">): z.input<typeof llmSchema> {
   const override = rule.llm ?? {};
@@ -162,7 +155,6 @@ function mergeLlm(top: LlmConfig, rule: RuleOf<"standard">): z.input<typeof llmS
   return {
     provider,
     model: override.model ?? (same ? top.model : undefined),
-    region: override.region ?? (same ? top.region : undefined),
     concurrency: top.concurrency,
     maxBytes: top.maxBytes,
     cache: top.cache,
@@ -175,7 +167,7 @@ export function ruleLlm(top: LlmConfig, rule: RuleOf<"standard">): LlmConfig {
   return llmSchema.parse(mergeLlm(top, rule));
 }
 
-/** A rule's `llm` is checked merged, so a `region` under a `claude-code` override is caught at load time. */
+/** A rule's `llm` is checked merged, so a `codex` override without a model is caught at load time. */
 function assertRuleLlm(file: string, top: LlmConfig, rule: Rule): void {
   if (rule.kind !== "standard" || rule.llm === undefined) {
     return;

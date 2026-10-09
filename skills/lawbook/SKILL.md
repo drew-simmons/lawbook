@@ -95,14 +95,13 @@ should be left out, prefer the rule's `exclude` globs.
 
 ### Standard rules need a model
 
-`standard` rules call a provider: Amazon Bedrock by default (AWS credentials
-from the environment, or `AWS_BEARER_TOKEN_BEDROCK`), or `claude-code` when
-`llm.provider` says so, which runs the installed `claude` CLI, so the
-subscription it is signed into pays; `claude auth status` says whether one
-is. Before a run with `standard` rules, check which credentials the
-environment has. With none, run `check --no-llm` so the deterministic rules
-still run and say that the standards were skipped. Never put a key in
-`lawbook.yaml`; the file carries only the provider name, model, and region.
+`standard` rules run a CLI: `claude` by default, or `codex` or `kiro-cli`
+when `llm.provider` says so, so the subscription the CLI is signed into
+pays. `claude auth status`, `codex login status`, and `kiro-cli whoami` say
+whether one is. Before a run with `standard` rules, check that the CLI is
+installed and signed in. If not, run `check --no-llm` so the deterministic
+rules still run and say that the standards were skipped. Never put a key
+in `lawbook.yaml`; the file carries only the provider name and model.
 
 Before the first run of a new or widened `standard` rule, count the cost:
 
@@ -154,7 +153,7 @@ or `exclude` until the count is reasonable, and cap the run with
 # yaml-language-server: $schema=https://raw.githubusercontent.com/drew-simmons/lawbook/main/lawbook.schema.json
 version: 1
 llm:
-  provider: bedrock            # bedrock (default) | claude-code
+  provider: claude-code        # claude-code (default) | codex | kiro
   maxRequests: 200             # stop before the first request when a run would exceed this
 rules:
   - id: no-console
@@ -305,9 +304,9 @@ so edits elsewhere in a file do not resurface them, and each carries a
 - **A rule passes on a file that should fail**: check the globs with
   `--dry-run`; the file may be excluded, gitignored, binary, or over
   `llm.maxBytes` (listed as `skipped`).
-- **`ERROR <id>` with a credential or region message**: the provider, not
-  the code. Set the AWS credentials or `AWS_REGION`, run `claude auth login`
-  for `claude-code`, or run `--no-llm`.
+- **`ERROR <id>` with a login or "not installed" message**: the CLI, not
+  the code. Install it, run `claude auth login`, `codex login`, or
+  `kiro-cli login`, or run `--no-llm`.
 - **`over llm.maxRequests`**: narrow `files`, pass `--only`, or raise the
   cap deliberately.
 - **`--dry-run prints text or json, not github`**: the annotation formats

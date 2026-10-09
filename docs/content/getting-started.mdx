@@ -59,8 +59,9 @@ it could not run at all, so it works as a CI step without extra scripting:
 - run: npx lawbook check
 ```
 
-A config with `standard` rules needs provider credentials in that job, or
-`--no-llm` to report those rules as skipped; see [Providers](/providers).
+A config with `standard` rules needs the provider's CLI installed and signed
+in on that runner, or `--no-llm` to report those rules as skipped; see
+[Providers](/providers).
 
 On a pull request, check only the files the branch changed with
 `--since origin/main`, and in a pre-commit hook pass the staged files with

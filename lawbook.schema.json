@@ -44,18 +44,15 @@
       "type": "object",
       "properties": {
         "provider": {
-          "default": "bedrock",
+          "default": "claude-code",
           "type": "string",
           "enum": [
-            "bedrock",
-            "claude-code"
+            "claude-code",
+            "codex",
+            "kiro"
           ]
         },
         "model": {
-          "type": "string",
-          "minLength": 1
-        },
-        "region": {
           "type": "string",
           "minLength": 1
         },
@@ -324,15 +321,12 @@
                   "provider": {
                     "type": "string",
                     "enum": [
-                      "bedrock",
-                      "claude-code"
+                      "claude-code",
+                      "codex",
+                      "kiro"
                     ]
                   },
                   "model": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "region": {
                     "type": "string",
                     "minLength": 1
                   }

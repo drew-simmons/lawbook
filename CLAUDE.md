@@ -64,8 +64,8 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   table instead of a chain of `if`s. New rule kinds add a schema, a runner
   in `src/rules/`, and a table entry. A `standard` rule may carry its own
   `llm`; `ruleLlm` merges it over the top-level `llm` and `check` builds one
-  judge per distinct provider, model, and region, handed to rules by id
-  through `JudgeContext.judges`.
+  judge per distinct provider and model, handed to rules by id through
+  `JudgeContext.judges`.
 - `src/candidates.ts` turns `--files`, `--changed`, `--since`, and the
   `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
   which selects files the way `check` does but reads nothing and builds no
@@ -108,26 +108,26 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   sends every file in one request and gets one `decision`; the scope picks
   the runner, the guards, and the result shape through lookup tables. A
   `JudgeRequest` always carries `files`, one for `scope: file`, and carries
-  `context` only when the rule names reference files, which both prompt
-  builders append to the cached system prefix.
+  `context` only when the rule names reference files, which every adapter
+  appends to the system texts ahead of the files.
 - `src/judge/` holds the `Judge` interface and the answer schema in
-  `judge.ts`, the system prompt and prompt blocks both providers share in
-  `prompt.ts`, the Anthropic Messages exchange `messagesJudge` in
-  `messages.ts` (fully tested with a stub `create`), the Bedrock adapter,
-  which builds the Mantle client and maps its 404 for a dated model id to
-  one line of advice, the `claude-code` adapter, which spawns `claude -p`
-  once per request through the `Exec` function in `cli.ts` (tests pass a
-  fake) with the answer schema and reads the structured result back, and
-  `cache.ts`, a `Judge` wrapper that answers from
-  `node_modules/.cache/lawbook` when the hash of model, prompt, standard,
-  context, path, and content matches. Bedrock's Messages endpoint rejects
-  structured output, so `messages.ts` sends one `answer` tool with
-  `tool_choice: auto` and a trailing instruction block, placed after the
-  cache marker on the standard block so the prefix still caches, and reads
-  the verdict from the `tool_use` block. Every `Verdict` carries the
-  provider's token `usage`, summed per rule and in the summary.
-  `bedrock.ts` imports the SDK client lazily and stays at complexity 1,
-  since no test covers it. `run`
+  `judge.ts`, the system prompt and prompt blocks every provider shares in
+  `prompt.ts`, and one adapter per CLI, each spawning the command once per
+  request in an empty scratch directory through the `Exec` function and
+  `inScratchDir` in `cli.ts` (tests pass a fake `Exec`, so no test runs a
+  CLI): `claude-code.ts` runs `claude -p` with the answer schema as
+  `--json-schema` and reads `structured_output` from the JSON envelope;
+  `codex.ts` runs `codex exec` with the schema in a file, reads the answer
+  file it writes, and the token counts from the `--json` events; `kiro.ts`
+  writes a workspace agent file holding the prompt with no tools, runs
+  `kiro-cli chat --no-interactive --output-format stream-json`, and parses
+  the JSON object out of the `runFinished` event's `finalText`, since Kiro
+  has no schema or system-prompt flag; `ANSWER_INSTRUCTION` in `prompt.ts`
+  is the sentence that asks it for JSON. `cache.ts` is a `Judge` wrapper
+  that answers from `node_modules/.cache/lawbook` when the hash of model,
+  prompt, standard, context, path, and content matches. Every `Verdict`
+  carries the provider's token `usage`, summed per rule and in the summary;
+  Kiro meters credits, so its usage is `NO_USAGE`. `run`
   takes the factories as its `deps` argument; tests inject fakes. The judge
   returns a `Verdict`: a noul decision in the Jev decision schema plus a
   reason; `src/rules/llm.ts` compares the probability to the rule's
