@@ -313,6 +313,35 @@ test("a file over llm.maxBytes is skipped without a request", async () => {
   });
 });
 
+test("a blank file is left out without a request or a skipped entry", async () => {
+  await config(`rules:\n${STANDARD}`);
+  await write(dir(), "a.ts", "const a = 1;\n");
+  await write(dir(), "empty.ts", "");
+  await write(dir(), "spaces.ts", " \n\t\n");
+  const fake = fakeJudge();
+  const result = await lawbookWith(fake.deps, "check", dir(), "--format", "json");
+  expect(fake.requests.map(requestKey)).toEqual(["a.ts"]);
+  const report = JSON.parse(result.stdout);
+  expect(report.results[0]).toEqual({
+    id: "actionable-errors",
+    kind: "standard",
+    level: "error",
+    status: "pass",
+    findings: [],
+    decisions: { "a.ts": { type: "noul", noul: 1 } },
+    usage: usageTotals(1),
+  });
+  expect(report.summary.usage.requests).toBe(1);
+});
+
+test("a blank file still reaches the deterministic rules", async () => {
+  await config("rules:\n  - id: header\n    files: ['**/*.ts']\n    require: '^// '\n");
+  await write(dir(), "empty.ts", "");
+  const result = await lawbook("check", dir());
+  expect(result.code).toBe(1);
+  expect(result.stdout).toContain("FAIL header\n  empty.ts: does not match /^// /\n");
+});
+
 test("llm.maxBytes leaves deterministic rules alone", async () => {
   await config(
     "llm:\n  maxBytes: 1\nrules:\n  - id: no-todo\n    files: ['**/*.ts']\n    forbid: TODO\n",

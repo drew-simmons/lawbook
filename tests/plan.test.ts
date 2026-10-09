@@ -89,6 +89,31 @@ test("--dry-run lists a binary file, since nothing is read", async () => {
   expect(result.stdout).toContain("  x.bin\n");
 });
 
+test("--dry-run leaves an empty file out of a standard rule only", async () => {
+  await config();
+  await write(dir(), "src/__init__.ts", "");
+  const result = await lawbook(
+    "check",
+    dir(),
+    "--dry-run",
+    "--only",
+    "no-todo",
+    "actionable-errors",
+  );
+  expect(result.stdout).toBe(
+    "PLAN no-todo (forbid, 3 files)\n  src/__init__.ts\n  src/a.ts\n  src/b.ts\nPLAN actionable-errors (standard, 2 files)\n  src/a.ts\n  src/b.ts\n\n3 files, 2 model requests\n",
+  );
+});
+
+test("--dry-run lists a whitespace-only file, since nothing is read", async () => {
+  await config();
+  await write(dir(), "src/blank.ts", "\n");
+  const result = await lawbook("check", dir(), "--dry-run", "--only", "actionable-errors");
+  expect(result.stdout).toBe(
+    "PLAN actionable-errors (standard, 3 files)\n  src/a.ts\n  src/b.ts\n  src/blank.ts\n\n3 files, 3 model requests\n",
+  );
+});
+
 test("--dry-run with an annotation format exits two", async () => {
   await config();
   const result = await lawbook("check", dir(), "--dry-run", "--format", "github");

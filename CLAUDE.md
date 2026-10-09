@@ -69,7 +69,7 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
 - `src/candidates.ts` turns `--files`, `--changed`, `--since`, and the
   `.gitignore` listing into the candidate set; `src/plan.ts` is `--dry-run`,
   which selects files the way `check` does but reads nothing and builds no
-  judge.
+  judge; it stats a `standard` rule's files to leave out empty ones.
 - `src/schema.ts` turns `configSchema` into the JSON Schema `lawbook schema`
   prints. `lawbook.schema.json` at the repo root is that output, committed
   for editors and shipped in the package; `pnpm run schema` regenerates it
@@ -103,7 +103,8 @@ under `src/` that take plain data. tsdown bundles `src/bin.ts` and
   from `src/result.ts`. `src/rules/llm.ts` implements `standard` through a
   `Judge`, and skips when the context has none (`--no-llm`). It judges up
   to `llm.concurrency` files at once through `mapLimit` in `src/pool.ts`,
-  which keeps results in input order, and lists files over `llm.maxBytes`
+  which keeps results in input order, drops blank files (empty or only
+  whitespace) unlisted, and lists files over `llm.maxBytes`
   under `RuleResult.skipped` instead of sending them. A `scope: set` rule
   sends every file in one request and gets one `decision`; the scope picks
   the runner, the guards, and the result shape through lookup tables. A

@@ -95,10 +95,13 @@ runs on `push` needs another ref there.
 `--dry-run` shows what a run would look at before it looks. Each rule lists
 the files its globs select, after `ignore`, `exclude`, `.gitignore`, and any
 `--files`, `--changed`, or `--since` selector; `exists` and `absent` list
-their paths and globs as written, since nothing is read. The last line counts the distinct files and the model
-requests: one per selected file of a `standard` rule, one for a `scope: set`
-rule with any files, or none under `--no-llm`. Nothing is read, so binary and oversize files still appear, and
-no provider client is built.
+their paths and globs as written, since nothing is read. A `standard` rule
+leaves out empty files, which it tells by size alone, since `check` never
+sends them. The last line counts the distinct files and the model
+requests: one per listed file of a `standard` rule, one for a `scope: set`
+rule with any files, or none under `--no-llm`. Nothing is read, so binary,
+oversize, and whitespace-only files still appear, and no provider client is
+built.
 
 ```txt
 PLAN no-console (forbid, 2 files)

@@ -19,8 +19,9 @@ export function parseCount(flag: string, value: string): number {
 /**
  * Stops the run before any client is built when the plan would make more
  * model requests than `limit`. The count is the plan's: every selected file
- * of a `standard` rule, before the cache or the size and suppression guards
- * take any away, so it is an upper bound.
+ * of a `standard` rule but the empty ones, before the cache, the size and
+ * suppression guards, or the whitespace and binary checks take any away, so
+ * it is an upper bound.
  */
 export async function assertWithinBudget(options: PlanOptions, limit: number): Promise<void> {
   const { requests } = await plan(options);
