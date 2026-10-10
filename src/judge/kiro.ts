@@ -155,7 +155,7 @@ export function kiroJudge(model: string, exec: Exec = defaultExec): Judge {
         const { stdout } = await exec(
           KIRO_COMMAND,
           kiroArgs(model),
-          fileBlocks(request.files),
+          fileBlocks(request.files, request.changed),
           dir,
         ).catch(translateKiroError);
         return toKiroVerdict(stdout, requestLabel(request));

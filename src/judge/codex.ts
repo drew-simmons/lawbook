@@ -64,7 +64,7 @@ export function codexArgs(model: string, dir: string): string[] {
 
 /** `codex exec` takes one prompt, so the system texts come first, then the files. */
 export function codexPrompt(request: JudgeRequest): string {
-  return [...systemTexts(request), fileBlocks(request.files)].join("\n\n");
+  return [...systemTexts(request), fileBlocks(request.files, request.changed)].join("\n\n");
 }
 
 /** The lines of stdout that parse as events; anything else is noise. */

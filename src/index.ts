@@ -52,7 +52,16 @@ export {
   type Usage,
   type Verdict,
 } from "./judge/judge.ts";
-export { requestLabel } from "./judge/prompt.ts";
+export { CHANGED_LINES_PROMPT, fileBlocks, requestLabel, systemTexts } from "./judge/prompt.ts";
+export {
+  type ChangedLines,
+  type ChangeMap,
+  formatRanges,
+  inRanges,
+  isChanged,
+  type LineRange,
+  parseHunks,
+} from "./lines.ts";
 export { defaultExec, type Exec } from "./judge/cli.ts";
 export { claudeArgs, claudeCodeJudge, toClaudeVerdict } from "./judge/claude-code.ts";
 export { codexArgs, codexJudge, codexPrompt, toCodexVerdict } from "./judge/codex.ts";

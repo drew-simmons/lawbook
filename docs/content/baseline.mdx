@@ -74,3 +74,9 @@ slipped in.
 The path given to `--baseline` is relative to the current directory, like
 `--config`. A missing or invalid file is an error with exit code `2`, as is
 `--update-baseline` without `--baseline`.
+
+A baseline answers a snapshot question: which findings were already there
+when the rule was adopted. A gate that runs per change asks a different one,
+whether the change lowered the bar, and `--changed-lines` answers it without
+a file to refresh: a `standard` rule judges only the lines `--since` or
+`--changed` touched. See [Changed lines](/llm-rules#changed-lines).

@@ -13,7 +13,14 @@ import {
 } from "../src/judge/codex.ts";
 import { answerJsonSchema, NO_USAGE, parseAnswer } from "../src/judge/judge.ts";
 import { AGENT_FILE, kiroAgent, kiroArgs, kiroEvents, kiroJudge } from "../src/judge/kiro.ts";
-import { ANSWER_INSTRUCTION, contextBlock, SYSTEM_PROMPT } from "../src/judge/prompt.ts";
+import {
+  ANSWER_INSTRUCTION,
+  CHANGED_LINES_PROMPT,
+  contextBlock,
+  fileBlocks,
+  SYSTEM_PROMPT,
+  systemTexts,
+} from "../src/judge/prompt.ts";
 import { useTempDir } from "./helpers.ts";
 
 const dir = useTempDir();
@@ -86,6 +93,40 @@ function claudeEnvelope(fields: Record<string, unknown>): string {
 test("answerJsonSchema describes the answer and drops the $schema key", () => {
   expect(answerJsonSchema()).toMatchObject(ANSWER_SCHEMA);
   expect(answerJsonSchema()).not.toHaveProperty("$schema");
+  expect(answerJsonSchema()).toMatchObject({ properties: { line: { type: "number" } } });
+});
+
+test("parseAnswer carries the line the model gives and leaves it out otherwise", () => {
+  expect(parseAnswer({ noul: 0.2, reason: "r", line: 7 }, "a.ts")).toEqual({
+    decision: { type: "noul", noul: 0.2 },
+    reason: "r",
+    line: 7,
+  });
+  expect(parseAnswer({ noul: 0.2, reason: "r" }, "a.ts")).toEqual({
+    decision: { type: "noul", noul: 0.2 },
+    reason: "r",
+  });
+});
+
+const CHANGED_REQUEST = {
+  standard: "Errors are actionable",
+  files: [
+    { path: "a.ts", content: "const a = 1;\nconst b = 2;\n" },
+    { path: "b.ts", content: "const c = 1;\n" },
+  ],
+  changed: { "a.ts": [{ start: 2, end: 2 }] },
+};
+
+test("a request with changed lines numbers those files, names their lines, and adds the instruction", () => {
+  expect(fileBlocks(CHANGED_REQUEST.files, CHANGED_REQUEST.changed)).toBe(
+    "File: a.ts\nChanged lines: 2\n\n1 | const a = 1;\n2 | const b = 2;\n\nFile: b.ts\n\nconst c = 1;\n",
+  );
+  expect(systemTexts(CHANGED_REQUEST)).toEqual([
+    SYSTEM_PROMPT,
+    "Standard:\nErrors are actionable",
+    CHANGED_LINES_PROMPT,
+  ]);
+  expect(systemTexts(REQUEST)).toEqual([SYSTEM_PROMPT, "Standard:\nErrors are actionable"]);
 });
 
 test("claudeCodeJudge runs claude -p with the schema, the system file, no tools, and the files on stdin", async () => {

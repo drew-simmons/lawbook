@@ -2,6 +2,7 @@ import type { RuleOf, Scope } from "../config.ts";
 import { CliError, cliErrorMessage } from "../errors.ts";
 import { isBlank, readSourceFile, type SourceFile } from "../files.ts";
 import type { Judge, JudgeRequest, Verdict } from "../judge/judge.ts";
+import { type ChangeMap, inRanges, isChanged, type LineRange, rangesOf } from "../lines.ts";
 import { mapLimit } from "../pool.ts";
 import {
   addTotals,
@@ -47,15 +48,33 @@ interface Halt {
   stopped: boolean;
 }
 
-/** What every request of a rule carries besides the files: the standard and its reference material. */
+/** What every request of a rule carries besides the files: the standard, its reference material, and the lines to judge. */
 export interface Ask {
   standard: string;
   context: SourceFile[];
+  /** The lines the change touched, by path, when the run judges only those. */
+  changed?: ChangeMap;
 }
 
-/** The request for these files; `context` is left out when the rule has none, so requests stay small. */
+/** The lines to judge in each of these files, with a file changed in full given as one range; nothing when the run judges whole files. */
+function changedFor(ask: Ask, files: SourceFile[]): Record<string, LineRange[]> | undefined {
+  const { changed } = ask;
+  return changed === undefined
+    ? undefined
+    : Object.fromEntries(
+        files.map((file) => [file.path, rangesOf(changed.get(file.path) ?? [], file.content)]),
+      );
+}
+
+/** The request for these files; `context` and `changed` are left out when the rule has none, so requests stay small. */
 export function requestFor(ask: Ask, files: SourceFile[]): JudgeRequest {
-  return ask.context.length === 0 ? { standard: ask.standard, files } : { ...ask, files };
+  const changed = changedFor(ask, files);
+  return {
+    standard: ask.standard,
+    files,
+    ...(ask.context.length === 0 ? {} : { context: ask.context }),
+    ...(changed === undefined ? {} : { changed }),
+  };
 }
 
 /** A context file that cannot be read or is binary stops the run; a reference the model never sees is a config error. */
@@ -67,10 +86,15 @@ async function readContextFile(rule: RuleOf<"standard">, ctx: RuleContext, file:
   return read;
 }
 
-/** The rule's reference files, read once per rule and sent with every request. */
+/** The rule's reference files, read once per rule and sent with every request, and the changed lines when the run scopes to them. */
 export async function askFor(rule: RuleOf<"standard">, ctx: RuleContext): Promise<Ask> {
   const context = await Promise.all(rule.context.map((file) => readContextFile(rule, ctx, file)));
-  return { standard: rule.standard, context };
+  const { changedLines } = ctx;
+  return {
+    standard: rule.standard,
+    context,
+    ...(changedLines === undefined ? {} : { changed: changedLines }),
+  };
 }
 
 /** The skip entry for a file too large to send, else nothing. */
@@ -97,10 +121,10 @@ const GUARDS: Record<Scope, Guard> = {
   set: (file, rule) => suppressionSkip(file, rule.id),
 };
 
-/** The selected files with something to judge; a blank file, like a binary one, is left out unlisted and costs no request. */
+/** The selected files with something to judge; a blank file, like a binary one or one the change left alone, is left out unlisted and costs no request. */
 async function readJudgeable(rule: RuleOf<"standard">, ctx: RuleContext): Promise<SourceFile[]> {
   const files = await readSelected(rule, ctx);
-  return files.filter((file) => !isBlank(file.content));
+  return files.filter((file) => !isBlank(file.content) && isChanged(ctx.changedLines, file.path));
 }
 
 /** Splits the files into those the judge sees and those left out, with the first reason that applies. */
@@ -199,13 +223,44 @@ function explanation(
   return ctx.explain === true ? EXPLAIN[rule.scope](passing) : {};
 }
 
+/** The line a file's verdict cites, kept only when the request numbered the lines, so the number is one the model read. */
+function lineAt(outcome: Judged, numbered: boolean): { line?: number } {
+  const { line } = outcome.verdict;
+  return numbered && outcome.path !== undefined && line !== undefined ? { line } : {};
+}
+
 /** The error as a finding, or a finding when the probability falls below the threshold. */
-function outcomeFindings(outcome: Outcome, threshold: number): Finding[] {
+function outcomeFindings(outcome: Outcome, threshold: number, numbered: boolean): Finding[] {
   if ("error" in outcome) {
     return [{ ...at(outcome.path), message: outcome.error }];
   }
   const { decision, reason } = outcome.verdict;
-  return decision.noul < threshold ? [{ ...at(outcome.path), message: reason, decision }] : [];
+  return decision.noul < threshold
+    ? [{ ...at(outcome.path), ...lineAt(outcome, numbered), message: reason, decision }]
+    : [];
+}
+
+/** Whether the finding cites a line the change did not touch; one with no line, or on a file changed in full, stays. */
+function isOutside(finding: Finding, changed: ChangeMap | undefined): boolean {
+  const lines = finding.path === undefined ? undefined : changed?.get(finding.path);
+  return (
+    lines !== undefined &&
+    lines !== "all" &&
+    finding.line !== undefined &&
+    !inRanges(lines, finding.line)
+  );
+}
+
+/** Every outcome's findings but those outside the change, with how many were left out. */
+function changeFindings(
+  rule: RuleOf<"standard">,
+  outcomes: Outcome[],
+  ctx: JudgeContext,
+): { findings: Finding[]; outside: number } {
+  const numbered = ctx.changedLines !== undefined;
+  const all = outcomes.flatMap((outcome) => outcomeFindings(outcome, rule.threshold, numbered));
+  const findings = all.filter((finding) => !isOutside(finding, ctx.changedLines));
+  return { findings, outside: all.length - findings.length };
 }
 
 /** One verdict's share of the totals: a provider call, or a cache hit that cost nothing. */
@@ -221,7 +276,7 @@ function judgedResult(
   skipped: Skipped[],
   ctx: JudgeContext,
 ): RuleResult {
-  const findings = outcomes.flatMap((outcome) => outcomeFindings(outcome, rule.threshold));
+  const { findings, outside } = changeFindings(rule, outcomes, ctx);
   const judged = outcomes.flatMap((outcome) => ("verdict" in outcome ? [outcome] : []));
   const usage = judged.reduce(
     (total, outcome) => addTotals(total, usageOf(outcome.verdict)),
@@ -232,6 +287,7 @@ function judgedResult(
     ...FINISH[rule.scope](judged),
     ...explanation(rule, judged, ctx),
     usage,
+    ...(outside === 0 ? {} : { outside }),
   };
   const result = withSkipped(shaped, skipped);
   return judged.length === outcomes.length ? result : { ...result, status: "error" };

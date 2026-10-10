@@ -29,6 +29,8 @@ export interface CheckOptions {
   changed?: boolean;
   /** Check only files committed since the merge base with this ref. */
   since?: string;
+  /** Judge only the lines `changed` or `since` touched in each file of a `standard` rule; the rest is reference. */
+  changedLines?: boolean;
   /** `false` asks the model even when a cached verdict exists. */
   cache?: boolean;
   /** Where verdicts are cached; default `node_modules/.cache/lawbook` under the root. */

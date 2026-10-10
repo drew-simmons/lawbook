@@ -9,11 +9,15 @@ import { SYSTEM_PROMPT } from "./prompt.ts";
 /** Where verdicts are cached, relative to the checked directory. */
 export const DEFAULT_CACHE_DIR = "node_modules/.cache/lawbook";
 
-const entrySchema = z.object({ decision: decisionSchema, reason: z.string() });
+const entrySchema = z.object({
+  decision: decisionSchema,
+  reason: z.string(),
+  line: z.number().optional(),
+});
 
 type Entry = z.infer<typeof entrySchema>;
 
-/** Everything a verdict depends on, hashed: a change to any of it is a miss. */
+/** Everything a verdict depends on, hashed: a change to any of it is a miss. Changed lines count only when there are any, so other keys stay as they were. */
 export function cacheKey(model: string, request: JudgeRequest): string {
   const fields = {
     model,
@@ -21,6 +25,7 @@ export function cacheKey(model: string, request: JudgeRequest): string {
     standard: request.standard,
     files: request.files,
     context: request.context ?? [],
+    ...(request.changed === undefined ? {} : { changed: request.changed }),
   };
   return createHash("sha256").update(JSON.stringify(fields)).digest("hex");
 }
@@ -58,7 +63,8 @@ export function cachedJudge(inner: Judge, dir: string, model: string): Judge {
         return { ...hit, usage: NO_USAGE, cached: true };
       }
       const verdict = await inner.judge(request);
-      await writeEntry(dir, file, { decision: verdict.decision, reason: verdict.reason });
+      const { decision, reason, line } = verdict;
+      await writeEntry(dir, file, { decision, reason, ...(line === undefined ? {} : { line }) });
       return verdict;
     },
   };

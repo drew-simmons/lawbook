@@ -29,6 +29,7 @@ line per rule followed by a summary.
 | `--files <paths...>`    | Check only these files. Paths are relative to the current directory, or absolute, like `root` itself. |
 | `--changed`             | Check only files changed in the working tree against `HEAD`: staged, unstaged, and untracked. |
 | `--since <ref>`         | Check only files committed since the merge base with `ref`, as `git diff <ref>...HEAD` lists them. |
+| `--changed-lines`       | Judge `standard` rules on the lines `--changed` or `--since` touched, with the rest of each file as reference, and drop findings on untouched lines. Needs one of those selectors. See [LLM rules](/llm-rules#changed-lines). |
 | `--baseline <file>`     | Hide the findings this file records; see [Baseline](/baseline). Relative to the current directory. |
 | `--update-baseline`     | Write this run's findings to the `--baseline` file, then report with them hidden. |
 | `--dry-run`             | List the files each rule would check and how many model requests the run would make, then exit `0` without reading a file or building a client. Text or JSON only. |
@@ -50,6 +51,12 @@ select no candidate passes.
 and `ref` must resolve, else `check` exits `2` with git's message. Paths git
 reports are rebased onto `root`, so a `root` below the repository's top
 level works and changes outside it are dropped.
+
+`--changed-lines` narrows what a `standard` rule judges within each selected
+file, not only which files it sees: the model judges the lines the change
+touched and reads the rest as reference, and a finding on an untouched line
+is dropped and counted. It needs `--changed` or `--since` to say what
+changed, else `check` exits `2`. See [Changed lines](/llm-rules#changed-lines).
 
 `--files` and `--only` take lists, so put `root` before them. The repository
 defines [pre-commit](https://pre-commit.com) hooks that append the staged
@@ -84,11 +91,12 @@ A CI job on a pull request checks only what the branch changed:
 - uses: actions/checkout@v5
   with:
     fetch-depth: 0
-- run: npx lawbook check --since origin/${{ github.base_ref }}
+- run: npx lawbook check --since origin/${{ github.base_ref }} --changed-lines
 ```
 
 `github.base_ref` is set on `pull_request` events only; a job that also
-runs on `push` needs another ref there.
+runs on `push` needs another ref there. `--changed-lines` keeps a finding on
+a line the pull request never touched from failing it.
 
 ### Dry run
 
@@ -97,7 +105,7 @@ the files its globs select, after `ignore`, `exclude`, `.gitignore`, and any
 `--files`, `--changed`, or `--since` selector; `exists` and `absent` list
 their paths and globs as written, since nothing is read. A `standard` rule
 leaves out empty files, which it tells by size alone, since `check` never
-sends them. The last line counts the distinct files and the model
+sends them, and under `--changed-lines` the files with no changed lines. The last line counts the distinct files and the model
 requests: one per listed file of a `standard` rule, one for a `scope: set`
 rule with any files, or none under `--no-llm`. Nothing is read, so binary,
 oversize, and whitespace-only files still appear, and no provider client is

@@ -39,6 +39,7 @@ lawbook check --no-llm        # deterministic rules only, no credentials needed
 lawbook check --only no-console has-readme
 lawbook check --changed       # staged, unstaged, and untracked files only
 lawbook check --since origin/main
+lawbook check --since origin/main --changed-lines  # judge only the lines the change touched
 lawbook check --format json   # for parsing; also github, sarif, gitlab
 ```
 
@@ -142,9 +143,10 @@ or `exclude` until the count is reasonable, and cap the run with
 6. **Give new standards `level: warn`** until their wording settles, so CI
    stays green while the team reads the findings. Drop the `level` once
    the rule is trusted.
-7. **Hand it to CI.** On a pull request, `lawbook check --since origin/main`
-   judges only the files the branch changed. A pre-commit hook passes the
-   staged files with `--files`. See `references/config.md` for the GitHub,
+7. **Hand it to CI.** On a pull request, `lawbook check --since origin/main
+   --changed-lines` judges only the lines the branch changed, with the rest
+   of each file as reference, so old code in a touched file cannot fail the
+   run. A pre-commit hook passes the staged files with `--files`. See `references/config.md` for the GitHub,
    GitLab, and pre-commit snippets.
 
 ### The shape of the file

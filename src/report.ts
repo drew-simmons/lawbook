@@ -71,8 +71,16 @@ function resultLines(result: RuleResult): string[] {
     ...findings,
     ...reasonLines(result),
     ...baselinedLine(result),
+    ...outsideLine(result),
     ...skipped,
   ];
+}
+
+/** `  2 findings outside the change` when `--changed-lines` dropped any. */
+function outsideLine(result: RuleResult): string[] {
+  return result.outside === undefined
+    ? []
+    : [`  ${count(result.outside, "finding")} outside the change`];
 }
 
 /** `  2 findings in baseline` when the baseline hid any. */
