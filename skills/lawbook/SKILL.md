@@ -300,6 +300,27 @@ run's findings rather than merging. Entries are keyed without line numbers,
 so edits elsewhere in a file do not resurface them, and each carries a
 `count`, so a second `console.log` in a file that had one still fails.
 
+## Gating a change
+
+A gate that runs per change asks whether the change lowered the bar, not
+whether the files it touched were already clean. `--since` and `--changed`
+pick the files, but a `standard` rule still judges each one in full, so a
+one-line fix to an old file fails on the old lines around it, and rewriting
+those to get green is scope creep. `--changed-lines` scopes the verdict:
+
+```sh
+lawbook check --since origin/main --changed-lines   # the commits since the merge base
+lawbook check --changed --changed-lines             # the working tree against HEAD
+```
+
+The model still reads the whole file, with its lines numbered and the
+changed ones named, and judges only those. A finding whose cited line lies
+outside the change is dropped and listed as `N findings outside the change`
+(`outside` in JSON), and a selected file with no changed lines costs no
+request. The flag needs `--changed` or `--since`, else exit `2`; `forbid`,
+`require`, `exists`, and `absent` are unchanged. Use it for a per-change
+gate and keep the baseline for adopting a rule on an old codebase.
+
 ## Things that go wrong
 
 - **`error: no lawbook.yaml, lawbook.yml, lawbook.json found`**: run from
@@ -314,5 +335,10 @@ so edits elsewhere in a file do not resurface them, and each carries a
   cap deliberately.
 - **`--dry-run prints text or json, not github`**: the annotation formats
   have nothing to annotate without a run.
+- **A `standard` fails on a line the change never touched**: add
+  `--changed-lines` to the `--since` or `--changed` run. Do not rewrite the
+  untouched line to get green.
+- **`--changed-lines needs --changed or --since`**: there is no change to
+  scope to. Add the selector, or drop the flag for a whole-repository run.
 - **`--files` or `--only` swallow the root**: both take lists, so put the
   root before them: `lawbook check . --files a.ts b.ts`.
