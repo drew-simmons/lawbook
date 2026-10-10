@@ -33,8 +33,11 @@ FAIL errors-are-actionable
 ## What the model sees
 
 For each file, one request carries a fixed system prompt, the standard, the
-file's path, and its full content. The model answers with structured JSON,
-`{ "noul": number, "reason": string }`, so there is nothing to parse from
+file's path, and its full content; under `--changed-lines` the content comes
+with its lines numbered and the changed ones named, see [Changed
+lines](#changed-lines). The model answers with structured JSON,
+`{ "noul": number, "reason": string }`, plus a `line` when the lines are
+numbered and one shows the shortfall, so there is nothing to parse from
 prose. The system prompt tells the model to judge only what the standard
 says, to treat files the standard does not apply to as meeting it, to
 calibrate the number so that `0.5` means the file gives no way to tell, and
@@ -198,6 +201,52 @@ error with exit code `2` before any request is made. They are not counted
 against `llm.maxBytes`, since the author chose them, and `--dry-run` does not
 list them. A changed reference file changes every verdict's
 [cache key](#verdict-cache), so the rule is judged again.
+
+## Changed lines
+
+`--since` and `--changed` pick the files a change touched, but a `standard`
+rule still judges each of them in full, so a one-line change to an old file
+is judged on every line of it, and a finding on code the change never
+touched fails the run. `--changed-lines` scopes the verdict to the change:
+
+```sh
+lawbook check --since origin/main --changed-lines
+```
+
+For each selected file, lawbook takes the added and modified lines from the
+same diff the selector runs: the commits since the merge base for `--since`,
+the working tree against `HEAD` for `--changed`, and the working tree against
+the merge base when both are given. An untracked file counts as changed in
+full. The request carries the whole file with every line numbered and the
+changed lines named, and the model is told to judge those lines and to read
+the rest as reference material, the way it reads [reference
+files](#reference-files). Its answer may name the line that shows the
+shortfall. A finding whose line lies outside the change is dropped and does
+not count against the rule; the text output says `2 findings outside the
+change` under the rule, and JSON carries the count as `outside` on the rule
+and in the summary. A finding that names no line stays.
+
+```txt
+PASS tests-describe-behavior
+  1 finding outside the change
+
+1 passed, 0 failed, 0 warned, 0 errored, 0 skipped
+```
+
+A selected file with no changed lines, such as a mode change, or one named
+by `--files` that the change left alone, costs no request and is left out
+the way [empty files](#empty-files) are; `--dry-run` leaves it out too. A
+`scope: set` rule sends the changed files with their lines in its one
+request. The ranges are part of the [cache key](#verdict-cache), so a verdict
+scoped to one change never answers for another or for the whole file.
+`forbid`, `require`, `exists`, and `absent` are unchanged: `forbid` already
+reports one line, and `require` asks about the file as a whole.
+
+Without `--changed` or `--since` there is no change to scope to, so
+`--changed-lines` alone exits `2`. A [baseline](/baseline) still fits a rule
+adopted on an old codebase, where every file carries old findings;
+`--changed-lines` answers the per-change question, whether this change
+lowered the bar, without a file to maintain.
 
 ## Per-rule model
 

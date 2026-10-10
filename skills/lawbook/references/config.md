@@ -225,6 +225,7 @@ commented examples of the rest.
 | `--files <paths...>` | Check only these files. Paths are relative to the current directory or absolute. |
 | `--changed` | Only files changed in the working tree against `HEAD`: staged, unstaged, untracked. |
 | `--since <ref>` | Only files committed since the merge base with `ref` (`git diff <ref>...HEAD`). |
+| `--changed-lines` | Judge `standard` rules on the lines `--changed` or `--since` touched; the rest of each file is reference, and a finding on an untouched line is dropped and counted (`outside`). Needs one of those selectors, else exit `2`. Files with no changed lines cost no request. |
 | `--baseline <file>` | Hide the findings this file records. Relative to the current directory. |
 | `--update-baseline` | Write this run's findings to the `--baseline` file, then report with them hidden. |
 | `--dry-run` | List the files each rule would check and the request count, exit `0`, read nothing, build no client. A `standard` rule leaves out empty files, told by size. Text or JSON only. |
@@ -445,4 +446,4 @@ so unchanged files cost no request.
 | --- | --- |
 | `0` | Every rule passed, was skipped, or had only `warn` or baselined findings. For `test`, every fixture landed on its side. |
 | `1` | A `level: error` rule has a finding the baseline does not hide, or a fixture is misclassified. Findings print on stdout; stderr is empty. |
-| `2` | Lawbook could not do what was asked: bad usage, a missing or invalid config, an invalid pattern, an unknown `--only` id, a bad baseline, `--changed` or `--since` outside git, a run over `llm.maxRequests`, or a provider that could not be reached or gave no verdict. Config and usage errors print one `error:` line on stderr and no report; a provider error during a rule still prints the report with the rule as `ERROR`. |
+| `2` | Lawbook could not do what was asked: bad usage, a missing or invalid config, an invalid pattern, an unknown `--only` id, a bad baseline, `--changed` or `--since` outside git, `--changed-lines` without either, a run over `llm.maxRequests`, or a provider that could not be reached or gave no verdict. Config and usage errors print one `error:` line on stderr and no report; a provider error during a rule still prints the report with the rule as `ERROR`. |

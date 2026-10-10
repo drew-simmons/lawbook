@@ -2,6 +2,7 @@ import { selectionFor } from "./candidates.ts";
 import { filterOnly } from "./check.ts";
 import type { Config, Level, Rule, RuleKind, RuleOf, Scope } from "./config.ts";
 import { withoutEmpty } from "./files.ts";
+import { isChanged } from "./lines.ts";
 import { type RuleContext, selectRuleFiles } from "./rules/deterministic.ts";
 
 /** What `check` would look at for one rule, without reading anything. */
@@ -28,13 +29,18 @@ export interface PlanOptions {
   files?: string[];
   changed?: boolean;
   since?: string;
+  changedLines?: boolean;
 }
 
 type Paths<K extends RuleKind> = (rule: RuleOf<K>, ctx: RuleContext) => Promise<string[]>;
 
-/** What a `standard` rule selects but the empty files, which `check` never sends. */
+/** What a `standard` rule selects but the empty files, and the unchanged ones under `changedLines`, which `check` never sends. */
 async function judgeablePaths(rule: RuleOf<"standard">, ctx: RuleContext): Promise<string[]> {
-  return withoutEmpty(ctx.root, await selectRuleFiles(rule, ctx));
+  const selected = await selectRuleFiles(rule, ctx);
+  return withoutEmpty(
+    ctx.root,
+    selected.filter((file) => isChanged(ctx.changedLines, file)),
+  );
 }
 
 /**

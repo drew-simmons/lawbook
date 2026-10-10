@@ -132,7 +132,7 @@ export function claudeCodeJudge(model: string, exec: Exec = defaultExec): Judge 
         const { stdout } = await exec(
           CLAUDE_COMMAND,
           claudeArgs(model, systemFile),
-          fileBlocks(request.files),
+          fileBlocks(request.files, request.changed),
           dir,
         ).catch(translateClaudeError);
         return toClaudeVerdict(stdout, requestLabel(request));

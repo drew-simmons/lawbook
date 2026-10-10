@@ -121,8 +121,9 @@ that must be met beyond doubt, lower it to flag only clear violations.
 # `lawbook/examples/clean-code.lawbook.yaml`. The file globs cover the common
 # languages; narrow them to yours. Each `standard` rule is one model request
 # per selected file, so on a pull request run `lawbook check --since
-# origin/main`, and on an old codebase start with `lawbook check
-# --update-baseline` so only new findings fail.
+# origin/main --changed-lines` to judge only the lines the branch touched,
+# and on an old codebase start with `lawbook check --update-baseline` so
+# only new findings fail.
 # Format reference: https://drew-simmons.github.io/lawbook/configuration
 version: 1
 

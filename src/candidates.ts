@@ -1,5 +1,7 @@
+import { CliError } from "./errors.ts";
 import { underRoot } from "./files.ts";
-import { changedFiles, listedFiles } from "./git.ts";
+import { changedFiles, changedLines, listedFiles } from "./git.ts";
+import type { ChangeMap } from "./lines.ts";
 
 /** What narrows the files `files` rules may select. `check` and `plan` both provide it. */
 export interface CandidateSource {
@@ -11,6 +13,8 @@ export interface CandidateSource {
   changed?: boolean;
   /** Check only files committed since the merge base with this ref. */
   since?: string;
+  /** Judge only the lines `changed` or `since` touched in each file of a `standard` rule. */
+  changedLines?: boolean;
 }
 
 /** The root-relative paths `files` names; those outside the root are dropped. */
@@ -33,12 +37,25 @@ async function gitCandidates(options: CandidateSource): Promise<Set<string> | un
   return listed === undefined ? undefined : new Set(listed);
 }
 
+/** The lines the selectors' changes touched, when asked for; without a selector there is no change to scope to. */
+async function changedLinesFor(options: CandidateSource): Promise<ChangeMap | undefined> {
+  if (options.changedLines !== true) {
+    return undefined;
+  }
+  if (options.changed !== true && options.since === undefined) {
+    throw new CliError("--changed-lines needs --changed or --since to say which lines changed");
+  }
+  return changedLines(options.root, options.changed === true, options.since);
+}
+
 /** What narrows a rule's view of the tree. */
 export interface Selection {
   /** The files `files` rules may select; undefined when any file may be. */
   candidates?: Set<string>;
   /** What git tracks or does not ignore, which `exists` and `absent` see; undefined outside a work tree or under `gitignore: false`. */
   listed?: Set<string>;
+  /** The lines the change touched in each file, which scope a `standard` rule's verdict; undefined without `changedLines`. */
+  changedLines?: ChangeMap;
 }
 
 /**
@@ -54,7 +71,12 @@ export async function selectionFor(options: CandidateSource): Promise<Selection>
     await workingTreeFiles(options),
     await committedFiles(options),
   ].filter((paths) => paths !== undefined);
-  return { listed, candidates: selected.length === 0 ? listed : new Set(selected.flat()) };
+  const changed = await changedLinesFor(options);
+  return {
+    listed,
+    candidates: selected.length === 0 ? listed : new Set(selected.flat()),
+    ...(changed === undefined ? {} : { changedLines: changed }),
+  };
 }
 
 /** The `candidates` of `selectionFor`. */

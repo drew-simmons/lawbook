@@ -63,6 +63,8 @@ export interface RuleResult {
   usage?: UsageTotals;
   /** How many findings the baseline hid. Present only when there were any. */
   baselined?: number;
+  /** How many findings `--changed-lines` dropped for citing a line outside the change. Present only when there were any. */
+  outside?: number;
 }
 
 export interface Summary {
@@ -73,10 +75,12 @@ export interface Summary {
   skipped: number;
   /** What the whole run cost. Zero when no rule asked a model. */
   usage: UsageTotals;
+  /** How many findings `--changed-lines` dropped over every rule. Present only when there were any. */
+  outside?: number;
 }
 
 /** The counts in the summary, which the text format prints in this order. */
-export type Count = Exclude<keyof Summary, "usage">;
+export type Count = Exclude<keyof Summary, "usage" | "outside">;
 
 export interface Report {
   results: RuleResult[];
@@ -135,7 +139,8 @@ export function summarize(results: RuleResult[]): Report {
   for (const result of results) {
     summary[COUNTERS[result.status]] += 1;
   }
-  return { results, summary };
+  const outside = results.reduce((total, result) => total + (result.outside ?? 0), 0);
+  return { results, summary: outside === 0 ? summary : { ...summary, outside } };
 }
 
 /**

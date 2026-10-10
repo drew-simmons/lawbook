@@ -1,7 +1,8 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { expect, test } from "vitest";
-import { cacheKey, DEFAULT_CACHE_DIR } from "../src/judge/cache.ts";
+import { cachedJudge, cacheKey, DEFAULT_CACHE_DIR } from "../src/judge/cache.ts";
+import { NO_USAGE } from "../src/judge/judge.ts";
 import {
   fakeJudge,
   requestKey,
@@ -135,6 +136,11 @@ test("cacheKey is stable and changes with every field", () => {
   expect(cacheKey("m", { ...request, context: [a] })).not.toBe(key);
   expect(cacheKey("m", { standard: "s", files: [a, { ...b, content: "x" }] })).not.toBe(key);
   expect(cacheKey("m", { standard: "s", files: [b, a] })).not.toBe(key);
+  const changed = { a: [{ start: 1, end: 1 }], b: [{ start: 1, end: 1 }] };
+  expect(cacheKey("m", { ...request, changed })).not.toBe(key);
+  expect(
+    cacheKey("m", { ...request, changed: { ...changed, a: [{ start: 1, end: 2 }] } }),
+  ).not.toBe(cacheKey("m", { ...request, changed }));
 });
 
 test("rules that differ only in model cache their verdicts apart", async () => {
@@ -165,4 +171,25 @@ test("--explain shows a cached verdict's reason", async () => {
     "PASS actionable-errors\n  a.ts: passed, clear next steps (noul 0.90)\n",
   );
   expect(second.stdout).toContain(usageLine(0, 1));
+});
+
+test("a cached verdict keeps the line the model cited", async () => {
+  const inner = { judge: async () => ({ ...noul(0.1, "line 2 names no next step"), line: 2 }) };
+  const judge = cachedJudge(inner, cacheDir(), "m");
+  const request = {
+    standard: "s",
+    files: [{ path: "a.ts", content: "a\nb\n" }],
+    changed: { "a.ts": [{ start: 2, end: 2 }] },
+  };
+  expect(await judge.judge(request)).toEqual({
+    ...noul(0.1, "line 2 names no next step"),
+    line: 2,
+  });
+  expect(await judge.judge(request)).toEqual({
+    decision: { type: "noul", noul: 0.1 },
+    reason: "line 2 names no next step",
+    line: 2,
+    usage: NO_USAGE,
+    cached: true,
+  });
 });

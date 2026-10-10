@@ -51,6 +51,7 @@ interface CheckFlags {
   files?: string[];
   changed?: boolean;
   since?: string;
+  changedLines?: boolean;
   cache: boolean;
   cacheDir?: string;
   dryRun?: boolean;
@@ -91,6 +92,7 @@ async function runCheck(
     files: flags.files,
     changed: flags.changed,
     since: flags.since,
+    changedLines: flags.changedLines,
   };
   if (flags.dryRun === true) {
     return runPlan(options, flags.format, output);
@@ -218,6 +220,10 @@ function checkCommand(output: Output, deps: Deps, exit: Exit): Command {
       "check only files changed in the working tree: staged, unstaged, untracked",
     )
     .option("--since <ref>", "check only files committed since the merge base with ref")
+    .option(
+      "--changed-lines",
+      "judge standard rules on the lines --changed or --since touched, with the rest of each file as reference",
+    )
     .option("--dry-run", "list the files each rule would check and exit without reading them")
     .option("--explain", "print the model's reason for files that pass, not only for findings")
     .option(

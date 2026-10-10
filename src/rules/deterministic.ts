@@ -8,6 +8,7 @@ import {
   selectFiles,
   type SourceFile,
 } from "../files.ts";
+import type { ChangeMap } from "../lines.ts";
 import { type Finding, type RuleResult, ruleResult } from "../result.ts";
 import { parseSuppressions, suppressed } from "../suppress.ts";
 
@@ -19,6 +20,8 @@ export interface RuleContext {
   candidates?: ReadonlySet<string>;
   /** When set, `exists` and `absent` count only these root-relative paths and what contains them. */
   listed?: ReadonlySet<string>;
+  /** When set, a `standard` rule judges only these lines of each file and leaves out files with none. */
+  changedLines?: ChangeMap;
 }
 
 /** Patterns use the `m` and `u` flags, so `^` and `$` match at line ends. */

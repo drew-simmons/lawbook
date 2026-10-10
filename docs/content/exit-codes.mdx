@@ -9,7 +9,7 @@ sidebar:
 | ---- | --------------------------------------------------------------------------------------------------------- |
 | `0`  | Success. For `check`, every rule passed, was skipped, or had only `warn` or baselined findings; for `test`, every fixture landed on its side. |
 | `1`  | A requested check failed. `check` returns it when a rule with `level: error` (the default) has a finding the baseline does not hide; `test` returns it when a fixture lands on the wrong side of its threshold. Findings under a `level: warn` rule leave the code at `0`. |
-| `2`  | Lawbook could not do what was asked: bad usage, a missing or invalid config, an unreadable file, an invalid pattern, an unknown `--only` id, a missing or invalid `--baseline` file, `--changed` or `--since` outside a git repository or with a ref git cannot resolve, a directory that cannot be written, a run over `llm.maxRequests`, or a provider that could not be reached, refused the credentials, or gave no verdict. |
+| `2`  | Lawbook could not do what was asked: bad usage, a missing or invalid config, an unreadable file, an invalid pattern, an unknown `--only` id, a missing or invalid `--baseline` file, `--changed` or `--since` outside a git repository or with a ref git cannot resolve, `--changed-lines` without `--changed` or `--since`, a directory that cannot be written, a run over `llm.maxRequests`, or a provider that could not be reached, refused the credentials, or gave no verdict. |
 
 Code `1` prints the findings on stdout and nothing on stderr, so a CI log
 shows the report once. Code `2` for usage, config, or client setup problems
