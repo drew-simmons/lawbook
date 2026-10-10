@@ -35,8 +35,11 @@ async function featureBranch(): Promise<void> {
   await gitIn(dir(), "switch", "-q", "-c", "feature");
   await write(dir(), "a.ts", "const a = 1;\nconst B = 2;\nconst c = 3;\nconst d = 4;\n");
   await write(dir(), "b.ts", "const b = 1;\nconst b2 = 2;\n");
+  // The mode changes on disk and in the index: Windows git ignores the disk
+  // mode, and Linux git takes the disk mode when it diffs the working tree.
   await chmod(path.join(dir(), "mode.ts"), 0o755);
   await gitIn(dir(), "add", "-A");
+  await gitIn(dir(), "update-index", "--chmod=+x", "mode.ts");
   await gitIn(dir(), "commit", "-q", "-m", "feature");
 }
 
