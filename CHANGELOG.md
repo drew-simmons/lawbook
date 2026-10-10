@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/drew-simmons/lawbook/compare/v0.3.1...v0.4.0) (2026-10-10)
+
+
+### Features
+
+* judge standard rules on the changed lines with --changed-lines ([8d49e8f](https://github.com/drew-simmons/lawbook/commit/8d49e8f73dbb10c99ec47627d3a0f6d304034218))
+
 ## [0.3.1](https://github.com/drew-simmons/lawbook/compare/v0.3.0...v0.3.1) (2026-10-09)
 
 
